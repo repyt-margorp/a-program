@@ -320,6 +320,20 @@ additional fuel. No full acceptance suite was rerun for this audit-only change.
 
 ## Assessment
 
+2026-10-04, inquiry desk agent review direction within the existing audit scope,
+not a new human design approval: native18 Source134 at motive receipt-pointer
+inequality is not yet a demonstrated typing/frontier defect. The original Job
+owner will classify actual typed subject/Scope/motive semantics. If only
+obsolete independent receipt identity is demanded, deliberately replace that
+prototype test contract with typed sharing plus distinct-scope/invalid-motive
+negative controls, preserving the old failure/history and explicit rationale.
+If logically distinct checked facts collapse, provide a concrete counterexample
+and fix the owner/admission/frontier defect. Do not restore duplicate Evidence
+solely for the old pointer assertion; no arbitrary test waiver or full Source
+pass follows. [Exact original-owner direction](../src/prototype/coordination/inbox/job-native-motive-identity-classification-20261004.json).
+This remains the single implementation work list; affected qualification and
+original-owner lifecycles/cost availability rules remain unchanged.
+
 2026-10-04, Root adoption decision superseding the initial materialized-default
 selection after fresh attribution: Job-required Source dependencies are separable
 from the CLI save profile. Preserve the previously accepted compact/recomputable

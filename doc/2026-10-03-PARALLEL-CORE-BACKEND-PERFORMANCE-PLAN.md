@@ -27,6 +27,16 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 
 ### Current Delivery Status
 
+2026-10-04, inquiry desk review routed to the original Job owner: classify the
+native18 motive receipt-pointer inequality by actual typed subject/Scope/motive
+semantics. Deliberate retirement of an obsolete receipt-identity contract needs
+normative typed-sharing and distinct-scope/invalid-motive negative coverage;
+a real collapse of checked facts needs a concrete counterexample and fix.
+The old failure is preserved and does not yet establish a typing/frontier bug.
+[Direction and provenance](../src/prototype/coordination/inbox/job-native-motive-identity-classification-20261004.json)
+are recorded in the single SE1-SE5 Assessment. This is agent review within
+existing scope, not new approval, a test waiver, hold or full Source pass.
+
 2026-10-04, [current C41 composition review](../src/prototype/coordination/reviews/20261004-c41-current-composition-review.json):
 actual admitted measure Fold/indexed constructors and outer calls now compose
 with frozen C36-C40 products. Root checks frozen12/raw410/retained169 and runs
