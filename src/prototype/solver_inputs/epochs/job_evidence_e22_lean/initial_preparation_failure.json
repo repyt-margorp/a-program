@@ -1,0 +1,8 @@
+{
+  "phase": "Canonical preflight before source/control/evidence creation",
+  "exit": 1,
+  "stderr": "AssertionError: unmigrated AP source base differs from assembled E18",
+  "make_started": false,
+  "cause": "Initial assertion omitted the existing published artifact_source.c.patch migration.",
+  "correction": "Apply exact E18 task AP base plus its migration patch privately; require reconstructed raw source equal the156 pinned parent. No runtime/test/grammar/trust waiver or AP base edit."
+}

@@ -1,6 +1,14 @@
 --- a/source_checkpoint_test.c
 +++ b/source_checkpoint_test.c
-@@ -32,6 +32,7 @@
+@@ -1,6 +1,7 @@
+ #include "program.h"
+ #include "source_io.h"
+ #include "synthesis_source.h"
++#include "synthesis_work.h"
+ #include "derivation_io.h"
+ #include "declaration_io.h"
+ #include "artifact/source.h"
+@@ -32,6 +33,7 @@
  
  struct checkpoint {
  	struct pg_program *program;
@@ -8,7 +16,7 @@
  	size_t count, prefix_count, source_count, input_count;
  	struct pg_synthesis_job **jobs;
  	struct pg_synthesis_job **sources;
-@@ -42,6 +43,12 @@
+@@ -42,6 +44,12 @@
  	const struct pg_derivation_input *const *inputs;
  };
  
@@ -21,7 +29,7 @@
  static void add(struct pg_dag *dag, const void *key)
  {
  	if (key) assert(!pg_dag_add(dag, key));
-@@ -55,11 +62,11 @@
+@@ -55,11 +63,11 @@
  
  static struct checkpoint collect(struct pg_program *p)
  {
@@ -36,7 +44,7 @@
  		struct pg_synthesis_job *job = (void *)n->key, *child = NULL;
  		const struct pg_source_scope *scope = pg_synthesis_prepared_environment(job);
  		if (scope) add(&prefix, scope->registration);
-@@ -68,11 +75,11 @@
+@@ -68,11 +76,11 @@
  			for (size_t i = 0; i < names.count; ++i) add(&prefix, names.entries[i]);
  		struct pg_module_frontier module;
  		if (!pg_synthesis_module_frontier(&p->synthesis, job, &module)) add(&prefix, module.previous);
@@ -51,7 +59,7 @@
  			add(&roots, reference.rule);
  		}
  	}
-@@ -84,10 +91,9 @@
+@@ -84,10 +92,9 @@
  	for (const struct pg_dag_node *n = prefix.first; n; n = n->next) {
  		struct pg_synthesis_job *job = (void *)n->key;
  		external[n->id - 1] = job;
@@ -63,7 +71,7 @@
  				if (anchor == n || registration(&p->synthesis, (void *)anchor->key)) continue;
  				const struct pg_source_scope *scope = pg_synthesis_prepared_environment(anchor->key);
  				if (scope && scope->registration == job) { c.recipes[2 * (n->id - 1) + 1] = anchor->id; break; }
-@@ -104,8 +110,9 @@
+@@ -104,8 +111,9 @@
  		struct pg_synthesis_job **rule_roots = pg_wire_array(&p->graph, roots.count, sizeof(*rule_roots));
  		assert(rule_roots);
  		for (const struct pg_dag_node *n = roots.first; n; n = n->next) rule_roots[n->id - 1] = (void *)n->key;
@@ -74,7 +82,7 @@
  		assert(c.rules);
  		c.count = pg_artifact_derivations_job_count(c.rules);
  		c.inputs = pg_artifact_derivations_inputs(c.rules, &c.input_count);
-@@ -138,7 +145,9 @@
+@@ -138,7 +146,9 @@
  	struct pg_program *p = c->program;
  	size_t terms = p->graph.terms.count, proofs = p->typing.proofs.count, jobs = p->synthesis.jobs.count;
  	FILE *file = tmpfile();
@@ -85,7 +93,7 @@
  	assert(terms == p->graph.terms.count && proofs == p->typing.proofs.count && jobs == p->synthesis.jobs.count);
  	rewind(file);
  	return file;
-@@ -174,6 +183,7 @@
+@@ -174,6 +184,7 @@
  	c.program = pg_sources_read_with(file, 100000, &c.source_count, &sources, read_continuation, &c);
  	struct pg_program *p = c.program;
  	assert(p && !p->synthesis.steps && p->typing.proofs.count == 1);
@@ -93,7 +101,7 @@
  	c.sources = pg_wire_array(&p->graph, c.source_count, sizeof(*c.sources));
  	assert(c.sources); memcpy(c.sources, sources, c.source_count * sizeof(*c.sources));
  	size_t n = c.prefix_count;
-@@ -181,8 +191,7 @@
+@@ -181,8 +192,7 @@
  	assert(c.jobs);
  	for (size_t i = 0; i < n; ++i) {
  		uint64_t tag = c.recipes[2 * i], index = c.recipes[2 * i + 1];
@@ -103,7 +111,7 @@
  		else assert(tag == 1);
  	}
  	for (size_t i = 0; i < n; ++i) if (c.recipes[2 * i] == 1) {
-@@ -201,8 +210,9 @@
+@@ -201,8 +211,9 @@
  	struct pg_synthesis *s = &p->synthesis;
  	if (c->rules) {
  		struct pg_synthesis_job **mapping;
@@ -114,7 +122,7 @@
  		c->jobs = mapping;
  	}
  	assert(!pg_artifact_source_prepare(s, c->source, c->count, c->jobs));
-@@ -221,7 +231,8 @@
+@@ -221,7 +232,8 @@
  		verification += spent;
  	}
  	solving = 0;
@@ -124,7 +132,7 @@
  	assert(!pg_artifact_source_attach(s, c->source, c->count, c->jobs));
  	assert(!pg_artifact_schedule_attach(s, c->schedule, c->count, c->jobs));
  	free(targets);
-@@ -295,8 +306,8 @@
+@@ -295,8 +307,8 @@
  	assert(headers[0]->source != headers[1]->source);
  	struct shared_inputs out = {3, headers, 0}, in = {0};
  	FILE *file = tmpfile(), *plain = tmpfile();
@@ -135,7 +143,7 @@
  	pg_program_destroy(p);
  	rewind(file);
  	size_t count = 0;
-@@ -316,11 +327,15 @@
+@@ -316,11 +328,15 @@
  	}
  	assert(in.headers[0]->source != in.headers[1]->source);
  	FILE *copy = tmpfile();
@@ -153,7 +161,7 @@
  	rewind(extra);
  	struct shared_inputs bad = {0};
  	size_t absent = 0;
-@@ -340,7 +355,7 @@
+@@ -340,7 +356,7 @@
  {
  	assert(p->root->status == PG_SYNTHESIS_DONE && !p->synthesis.ready);
  	FILE *file = tmpfile();
@@ -162,8 +170,52 @@
  	return file;
  }
  
-@@ -414,22 +429,21 @@
+@@ -412,24 +428,65 @@
+ 	return p;
+ }
  
++static void source_copied_owner(unsigned boundary, int complete)
++{
++	struct pg_program *p = start("main := #1;");
++	struct pg_synthesis *s = &p->synthesis;
++	advance(s, complete ? 10000 : 1);
++	assert(p->root->status == (complete ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_PENDING));
++	struct checkpoint c = collect(p);
++	assert(c.jobs[0] == p->root && c.sources[0] == p->root);
++	const struct pg_synthesis_work_class *role = pg_synthesis_work_role(p->root);
++	const char *state = pg_synthesis_work_state(p->root, role);
++	size_t offset = state ? (const char *)p->root - state : 0;
++	size_t bytes = offset + sizeof(*p->root) + p->root->input_count * sizeof(*p->root->inputs);
++	char *storage = malloc(bytes);
++	assert(storage);
++	memcpy(storage, state ? state : (const char *)p->root, bytes);
++	struct pg_synthesis_job *copy = (void *)(storage + offset);
++	assert(pg_synthesis_input_owned(s, (struct pg_synthesis_input){.pending = pg_synthesis_pending(p->root)}));
++	assert(!pg_synthesis_input_owned(s, (struct pg_synthesis_input){.pending = pg_synthesis_pending(copy)}));
++	unsigned char original[sizeof(*p->root)];
++	memcpy(original, p->root, sizeof(original));
++	struct pg_synthesis_job *ready = s->ready, *tail = s->ready_tail;
++	size_t jobs = s->jobs.count, proofs = p->typing.proofs.count;
++	uint64_t steps = s->steps;
++	c.jobs[0] = c.sources[0] = copy;
++	if (!boundary)
++		assert(!pg_artifact_source_capture(&p->graph, s, c.count, c.jobs, c.source_count, c.sources));
++	else if (boundary == 1)
++		assert(pg_artifact_source_prepare(s, c.source, c.count, c.jobs));
++	else assert(pg_artifact_source_attach(s, c.source, c.count, c.jobs));
++	assert(s->steps == steps && s->ready == ready && s->ready_tail == tail);
++	assert(s->jobs.count == jobs && p->typing.proofs.count == proofs);
++	assert(!memcmp(original, p->root, sizeof(original)));
++	c.jobs[0] = c.sources[0] = p->root;
++	free(storage);
++	assert(pg_artifact_source_capture(&p->graph, s, c.count, c.jobs, c.source_count, c.sources));
++	if (!complete) assert(!pg_artifact_source_prepare(s, c.source, c.count, c.jobs));
++	else assert(pg_artifact_source_prepare(s, c.source, c.count, c.jobs));
++	assert(!pg_artifact_source_attach(s, c.source, c.count, c.jobs));
++	assert(s->steps == steps && p->typing.proofs.count == proofs);
++	pg_program_destroy(p);
++}
++
  static void guards(void)
  {
 -	struct pg_program *p = expression("main := #1;"), *other = expression("main := #1;");
@@ -192,7 +244,7 @@
  	struct checkpoint c = collect(p);
  	assert(pg_artifact_source_prepare(&other->synthesis, c.source, c.count, c.jobs));
  	assert(pg_artifact_source_prepare(s, c.source, c.count - 1, c.jobs));
-@@ -444,19 +458,19 @@
+@@ -444,19 +501,19 @@
  	pg_program_destroy(p); pg_program_destroy(other);
  	c = read_image(file); p = c.program;
  	struct pg_synthesis_job **mapping;
@@ -215,7 +267,7 @@
  	assert(!p->synthesis.steps && p->root->status == PG_SYNTHESIS_PENDING);
  	advance(&p->synthesis, 1000);
  	assert(p->root->status == PG_SYNTHESIS_REJECTED);
-@@ -478,17 +492,17 @@
+@@ -478,17 +535,17 @@
  			const struct pg_evidence *context = pg_synthesis_scope_context(scope);
  			const struct pg_evidence *extended = pg_prove_context_extension(&p->typing, context,
  				binders[i], pg_prove_universe(&p->typing, context, 0));
@@ -236,7 +288,7 @@
  		assert(pg_synthesis_reference_resume(s, p->root, &view)); /* No lexical n here. */
  		size_t proofs = p->typing.proofs.count;
  		int status = pg_synthesis_reference_resume(s, use, &view);
-@@ -497,7 +511,8 @@
+@@ -497,7 +554,8 @@
  		if (!wrong) {
  			assert(pg_synthesis_reference_resume(s, use, &view)); /* Already attached. */
  			advance(s, 1000);
@@ -246,7 +298,7 @@
  		}
  		pg_program_destroy(p); pg_program_destroy(other);
  	}
-@@ -508,22 +523,22 @@
+@@ -508,22 +566,22 @@
  		const struct pg_syntax *syntax;
  		assert(!pg_synthesis_source_input(s, p->root, &scope, &syntax));
  		const struct pg_evidence *context = pg_synthesis_scope_context(scope);
@@ -278,7 +330,7 @@
  		}
  		pg_program_destroy(p);
  	}
-@@ -536,10 +551,10 @@
+@@ -536,10 +594,10 @@
  	struct pg_synthesis_job *module = pg_program_source(p, scope, text, strlen(text), &p->parser);
  	struct pg_synthesis_job *producer = pg_program_select_name(p, module, syntax->token);
  	assert(producer && producer->status == PG_SYNTHESIS_PENDING);
@@ -292,3 +344,14 @@
  	size_t proofs = p->typing.proofs.count, jobs = s->jobs.count;
  	assert(pg_synthesis_reference_resume(s, use, &view));
  	assert(!s->steps && proofs == p->typing.proofs.count && jobs == s->jobs.count && !use->result);
+@@ -549,6 +607,10 @@
+ 
+ int main(void)
+ {
++	for (unsigned boundary = 0; boundary < 3; ++boundary) {
++		source_copied_owner(boundary, 0);
++		source_copied_owner(boundary, 1);
++	}
+ 	shared_nominal_inputs();
+ 	guards();
+ 	reference_guards();

@@ -1,0 +1,44 @@
+{
+  "isolated_published_parent": "E18 taska8f52a015f73fe7cfa067c3d5b122bef7e4532b4/source15602241bd2",
+  "parent_negative_controls": [
+    {
+      "gate": "boundary-0-completed-0",
+      "actual_exit": -6,
+      "shell_exit": 134,
+      "report_sha256": "5803559a7d5c0db50eebfe4d0e4bd8aca65698ed15c84330bf83230f93c20124"
+    },
+    {
+      "gate": "boundary-0-completed-1",
+      "actual_exit": -6,
+      "shell_exit": 134,
+      "report_sha256": "5803559a7d5c0db50eebfe4d0e4bd8aca65698ed15c84330bf83230f93c20124"
+    },
+    {
+      "gate": "boundary-1-completed-0",
+      "actual_exit": -6,
+      "shell_exit": 134,
+      "report_sha256": "cef610e26e5966031321c59e23bd181ed5c6da27ee4fc3f15648ff0e74708736"
+    },
+    {
+      "gate": "boundary-1-completed-1",
+      "actual_exit": 0,
+      "shell_exit": 0,
+      "report_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "gate": "boundary-2-completed-0",
+      "actual_exit": -6,
+      "shell_exit": 134,
+      "report_sha256": "76a59df8e82b6b5def61645d2ffbedcaabc636e3bc7e49ab90cee9ae488348c1"
+    },
+    {
+      "gate": "boundary-2-completed-1",
+      "actual_exit": -6,
+      "shell_exit": 134,
+      "report_sha256": "76a59df8e82b6b5def61645d2ffbedcaabc636e3bc7e49ab90cee9ae488348c1"
+    }
+  ],
+  "parent_completed_prepare": "Already rejects by its pre-existing completed-status guard; do not claim a new weakness at this case.",
+  "candidate_and_SAN": "Full Source checkpoint and all six independent boundary controls0.",
+  "scope": "Canonical owner admission at capture/prepare/attach, with private-state/header/input copies and unchanged genuine ordinary Solve. No current-Main qualification, continuation restoration, byte/trust/fuel waiver or net cost claim."
+}
