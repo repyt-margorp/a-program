@@ -1122,6 +1122,45 @@ other products/backend/helpers/producer remain O2. This is a target copy-buffer
 convenience, not zero-copy List execution, source checking or native Acc/QuickSort.
 See the [C31 plan](../../../doc/2026-10-04-C-BACKEND-BUFFER-QUERY-PLAN.md).
 
+The opt-in `native_array_calls_v1` profile also uses existing `c_native_v1` ABI1.
+Each selected export must return a recognized List; recursive parameters must be
+recognized Lists, with other parameters scalar/enum/nat32/finite value records.
+It adds `ap_buffer_ALIAS(...)` alongside the original arena export and converters.
+List arguments become const element pointer/count pairs; other arguments retain
+their original order/types. Output is an element buffer/capacity/written triple.
+For the `array_calls/native.aplink` example, an ordinary C caller can write:
+
+```c
+int32_t input[] = {-1,0,1}, output[2];
+size_t written = 0;
+int status = ap_buffer_slice32(input,3,1,2,output,2,&written);
+```
+
+The wrapper copies inputs into a zeroed temporary arena, invokes the actual
+generated source function, uses existing validated copy-out, and destroys that
+arena on success or failure. No arena-owned node escapes. It does not run a
+redundant size query; the separate query remains available for node-based clients.
+Readable immutable input ranges, writable outputs, nonoverlap and storage lifetime
+are caller preconditions. Empty inputs permit null arrays; empty results permit a
+null output buffer. Status1 is a required null pointer,2 a malformed active value,
+3 allocation failure,4 source execution depth256,5 Nat32 overflow,6 capacity/count
+overflow. Every failure preserves buffer/written. Copy-in/copy-out are real costs;
+there is no zero-copy slice or alternate sorter. Retain the original API when a
+caller needs persistent arena nodes or a different depth/capacity policy.
+
+`array_calls/build.mk` / `check-c-array-calls` exercises three families across
+source/object/archive/shared/raw,121 Lists/4356 slice pairs/five payload forms,
+341 insertion-sort inputs,510 separate Core fingerprint comparisons, three List
+and six sort source/readback observations, zero-argument and by-value arguments,
+allocation exhaustion/rollback/statuses1-6 and13 checked/trusted refusal pairs.
+Shared products do not intercept internal malloc failures; SAN covers clients/
+raw/generated source, with object/archive/shared/backend/helpers/producer at O2.
+The SIZE_MAX input-count guard is exercised; impossible output-extent overflow is
+only inspected. Scalar/non-List results, recursive non-List parameters and callbacks
+are refused by this profile. Existing profiles/ABI layouts/source bodies remain
+unchanged; native indexed/callable Acc/QuickSort/full #61/cost/adoption stay open.
+See the [C32 plan](../../../doc/2026-10-04-C-BACKEND-ARRAY-CALLS-PLAN.md).
+
 The same shape also emits
 `ap_from_ALIAS(arena, array, count, out)`. This copies a finite array slice in
 order into arena-owned nodes, including a terminal node; it allocates `count + 1`

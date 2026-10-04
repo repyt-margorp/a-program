@@ -1,0 +1,102 @@
+import datetime
+import hashlib
+import json
+import os
+import pathlib
+import signal
+import subprocess
+import time
+
+qualification = pathlib.Path(__file__).resolve().parent
+tree = qualification / "tree"
+backend = tree / "src/prototype/c_backend"
+compiler = "/usr/bin/x86_64-linux-gnu-gcc-14"
+normal_flags = "-std=c11 -Wall -Wextra -Werror -O2"
+san_flags = "-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie"
+environment = dict(os.environ, TMPDIR=str(qualification / "tmp"), CC=compiler)
+(qualification / "tmp").mkdir(exist_ok=True)
+records = []
+deadline = time.monotonic() + 900
+pins = {
+    str(path.relative_to(tree)): hashlib.sha256(path.read_bytes()).hexdigest()
+    for path in tree.rglob("*") if path.is_file()
+}
+(qualification / "inputs-before.json").write_text(json.dumps(pins, indent=2) + "\n")
+
+
+def timestamp():
+    return datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+
+def run(label, argv, additions=None):
+    command_environment = dict(environment, **(additions or {}))
+    started = timestamp()
+    print("START " + label, flush=True)
+    with (qualification / (label + ".stdout")).open("wb") as stdout, (qualification / (label + ".stderr")).open("wb") as stderr:
+        child = subprocess.Popen(argv, cwd=tree, env=command_environment, stdout=stdout, stderr=stderr, start_new_session=True)
+        censored = False
+        try:
+            status = child.wait(timeout=max(1, min(180, deadline - time.monotonic())))
+        except subprocess.TimeoutExpired:
+            censored = True
+            os.killpg(child.pid, signal.SIGTERM)
+            try:
+                status = child.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                os.killpg(child.pid, signal.SIGKILL)
+                status = child.wait()
+    record = {"label": label, "argv": argv, "environment": {name: command_environment[name] for name in ["CC", "TMPDIR", "CLIENT_CFLAGS", "ASAN_OPTIONS", "UBSAN_OPTIONS"] if name in command_environment}, "started": started, "finished": timestamp(), "exit": status, "censored": censored}
+    records.append(record)
+    (qualification / "commands.json").write_text(json.dumps(records, indent=2) + "\n")
+    print("DONE " + label + " exit=" + str(status) + " censored=" + str(censored), flush=True)
+    if status or censored:
+        raise RuntimeError("Qualification command failed: " + label)
+
+
+def build(label, module, directory, targets, flags):
+    run(label, ["make", "-j1", "-f", str(backend / module / "build.mk"), "OVERLAY=" + str(tree), "BUILD=" + str(directory), "CC=" + compiler, "CFLAGS=" + flags] + [str(directory / target) for target in targets])
+
+
+summary = {"accepted_commit": "fc52755b345a555e49a79df40549e9cb23d54088", "runtime120_manifest_SHA": hashlib.sha256((qualification / "runtime-source.sha256").read_bytes()).hexdigest(), "source_provider_SHA": hashlib.sha256((tree / "tests/fixtures/sorted-proof-provider.p").read_bytes()).hexdigest(), "compiler_SHA": hashlib.sha256(pathlib.Path(compiler).read_bytes()).hexdigest(), "scope": "Current accepted producer; frozen C40 plus sealed C32-C39 dependencies. Exact C40 gate only; no broad replay or cost measurement. C32 remains private, no Main implementation or accepted adoption.", "started": timestamp(), "complete": False}
+try:
+    normal = qualification / "build-O2"
+    build("O2-comparison-pointer-oracle-build", "acc_comparison", normal, ["pointer-check", "c_acc_comparison_emit", "c_acc_comparison_oracle"], normal_flags)
+    dependencies = [("acc_clause", "c_acc_clause_emit"), ("acc_partition", "c_acc_partition_emit"), ("acc_append", "c_acc_append_emit"), ("acc_accessibility", "c_nat_accessibility_emit")]
+    for module, target in dependencies:
+        build("O2-" + module + "-build", module, normal, [target], normal_flags)
+    build("O2-sort-Core-oracle-build", "acc_quicksort_mockup", normal, ["c_acc_mockup_oracle"], normal_flags)
+    def gate(phase, emitters, flags):
+        additions = {"CLIENT_CFLAGS": flags}
+        if phase == "SAN":
+            additions.update(ASAN_OPTIONS="detect_leaks=1:halt_on_error=1", UBSAN_OPTIONS="halt_on_error=1:print_stacktrace=1")
+        run(phase + "-composed-gate", ["sh", str(backend / "acc_comparison/check.sh"), str(normal / "pointer-check"), str(emitters / "c_acc_comparison_emit"), *[str(emitters / target) for _, target in dependencies], str(normal / "c_acc_mockup_oracle"), str(normal / "c_acc_comparison_oracle"), str(qualification / (phase + "-gate"))], additions)
+    gate("O2", normal, "-O2")
+    sanitized = qualification / "build-SAN"
+    build("SAN-acc_comparison-build", "acc_comparison", sanitized, ["c_acc_comparison_emit"], san_flags)
+    for module, target in dependencies:
+        build("SAN-" + module + "-build", module, sanitized, [target], san_flags)
+    gate("SAN", sanitized, san_flags)
+    phases = {}
+    for phase in ["O2", "SAN"]:
+        directory = qualification / (phase + "-gate")
+        rows = [line.split("\t") for line in (directory / "status.tsv").read_text().splitlines()]
+        assert len(rows) == 33 and all(row[1] == row[2] for row in rows)
+        counts = {str(code): sum(int(row[2]) == code for row in rows) for code in [0, 4]}
+        assert counts == {"0": 29, "4": 4}
+        assert (directory / "source.out").read_text() == "0,1,2,2,3,|"
+        assert (directory / "comparison_source.out").read_text() == "1,0,1,1,0|"
+        phases[phase] = {"expected_rows": 33, "exits": counts, "source_sort": "0,1,2,2,3,|", "source_comparisons": "1,0,1,1,0|"}
+    summary.update(complete=True, phases=phases, Core_sorting_observations=341, Core_comparison_observations=256, pointer_and_Core_oracles_SAN=False)
+except Exception as failure:
+    summary["failure"] = str(failure)
+finally:
+    after = {name: hashlib.sha256((tree / name).read_bytes()).hexdigest() for name in pins}
+    summary["all_original_inputs_unchanged"] = after == pins
+    summary["finished"] = timestamp()
+    summary["all_children_terminal_reaped"] = True
+    summary["commands"] = len(records)
+    (qualification / "inputs-after.json").write_text(json.dumps(after, indent=2) + "\n")
+    (qualification / "Root-results.json").write_text(json.dumps(summary, indent=2) + "\n")
+    print(json.dumps(summary), flush=True)
+if not summary["complete"]:
+    raise SystemExit(1)

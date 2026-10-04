@@ -1,0 +1,52 @@
+{
+  "date_UTC": "2026-10-04T16:01:32.914692+00:00",
+  "original_notice_SHA": "1f2f65121a2fcde3cde91f386d9d99b11eb1feb18ef072da1ca95d0d33152a5c",
+  "superseding_notice_SHA": "3f892b92672a3b09c935e6c951cab3f0b94388ed2cd886cddb35cbc50850d96c",
+  "histories": {
+    "15": {
+      "manifest_SHA": "68ca9e7818bbc3bfba9ec6512fb5137874dc2063e9bbc33edffedb804fdc827d",
+      "retained_files_verified": 140
+    },
+    "16": {
+      "manifest_SHA": "71eccd84ff5c999abc36fab36fa99c2373710015cb1670f8b0e9051d1b1adeea",
+      "retained_files_verified": 139
+    },
+    "17": {
+      "manifest_SHA": "8211e5996ab587e5a6db268d2603f7797ecc33e8b89a7f0d6f8603c46057eafb",
+      "retained_files_verified": 136
+    },
+    "18": {
+      "manifest_SHA": "32acadd405cb4695e9589f5ad74bddb81af967461045c3dcd91fc48bc9958555",
+      "retained_files_verified": 480
+    }
+  },
+  "trial18_all467_inputs_and_runtime120_verified": true,
+  "trial18_runtime120_manifest_SHA": "01b83817e9313d294d18eeed5350ca57454bf932c1530686f311f165c4937bac",
+  "trial18_terminal": {
+    "o2_build": 0,
+    "full_synthesis": 0,
+    "source_context_scopes": 0,
+    "source_io_script": 134,
+    "source_io_script_scope": "unmodified committed source_io.sh; passed indexed-families, constructor inputs and binder environment; failed old motive receipt-pointer inequality in match-origins. Later groups not reached.",
+    "original_strict3": "remain open/unwaived; native public recipe not run",
+    "rejected_trial17": "history8211e599 keeps completed-job history expansion sources/logs/binaries; canonical synthesis_derivation.c restored exactly to parent",
+    "parent": "fc52755b345a555e49a79df40549e9cb23d54088",
+    "source_runtime120": "01b83817e9313d294d18eeed5350ca57454bf932c1530686f311f165c4937bac"
+  },
+  "synthesis_derivation_parent_byte_exact": true,
+  "full_Source_script_parent_byte_exact": true,
+  "changed_runtime_paths": [
+    "src/derivation.c",
+    "src/evidence.c",
+    "src/scope.c",
+    "src/scope.h",
+    "src/typing.c",
+    "src/typing.h"
+  ],
+  "Root_runtime_replay": false,
+  "status": "NOT READY; original owner report and static historical-gate verification, no current accepted runtime bug/adoption/joint/public/cost/full Source pass inferred.",
+  "trial17_disposition": "Rejected unconditional completed DERIVATION_JOB request-history expansion; preserved exact history. Context0 did not qualify added serialization/traversal; parent synthesis_derivation.c restored.",
+  "original_failures_waived": false,
+  "genuine_source_frontier_or_joint_qualification": "Pending exact Performance readback/escaped-argument contracts; AP6 remains separate; full Source134 and temporary global selector still open.",
+  "code_observations": "Trial18 evidence.c projection handles originless/mapless weakened variable by existing pg_prove_variable and requires exact native subject; no fabricated count0 projection. tests/source_io.c retains independent actual mapped source and map as saved roots through two inert resaves, preserving failure/pending/type/Scope/zero-work checks. Unconditional completed DERIVATION_JOB history expansion is rejected and synthesis_derivation.c is byte-exact parent. Native runtime delta is six files (derivation/evidence/scope/typing), not evaluator/readback/source runtime mutation."
+}

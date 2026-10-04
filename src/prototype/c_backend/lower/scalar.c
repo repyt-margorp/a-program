@@ -879,6 +879,59 @@ static void parameters(FILE *out, const struct function *f)
 	fputs(" *out", out);
 }
 
+static int array_call(const struct function *f)
+{
+	size_t cell, payload;
+	if (!pg_c_representation_list(f->body->value->type, &cell, &payload)) return 0;
+	for (size_t i = 0; i < f->count; ++i) {
+		const struct pg_c_representation *r = f->parameters[i]->type;
+		if (r->callback || (r->recursive && !pg_c_representation_list(r, &cell, &payload))) return 0;
+	}
+	return 1;
+}
+
+static void array_parameters(FILE *out, const struct function *f)
+{
+	for (size_t i = 0; i < f->count; ++i) {
+		const struct pg_c_representation *r = f->parameters[i]->type; size_t cell, payload;
+		if (pg_c_representation_list(r, &cell, &payload)) {
+			fputs("const ", out); pg_c_representation_type(out, r->constructors[cell].fields[payload]);
+			fprintf(out, " *a%zu, size_t a%zu_count, ", i + 1, i + 1);
+		} else { pg_c_representation_type(out, r); fprintf(out, " a%zu, ", i + 1); }
+	}
+	const struct pg_c_representation *r = f->body->value->type; size_t cell, payload;
+	if (!pg_c_representation_list(r, &cell, &payload)) return;
+	pg_c_representation_type(out, r->constructors[cell].fields[payload]);
+	fputs(" *buffer, size_t capacity, size_t *written", out);
+}
+
+static void emit_array_call(FILE *source, FILE *header, const struct function *f, const char *alias)
+{
+	fputs("/* Array call: borrowed immutable inputs and separate writable outputs.\n"
+		"\t* A temporary arena is always destroyed. Depth limit 256; native statuses\n"
+		"\t* 1-6 apply. Failures preserve buffer/written; no node result escapes. */\n", header);
+	fprintf(header, "int ap_buffer_%s(", alias); array_parameters(header, f); fputs(");\n", header);
+	fprintf(source, "int ap_buffer_%s(", alias); array_parameters(source, f);
+	fputs(")\n{\n\tif (!written) return 1;\n\tstruct ap_c_arena arena = {0};\n\tint status;\n", source);
+	const struct pg_c_representation *result = f->body->value->type;
+	fprintf(source, "\tconst struct ap_data_%s *result;\n", result->alias);
+	for (size_t i = 0; i < f->count; ++i) {
+		const struct pg_c_representation *r = f->parameters[i]->type; size_t cell, payload;
+		if (!pg_c_representation_list(r, &cell, &payload)) continue;
+		fprintf(source, "\tconst struct ap_data_%s *p%zu;\n"
+			"\tstatus = ap_from_%s(&arena, a%zu, a%zu_count, &p%zu);\n\tif (status) goto done;\n",
+			r->alias, i + 1, r->alias, i + 1, i + 1, i + 1);
+	}
+	fprintf(source, "\tstatus = ap_export_%s(&arena", alias);
+	for (size_t i = 0; i < f->count; ++i) {
+		size_t cell, payload; int list = pg_c_representation_list(f->parameters[i]->type, &cell, &payload);
+		fprintf(source, ", %c%zu", list ? 'p' : 'a', i + 1);
+	}
+	fputs(", &result);\n\tif (status) goto done;\n", source);
+	fprintf(source, "\tstatus = ap_copy_%s(result, buffer, capacity, written);\n"
+		"done:\n\tap_arena_%s_destroy(&arena);\n\treturn status;\n}\n", result->alias, f->module->representations.arena_alias);
+}
+
 static void value(FILE *out, const struct expression *e)
 {
 	e = e->value;
@@ -1091,7 +1144,7 @@ static int emit(FILE *source, FILE *header, size_t count,
 	if (!source || !header || !error) return -1;
 	*error = "invalid scalar exports or entry";
 	if (!pg_c_export_names(count, exports) || (entry != SIZE_MAX && entry >= count)) return -1;
-	/* Mode 3 adds scalar callbacks; mode 4 adds finite List extent helpers. */
+	/* Mode 3 adds scalar callbacks; modes 4/5 add query/array-call helpers. */
 	struct module m = {.callbacks = callbacks, .native_predicates = callbacks && native != 3 ? native : 0,
 		.native_callbacks = native == 3};
 	struct pg_dag roots;
@@ -1101,7 +1154,7 @@ static int emit(FILE *source, FILE *header, size_t count,
 	if (pg_dag_init(&m.order, lower_child, &m) || pg_index_init(&m.functions) || pg_index_init(&m.arguments) || pg_index_init(&m.results)) goto done;
 	*error = "representations require unique closed declarations; fields need scalar, enum, prior selected value data or direct Self contracts";
 	if (pg_c_representations_native(&m.representations, &m.order.storage, enum_count, enums, natural_count, naturals, data_count, data)) goto done;
-	if (native == 4) {
+	if (native >= 4) {
 		size_t lists = 0;
 		for (size_t i = 0; i < m.representations.count; ++i) {
 			size_t cell, payload;
@@ -1119,6 +1172,12 @@ static int emit(FILE *source, FILE *header, size_t count,
 		if (functions[n->id - 1]) continue;
 		*error = m.error;
 		goto done;
+	}
+	if (native == 5) {
+		for (size_t i = 0; i < count; ++i)
+			if (!array_call(functions[pg_dag_find(&roots, exports[i].subject)->id - 1])) {
+				*error = "array calls require selected List results and scalar/value/List parameters"; goto done;
+			}
 	}
 	if (entry != SIZE_MAX && functions[pg_dag_find(&roots, exports[entry].subject)->id - 1]->count) {
 		*error = "native executable entry cannot require arguments"; goto done;
@@ -1156,13 +1215,13 @@ static int emit(FILE *source, FILE *header, size_t count,
 	pg_c_representation_declarations(header, &m.representations);
 	predicate_declarations(source, &m); predicate_declarations(header, &m);
 	pg_c_nodes_declarations(source, &m.representations);
-	if (native == 4) pg_c_nodes_measure_declarations(source, &m.representations);
+	if (native >= 4) pg_c_nodes_measure_declarations(source, &m.representations);
 	fputs("#ifdef __cplusplus\nextern \"C\" {\n#endif\n", header);
 	pg_c_nodes_declarations(header, &m.representations);
-	if (native == 4) pg_c_nodes_measure_declarations(header, &m.representations);
+	if (native >= 4) pg_c_nodes_measure_declarations(header, &m.representations);
 	value_validators(source, &m.representations);
 	pg_c_nodes_implementation(source, &m.representations);
-	if (native == 4) pg_c_nodes_measure_implementation(source, &m.representations);
+	if (native >= 4) pg_c_nodes_measure_implementation(source, &m.representations);
 	for (const struct function *f = m.first; f; f = f->next) { signature(source, f); fputs(";\n", source); }
 	fputc('\n', source);
 	for (const struct function *f = m.first; f; f = f->next) emit_function(source, f);
@@ -1212,6 +1271,7 @@ static int emit(FILE *source, FILE *header, size_t count,
 		else if (r->layout) fputs("\tout->tag = (uint32_t)result;\n", source);
 		else fprintf(source, "\t*out = result <= INT%zu_MAX ? (int%zu_t)result : -1 - (int%zu_t)(UINT%zu_MAX - result);\n", r->width, r->width, r->width, r->width);
 		fputs("\treturn 0;\n}\n\n", source);
+		if (native == 5) emit_array_call(source, header, f, exports[i].alias);
 	}
 	fputs("#ifdef __cplusplus\n}\n#endif\n", header);
 	if (entry != SIZE_MAX) {
@@ -1323,4 +1383,14 @@ int pg_c_emit_native_buffer_query(FILE *source, FILE *header, size_t count,
 {
 	return emit(source, header, count, exports, entry, enum_count, enums, natural_count, naturals,
 		data_count, data, 4, 0, contract, error);
+}
+
+int pg_c_emit_native_array_calls(FILE *source, FILE *header, size_t count,
+	const struct pg_c_export *exports, size_t entry, size_t enum_count,
+	const struct pg_c_export *enums, size_t natural_count,
+	const struct pg_c_export *naturals, size_t data_count,
+	const struct pg_c_export *data, struct pg_c_native_contract *contract, const char **error)
+{
+	return emit(source, header, count, exports, entry, enum_count, enums, natural_count, naturals,
+		data_count, data, 5, 0, contract, error);
 }

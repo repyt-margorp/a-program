@@ -78,15 +78,17 @@ static int shared_symbols(const char *path, const struct pg_c_link_plan *plan)
 	FILE *file = fopen(path, "w");
 	if (!file) return -1;
 	fputs("{\n\tglobal:\n", file);
-	for (size_t i = 0; i < plan->count; ++i)
+	for (size_t i = 0; i < plan->count; ++i) {
 		fprintf(file, "\t\tap_export_%s;\n", plan->exports[i].alias);
-	if (plan->lowering == PG_C_NATIVE_DIRECT || plan->lowering == PG_C_PREDICATE_NATIVE_DIRECT || plan->lowering == PG_C_PREDICATE_SIGNED_DIRECT || plan->lowering == PG_C_CALLBACK_NATIVE_DIRECT || plan->lowering == PG_C_NATIVE_BUFFER_QUERY) {
+		if (plan->lowering == PG_C_NATIVE_ARRAY_CALLS) fprintf(file, "\t\tap_buffer_%s;\n", plan->exports[i].alias);
+	}
+	if (plan->lowering == PG_C_NATIVE_DIRECT || plan->lowering == PG_C_PREDICATE_NATIVE_DIRECT || plan->lowering == PG_C_PREDICATE_SIGNED_DIRECT || plan->lowering == PG_C_CALLBACK_NATIVE_DIRECT || plan->lowering == PG_C_NATIVE_BUFFER_QUERY || plan->lowering == PG_C_NATIVE_ARRAY_CALLS) {
 		for (size_t i = 0; i < plan->natural_count; ++i)
 			fprintf(file, "\t\tap_arena_%s_destroy;\n", plan->naturals[i].alias);
 		for (size_t i = 0; i < plan->data_count; ++i) {
 			const char *alias = plan->data[i].alias;
 			fprintf(file, "\t\tap_arena_%s_destroy;\n\t\tap_from_%s;\n\t\tap_copy_%s;\n", alias, alias, alias);
-			if (plan->lowering == PG_C_NATIVE_BUFFER_QUERY) fprintf(file, "\t\tap_measure_%s;\n", alias);
+			if (plan->lowering == PG_C_NATIVE_BUFFER_QUERY || plan->lowering == PG_C_NATIVE_ARRAY_CALLS) fprintf(file, "\t\tap_measure_%s;\n", alias);
 		}
 	}
 	fputs("\tlocal: *;\n};\n", file);
@@ -122,6 +124,7 @@ static int receipt(const char *path, const struct pg_c_link_plan *plan, const ch
 		if (plan->lowering == PG_C_PREDICATE_SIGNED_DIRECT) fputs(",\"borrowed-signed-integer-predicates\"", file);
 		if (plan->lowering == PG_C_CALLBACK_NATIVE_DIRECT) fputs(",\"borrowed-native-scalar-callbacks\"", file);
 		if (plan->lowering == PG_C_NATIVE_BUFFER_QUERY) fputs(",\"validated-finite-list-size-query\"", file);
+		if (plan->lowering == PG_C_NATIVE_ARRAY_CALLS) fputs(",\"temporary-arena-array-calls\",\"validated-finite-list-size-query\"", file);
 		if (plan->enum_count) fputs(",\"nullary-enum32\",\"conditional-match\"", file);
 		if (contract->natural) fputs(",\"checked-nat32\",\"conditional-match\"", file);
 		if (plan->data_count) fputs(",\"fieldful-tagged-values\",\"conditional-match\"", file);
@@ -262,6 +265,10 @@ int pg_c_link_publish(const struct pg_c_link_plan *plan, const char *directory,
 			plan->data_count, plan->data, &contract, &error);
 	else if (plan->lowering == PG_C_NATIVE_BUFFER_QUERY)
 		emitted = pg_c_emit_native_buffer_query(file, header, plan->count, plan->exports, plan->entry,
+			plan->enum_count, plan->enums, plan->natural_count, plan->naturals,
+			plan->data_count, plan->data, &contract, &error);
+	else if (plan->lowering == PG_C_NATIVE_ARRAY_CALLS)
+		emitted = pg_c_emit_native_array_calls(file, header, plan->count, plan->exports, plan->entry,
 			plan->enum_count, plan->enums, plan->natural_count, plan->naturals,
 			plan->data_count, plan->data, &contract, &error);
 	else if (plan->lowering == PG_C_CALLBACK_DIRECT)

@@ -1,0 +1,61 @@
+import Bool;
+import Nat;
+import LT;
+import Acc;
+import SizedList;
+import List;
+import Measured;
+import Partition;
+import accessibleSucc;
+import natAccessible;
+import natLessOrEqual;
+import quickSortAcc;
+import partition;
+import partitionByDecision;
+import partitionLower;
+import partitionUpper;
+import append;
+import quickSort;
+
+bool_type := Bool;
+nat_type := Nat;
+lt_family := LT;
+acc_family := Acc Nat LT;
+sized_family := SizedList Nat;
+measured_type := Measured Nat;
+partition_type := Partition Nat Nat.zero;
+list_type := List Nat;
+empty := (List Nat).nil;
+succ_access := accessibleSucc;
+nat_access := natAccessible;
+compare_fn := natLessOrEqual;
+sort_acc := quickSortAcc Nat &natLessOrEqual;
+partition_fn := partition;
+partition_nat := partition Nat &natLessOrEqual;
+decision_fn := partitionByDecision;
+lower_fn := partitionLower;
+upper_fn := partitionUpper;
+append_fn := append;
+append_nat := append Nat;
+sort := \xs : List Nat => quickSort Nat &natLessOrEqual xs;
+count := \n : Nat => n @zero => #0 @succ k => #int_add #1 *k;
+fingerprint := \xs : List Nat => xs @nil => #0
+	@cons n tail => #int_add (#int_mul #5 *tail) (#int_add #1 (count n));
+bool_value := \b : Bool => b @true => #1 @false => #0;
+zero := Nat.zero;
+one := Nat.succ zero;
+two := Nat.succ one;
+three := Nat.succ two;
+mixed := (List Nat).cons three ((List Nat).cons zero ((List Nat).cons two ((List Nat).cons one ((List Nat).cons two empty))));
+print_list := \xs : List Nat => xs @nil => #print #"|"
+	@cons n tail => { #print (#int_to_text (count n)); #print #","; *tail; };
+// A different admitted comparator must not be mistaken for an imported Fold.
+always_true := \left : Nat => \right : Nat => Bool.true;
+reference := print_list (sort mixed);
+comparison_reference := {
+	#print (#int_to_text (bool_value (compare_fn zero zero))); #print #",";
+	#print (#int_to_text (bool_value (compare_fn three zero))); #print #",";
+	#print (#int_to_text (bool_value (compare_fn two two))); #print #",";
+	#print (#int_to_text (bool_value (compare_fn two three))); #print #",";
+	#print (#int_to_text (bool_value (compare_fn three two))); #print #"|";
+};

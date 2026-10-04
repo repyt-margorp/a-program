@@ -1,0 +1,54 @@
+{
+  "date_UTC": "2026-10-04T15:56:07.598150+00:00",
+  "accepted_runtime": "fc52755b345a555e49a79df40549e9cb23d54088",
+  "runtime120_manifest_SHA": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907",
+  "sealed_dependencies": [
+    {
+      "epoch": 32,
+      "archive_SHA": "db6a663c11197d92a28d13c8344da02aaccdd59c32864bfba106391a7f7e05ae"
+    },
+    {
+      "epoch": 33,
+      "archive_SHA": "a8bd408cc099885ab26780a901017fb3a9087294ce5e8b768b84ea6c2b7a6499"
+    },
+    {
+      "epoch": 34,
+      "archive_SHA": "26138ad62d6e819a722b3264c6d050d6d906a208190985158a68c86055d6ad77"
+    },
+    {
+      "epoch": 35,
+      "archive_SHA": "6bfebc166faca426c59b63d6df98a27cce0e51dad59fcc93aabd48802f74ba6c"
+    },
+    {
+      "epoch": 36,
+      "archive_SHA": "935cbfa3c56f20af251770180172e795eb14e866d5569318eae515e0e047acbd"
+    },
+    {
+      "epoch": 37,
+      "archive_SHA": "a82d8be6c7d1615ded0c217a6facf291c828c2ecea5325e7ee598de231664416"
+    },
+    {
+      "epoch": 38,
+      "archive_SHA": "bb0c2ccc7c53cf1656e20ffa3b265db45bf97e0ce01c938c9af6fd22122efc4f"
+    },
+    {
+      "epoch": 39,
+      "archive_SHA": "d3c5b078c059146f496725d6d28270fa161c2641fda5f19062c763823e54f4c8"
+    },
+    {
+      "epoch": 40,
+      "archive_SHA": "dac488b659728bc636e95dec277637417000bb7a70f4728ac804f15623ef2553"
+    }
+  ],
+  "purpose": "Focused current accepted producer qualification of frozen C40 comparator composition; C32 dependency sealed/private, no adopted alternative implementation or accepted code edits. No timing or broad replay.",
+  "planned": [
+    "Serial j1 O2: current pointer, C36-C40 emitters and C33/C40 Core oracles",
+    "Exact C40 check.sh33 rows on fresh current image and generated products",
+    "Serial j1 affected emitter-runtime SAN and same33 client/refusal gates; pointer/Core oracles O2"
+  ],
+  "limits": {
+    "per_command_seconds": 180,
+    "overall_seconds": 900
+  },
+  "worker_mutations": false
+}

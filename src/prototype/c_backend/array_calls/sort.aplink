@@ -1,0 +1,13 @@
+aplink 1
+artifact sort.a
+abi c_native_v1
+target host-c11
+product source
+lowering native_array_calls_v1
+fallback reject
+enum32 bool_type SBool
+nat32 nat_type SNat
+data_of empty SList
+export sort sort
+export sort_alias sort_alias
+export insert insert

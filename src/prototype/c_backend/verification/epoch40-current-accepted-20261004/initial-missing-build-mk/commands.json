@@ -1,0 +1,26 @@
+[
+  {
+    "label": "O2-comparison-pointer-oracle-build",
+    "argv": [
+      "make",
+      "-j1",
+      "-f",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/tree/src/prototype/c_backend/acc_comparison/build.mk",
+      "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/tree",
+      "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2",
+      "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+      "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/pointer-check",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/c_acc_comparison_emit",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/c_acc_comparison_oracle"
+    ],
+    "environment": {
+      "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/tmp"
+    },
+    "started": "2026-10-04T15:57:24.664950+00:00",
+    "finished": "2026-10-04T15:57:24.668913+00:00",
+    "exit": 2,
+    "censored": false
+  }
+]

@@ -1,7 +1,7 @@
 # Parallel Development: Inquiry Desk, Merge and Workers
 
 Date: 2026-10-03
-Status: approved Performance promotion fc52755b complete; original acceptance 363 and adopted four tests verified separately on c206. Human Evidence/Occurrence static audit delivered; coherent prototype migration continues. C39 actual Nat recurrence reviewed on oldE8; Identity transport bodies/current qualification remain. Cost request2 and proposed15:20-15:30 window expired/released; no grant/sample/hold. Original Goals and review timer unchanged.
+Status: approved Performance promotion fc52755b complete; original acceptance 363 and adopted four tests verified separately on c206. Human Evidence/Occurrence static audit delivered; coherent prototype migration continues. C40 comparison composition passes fresh currentc206 O2/SAN; ordered C32-C40 prototype task snapshots published. Identity transport/measure/outer and general qualification remain. Cost request2 and proposed15:20-15:30 window expired/released; no grant/sample/hold. Original Goals and review timer unchanged.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `fd45c42`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -17,15 +17,43 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | ID | Problem / owner | Related | Status |
 | --- | --- | --- | --- |
 | 1 | Inquiry desk -> `merge`: reporting vs coordination/integration | All lanes | Desk answers the user; only Merge integrates after verified handoff |
-| 2 | `c-backend`: downstream C design | #61 (supersedes #44/#49); shared policy #47 | C33 faithful manual executable delivered before deadline; C39 actual Nat recurrence and C36-C38 generated composition reviewed statically on oldE8. Identity transport bodies/current qualification/comparison/measure/outer remain; C32 sealed/parked |
+| 2 | `c-backend`: downstream C design | #61 (supersedes #44/#49); shared policy #47 | C33 faithful manual executable delivered before deadline; currentc206 C40 comparison/Acc/partition/append/accessibility composition O2/SAN33 verified. Ordered frozen C32-C40 prototype task publication complete; manual Identity/measure/outer and full standalone/general/native criteria remain. C32 implementation priority sealed/parked |
 | 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Approved current frame deletion accepted; original363 plus adopted4 verified separately. Actual matched peakRSS/time pending safe all-owner window; peripheral MEM10/spine/empty arrays parked |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
-| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | Native-owner Evidence allocation/index/alternative deletion advancing; focused control0, Synthesis134/134/139 retained. Transitional selector/readers/Source/frontier/current qualification open; E25-E27 peripheral work parked |
+| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | Native-owner deletion trial18 history480/all467 inputs verified; full Synthesis0/context-scopes0 recorded, full Source134 retained. Trial17 redundant completed-request history rejected/restored; selector/full Source/affected SAN/public/strict3/joint frontier/cost remain. E25-E27 parked |
 | 6 | `verification-audit`: independent read-mostly suite/debt inventory | #59 / PR #60, #51 | Bounded static inventory/pilot complete; measured cost deferred, full #59 remains open |
 | 7 | `test-suite`: implement coverage-preserving test reductions | #59 / PR #60 | Bounded Goal complete; exact7 taskbc16df9 pushed/remote verified, Root raw/assembly review complete, prototype Main36a27be integrated |
 | 8 | `issue-audit`: evidence-backed GitHub disposition | All open Issues/PRs | Bounded Goal complete; verified dispositions, task8bb5018/Mainb461ace; #61 retains C residuals |
 
 ### Current Delivery Status
+
+2026-10-04, [current C40 composition review](../src/prototype/coordination/reviews/20261004-c40-current-composition-review.json):
+Root verifies frozen13/raw472/retained166/products40 and independently runs the
+exact composed comparator gate on acceptedfc52755b/runtime120c206. O2 and affected
+emitter-runtime/client SAN each have33 expected rows:29 zero/four refusal4;
+13 serial build/gate commands exit0 uncensored. Core341 sort/256 comparison
+observations and five generated products match; pointer/Core oracles remain O2.
+Initial Root preparation scope guard and missing shared-build make2 are retained
+and corrected without changing frozen source or expectations. Ordered C32-C40
+prototype task snapshots are pushed atf26f7c58; original owner Git is
+unchanged. Final115 prototype/code/test/docs integration is prepared; C32 is a
+sealed reproducibility dependency, with its implementation priority still parked.
+This supersedes publication-pending wording; it does not qualify every standalone
+C32-C39/generalized path or adopt accepted code. Manual Identity transport,
+Nat32/storage/LT, measure and outer entry remain. Full61/Goal/cost stay open.
+
+2026-10-04, [native-owner trial18 review](../src/prototype/coordination/reviews/20261004-native-owner-trial18-review.json):
+Root verifies retained trial15-18 histories, trial18 all467 inputs/runtime120 and
+480 history files. Full Synthesis0 and context-scopes0 are recorded; full Source
+134 at motive receipt inequality and later unreached groups remain unwaived.
+Trial17 unconditional completed-request history expansion is rejected, with
+synthesis_derivation.c restored exactly to parent. Originless native weakening
+uses ordinary VARIABLE admission; tests preserve independent actual source/map
+roots through inert resaves. No current accepted bug/full Source/READY is inferred.
+Original Job continues consumer migration/selector removal/affected gates; the
+[concrete lifetime boundary](../src/prototype/coordination/inbox/native-owner-trial18-performance-boundary-20261004.json)
+reaches original Job/Performance for eventual exact common-producer joint checks.
+AP6 remains separately frozen; evaluator lifetime contracts/strict3/cost remain.
 
 2026-10-04, [Performance exact95 publication review](../src/prototype/coordination/reviews/20261004-performance-publication95-review.json):
 isolated task commit22b15cb2 is pushed/remote exact; original owner local HEAD,

@@ -1,0 +1,10 @@
+{
+  "date_UTC": "2026-10-04T16:09:35.154436+00:00",
+  "type": "Concrete common-producer boundary evidence; ordinary checkpoint read-only coordination, no measurement hold or implementation approval",
+  "native_candidate": "Trial18 history480 manifest32acadd405cb4695e9589f5ad74bddb81af967461045c3dcd91fc48bc9958555/runtime12001b83817e9313d294d18eeed5350ca57454bf932c1530686f311f165c4937bac on committedfc52755b/c206",
+  "review": "src/prototype/coordination/reviews/20261004-native-owner-trial18-review.json",
+  "facts": "All467 input copies and480 frozen history files checked. Full Synthesis0 and Source context-scopes0 recorded; full Source134 at motive receipt inequality. Native six-file delta excludes eval/readback/Source scheduler; rejected completed-request history expansion restored parent synthesis_derivation.c. Independent actual source/map roots retained explicitly by test input selection.",
+  "contract_to_preserve": "Acceptedc206 lexical references/captured contents and returned argument closures retain machine-lifetime storage; no generic published-argument reuse or captured binding deletion. Exact current native owner and Performance readback/escaped-argument contracts must be jointly verified only after full native Source and affected gates. AP6 stays separately frozen.",
+  "next": "Original Job continues genuine consumer/identity/storage migration and selector deletion; original Performance may inspect shared lifetime boundary at its ordinary checkpoint. Merge owns eventual exact common-producer joint checks. No competing Job implementation, runtime edit, source schema/new graph/authority or automatic reload trust requested.",
+  "status": "NOT READY; full Source/public/fuel/strict3/current joint/cost remain open. No cost grant or sample; do not reuse expired acknowledgments."
+}

@@ -1,0 +1,5 @@
+{
+  "error": "Runtime manifest guard failed before any build or gate",
+  "cause": "Copied src included src/.gitignore, src/Makefile and separate user-authored handmade/main.c, yielding123 instead of canonical120. Runtime guard now uses exact previously verified candidate-source.sha256120 paths. Extra files do not enter this runtime source set; no source/test change.",
+  "no_runtime_gate_launched": true
+}

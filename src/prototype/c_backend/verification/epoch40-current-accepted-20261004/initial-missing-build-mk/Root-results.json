@@ -1,0 +1,14 @@
+{
+  "accepted_commit": "fc52755b345a555e49a79df40549e9cb23d54088",
+  "runtime120_manifest_SHA": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907",
+  "source_provider_SHA": "a674b893cd5d0dc1899e79238352c6167a536876393ae7f53b2a9de602b647e6",
+  "compiler_SHA": "a23ecab8ff08f09ad8c80602c2c5df7f49e09c25905cb8975902e101bf72635f",
+  "scope": "Current accepted producer; frozen C40 plus sealed C32-C39 dependencies. Exact C40 gate only; no broad replay or cost measurement. C32 remains private, no Main implementation or accepted adoption.",
+  "started": "2026-10-04T15:57:24.664898+00:00",
+  "complete": false,
+  "failure": "Qualification command failed: O2-comparison-pointer-oracle-build",
+  "all_original_inputs_unchanged": true,
+  "finished": "2026-10-04T15:57:24.675935+00:00",
+  "all_children_terminal_reaped": true,
+  "commands": 1
+}

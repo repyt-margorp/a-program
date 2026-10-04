@@ -1,0 +1,6 @@
+{
+  "cause": "Qualification tree selection excluded the shared build.mk when filtering build output directories. Make exited2 before compiling; frozen C40/dependency code and test expectations are unchanged. Exact committed shared build.mk restored fromfc52755b for corrected invocation.",
+  "source": "fc52755b:src/prototype/c_backend/build.mk",
+  "restored_SHA": "e167780e9ed22b3b3858346a8586877253f7b07d55bcb1e843e71711470a8d07",
+  "actual_runtime_failure": false
+}

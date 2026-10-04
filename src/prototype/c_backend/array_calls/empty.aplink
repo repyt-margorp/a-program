@@ -1,0 +1,18 @@
+aplink 1
+artifact empty.a
+abi c_native_v1
+target host-c11
+product source
+lowering native_array_calls_v1
+fallback reject
+enum32 Bool Bool
+nat32 Nat Nat
+data Packet Packet
+data List List
+data Flags Flags
+data Records Records
+data Nats Nats
+export empty empty
+export prepend_flag prepend_flag
+export prepend_packet prepend_packet
+export prepend_succ prepend_succ
