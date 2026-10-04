@@ -1151,11 +1151,13 @@ static int emit(FILE *source, FILE *header, size_t count,
 		if (m.representations.arena_alias) {
 			fputs("\tif (!arena) return 1;\n\tif (arena->depth || arena->depth_limit > 256) return 4;\n\t(void)ap_allocate;\n", source);
 			for (size_t j = 0; j < m.representations.count; ++j) if (m.representations.types[j]->recursive)
-				fprintf(source, "\t(void)ap_validate_%s;\n", m.representations.types[j]->alias);
+				fprintf(source, "\t(void)ap_validate_%s%s;\n", pg_c_representation_branching(m.representations.types[j]) ? "graph_" : "", m.representations.types[j]->alias);
 		}
 		for (size_t j = 0; j < f->count; ++j) {
 			const struct pg_c_representation *r = f->parameters[j]->type;
 			if (r->callback) fprintf(source, "\tif (!a%zu.call) return 2;\n", j + 1);
+			else if (pg_c_representation_branching(r))
+				fprintf(source, "\tint valid%zu = ap_validate_graph_%s(a%zu);\n\tif (valid%zu) return valid%zu;\n", j + 1, r->alias, j + 1, j + 1, j + 1);
 			else if (r->recursive) fprintf(source, "\tif (!ap_validate_%s(a%zu)) return 2;\n", r->alias, j + 1);
 			else if (r->constructors && !r->natural) {
 				fprintf(source, "\tif (!ap_valid_value_%s(a%zu)) return 2;\n", r->alias, j + 1);
@@ -1197,6 +1199,7 @@ static int emit(FILE *source, FILE *header, size_t count,
 		for (size_t i = 0; i < m.representations.count; ++i) {
 			const struct pg_c_representation *r = m.representations.types[i];
 			if (r->recursive) contract->recursive = 1;
+			if (pg_c_representation_branching(r)) contract->branching = 1;
 			if (r->constructors) for (size_t j = 0; j < r->count; ++j)
 				for (size_t k = 0; k < r->constructors[j].count; ++k) {
 					const struct pg_c_representation *f = r->constructors[j].fields[k];

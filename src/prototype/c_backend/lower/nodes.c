@@ -13,6 +13,9 @@ void pg_c_nodes_declarations(FILE *out, const struct pg_c_representations *table
 	fprintf(out, "void ap_arena_%s_destroy(struct ap_c_arena *);\n", table->arena_alias);
 	for (size_t i = 0; i < table->count; ++i) {
 		const struct pg_c_representation *r = table->types[i];
+		if (pg_c_representation_branching(r))
+			fputs("/* Branching inputs: readable finite acyclic nodes; shared subtrees allowed.\n"
+				"\t* Validation uses temporary allocation (status 3), freed before execution. */\n", out);
 		size_t cell, payload;
 		if (!pg_c_representation_list(r, &cell, &payload)) continue;
 		fputs("/* Copy finite List to a separate writable buffer. Inputs, buffer and\n"
@@ -29,6 +32,50 @@ void pg_c_nodes_declarations(FILE *out, const struct pg_c_representations *table
 		pg_c_representation_type(out, r->constructors[cell].fields[payload]);
 		fprintf(out, " *, size_t count, const struct ap_data_%s **out);\n", r->alias);
 	}
+}
+
+static void branching_validator(FILE *out, const struct pg_c_representation *r)
+{
+	fprintf(out, "static const struct ap_data_%s *ap_child_%s(const struct ap_data_%s *node, size_t edge, int *valid)\n{\n"
+		"\tswitch (node->tag) {\n", r->alias, r->alias, r->alias);
+	for (size_t j = 0; j < r->count; ++j) {
+		const struct pg_c_constructor_representation *c = &r->constructors[j];
+		fprintf(out, "\tcase %zu:\n", j);
+		for (size_t k = 0; k < c->count; ++k) {
+			const struct pg_c_representation *f = c->fields[k];
+			if (!f->layout || f->recursive || f->natural) continue;
+			if (f->constructors)
+				fprintf(out, "\t\tif (!ap_valid_value_%s(node->fields.c%zu.f%zu)) *valid = 0;\n", f->alias, j, k);
+			else fprintf(out, "\t\tif ((uint64_t)node->fields.c%zu.f%zu.tag >= UINT64_C(%zu)) *valid = 0;\n", j, k, f->count);
+		}
+		fputs("\t\tswitch (edge) {\n", out);
+		size_t edge = 0;
+		for (size_t k = 0; k < c->count; ++k) if (c->fields[k] == r)
+			fprintf(out, "\t\tcase %zu:\n\t\t\tif (!node->fields.c%zu.f%zu) *valid = 0;\n"
+				"\t\t\treturn node->fields.c%zu.f%zu;\n", edge++, j, k, j, k);
+		fputs("\t\tdefault: return NULL;\n\t\t}\n", out);
+	}
+	fputs("\tdefault: *valid = 0; return NULL;\n\t}\n}\n", out);
+	fprintf(out, "static int ap_validate_graph_%s(const struct ap_data_%s *node)\n{\n"
+		"\tstruct frame { const struct ap_data_%s *node; size_t parent, edge; int active; };\n"
+		"\tif (!node) return 2;\n\tsize_t count = 1, capacity = 16, current = 0;\n"
+		"\tstruct frame *frames = malloc(capacity * sizeof(*frames));\n\tif (!frames) return 3;\n"
+		"\tframes[0] = (struct frame){.node = node, .parent = SIZE_MAX, .active = 1};\n"
+		"\twhile (current != SIZE_MAX) {\n\t\tint valid = 1;\n"
+		"\t\tconst struct ap_data_%s *child = ap_child_%s(frames[current].node, frames[current].edge++, &valid);\n"
+		"\t\tif (!valid) { free(frames); return 2; }\n"
+		"\t\tif (!child) { frames[current].active = 0; current = frames[current].parent; continue; }\n"
+		"\t\tsize_t seen = 0;\n\t\twhile (seen < count && frames[seen].node != child) ++seen;\n"
+		"\t\tif (seen < count) {\n\t\t\tif (frames[seen].active) { free(frames); return 2; }\n\t\t\tcontinue;\n\t\t}\n"
+		"\t\tif (count == capacity) {\n"
+		"\t\t\tif (capacity > SIZE_MAX / 2 / sizeof(*frames)) { free(frames); return 3; }\n"
+		"\t\t\tsize_t next = capacity * 2;\n\t\t\tstruct frame *grown = malloc(next * sizeof(*grown));\n"
+		"\t\t\tif (!grown) { free(frames); return 3; }\n"
+		"\t\t\tfor (size_t i = 0; i < count; ++i) grown[i] = frames[i];\n"
+		"\t\t\tfree(frames); frames = grown; capacity = next;\n\t\t}\n"
+		"\t\tframes[count] = (struct frame){.node = child, .parent = current, .active = 1};\n"
+		"\t\tcurrent = count++;\n\t}\n\tfree(frames); return 0;\n}\n",
+		r->alias, r->alias, r->alias, r->alias, r->alias);
 }
 
 void pg_c_nodes_implementation(FILE *out, const struct pg_c_representations *table)
@@ -51,6 +98,7 @@ void pg_c_nodes_implementation(FILE *out, const struct pg_c_representations *tab
 	for (size_t i = 0; i < table->count; ++i) {
 		const struct pg_c_representation *r = table->types[i];
 		if (!r->recursive) continue;
+		if (pg_c_representation_branching(r)) { branching_validator(out, r); continue; }
 		fprintf(out, "static const struct ap_data_%s *ap_step_%s(const struct ap_data_%s *node, int *valid)\n{\n"
 			"\tif (!node) { *valid = 0; return NULL; }\n\tswitch (node->tag) {\n", r->alias, r->alias, r->alias);
 		for (size_t j = 0; j < r->count; ++j) {

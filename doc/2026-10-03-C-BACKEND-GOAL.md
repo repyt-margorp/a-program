@@ -104,6 +104,21 @@ names, separate directories and reviewed integration epochs.
 
 ### Objective (Code)
 
+2026-10-04, fresh Root C25 current-E18+MEM9+E19 qualification: exact26
+task728d04b12c3901c2193cd3232347dfdb544e6fe5 pushed/remote exact. Unchanged qualified
+source128add4e096; strict O2 backend/four inert helpers rebuilt, E19 pointer reused.
+All20 build/gate records0. Tree46/applied50/source-sort46/nested40/List21/record41/
+numeric26 expected rows each O2/client-source SAN, enum875 per product,
+original linker and publication-I-O19 pass. Six Tree observations9912999,
+202 finite Trees per layout/1616 separate Core comparisons, all-child malformed/
+null/cycle/shared-DAG/deep identity and allocation/depth rollback controls pass.
+Parent applied/source-sort/nested generated C/H bytes exact. Worker isolated
+historical E8 frozen26/retained240/runtime128/raw2239 and18 C24 C/H pairs verified;
+initial print/script/header/directive/comment-scan and pre-receipt runs retained.
+Other25 Main frozen bytes exact; only this Goal provenance/status reconciled.
+[Root C25 review](../src/prototype/c_backend/verification/core-epoch25.json)
+pins current results and task/Main transport; no current source algorithm change.
+
 2026-10-04, fresh Root C24 current-E18+MEM9 qualification: unchanged
 source128c414202a, exact16 task9af7f27a05cae856b5a1da010b1741883a6ba44e pushed/remote
 verified. Strict O2 backend/applied-type/source-sort/nested inert helpers rebuilt,
@@ -492,6 +507,7 @@ Current issue status (2026-10-04 local; detailed pins stay in linked epoch plans
 | #61 nested private IH captures, C22 | Parent `eaf5755914` + scalar delta +7/-2, [nested plan](2026-10-04-C-BACKEND-NESTED-CAPTURE-PLAN.md): retain known delayed IH/recursive identities in private recursive callees, with represented captures still dense C operands; existing ABI. | Fresh worker E8 strict build; O2/client-source SAN40 each (31zero/1three/8four), eight source/readback observations and120 separate Core comparisons; seed32/64 extrema, curried/List folds, unused/repeated IH and depth rollback pass. Affected C21 O2/SAN114 each pass; original refusal probe retained. Fresh Root E18+MEM9 nested40/parent114/integer61 each O2/client-source SAN pass; rawce041c85. | Exact12 task8b6debfc pushed/remote verified; prototype Main other11 frozen bytes exact, only Goal provenance reconciled. | Public dynamic functions/effects, callable/indexed fields and native Acc/QuickSort/full #61 remain unsupported. Borrowed input/depth and client-source-only SAN limits apply. | Hand off exact code/test/docs and retained initial pins; Root publication/audit remains separate. |
 | #61 private selected types/native source insertion sort, C23 | Parent `8b6debfcf` + scalar +16/-5, receipt +1/-1, [source sort plan](2026-10-04-C-BACKEND-SOURCE-SORT-PLAN.md): private known selected type bindings let unchanged admitted source insertion sorting emit C; ABI unchanged. | Worker E8 O2/client-source SAN48 each (31zero/1three/16four), nine observations,552 separate Core comparisons;341 Lists/client, two sorts/four insert pivots/identity and resource controls. Affected C22 O2/SAN40 each, linker O2/I-O19 pass. Original setup/refusal evidence retained. Fresh Root current E18+MEM9 source-sort48/nested40 each O2/client-source SAN, linker and I/O19 pass; rawd69730eb, initial Root I/O setup failure retained. | Exact13 task1a1e2614 pushed/remote verified; prototype Main other12 frozen bytes exact, only Goal provenance reconciled. | Public/unselected/computed type arguments, dynamic functions/effects and indexed/callable Acc/QuickSort remain refused; limited SAN/target Nat32/depth bounds. | Root exact publication/current-producer review; preserve historical snapshots and continue distinct bounded work. |
 | #61 selected applied types/value-phase calls, C24 | Parent `1a1e26144` + scalar +13/-9, [applied type plan](2026-10-04-C-BACKEND-APPLIED-TYPE-BINDING-PLAN.md): exact selected classifier identity and pending operand value phase; no Source evaluation/public generic ABI. | Worker E8 O2/SAN50 each (31zero/1three/18four), eight observations/445 Core comparisons,341 Lists/client/finite Pair/captured type/fold/resource controls. Affected source-sort46 each/637 Core, nested40 each/I-O19 pass. Initial selector/fold failures retained; former C23 applied List refusal positive. Fresh Root current E18+MEM9 applied50/source-sort46/nested40 each O2/client-source SAN and linker/I-O19 pass; rawc918a577. | Exact16 task9af7f27a pushed/remote verified; prototype Main other15 frozen bytes exact, only Goal provenance reconciled. | Exact selected classifiers only; arbitrary open/dependent/indexed/callable contracts, native Acc/QuickSort/full #61 remain open; borrowed/depth/limited SAN. | Continue distinct bounded downstream work; native indexed/callable Acc/QuickSort/full61 remain open. |
+| #61 two direct Self fields, C25 | C24 task `9af7f27a` + representation +17/-4, nodes +48 and status/receipt metadata; [multi-tail plan](2026-10-04-C-BACKEND-MULTI-TAIL-PLAN.md). Existing borrowed arena ABI, iterative active/completed graph validation; no producer field. | Worker E8 Tree46/applied50/List21/value-record41/numeric26 each O2/client-source SAN; enum arrays875/product/linker/I-O19 pass. Six observations,202 finite Trees/layout,1616 separate Core comparisons;18 C24 C/H exact. Initial setup failures retained. Root current E18+MEM9+E19 all20 records0; Tree46/applied50/source46/nested40/List21/record41/numeric26 each O2/client-source SAN, enum/linker/I-O19 pass. Raw05905831. | Exact26 task728d04b1 pushed/remote verified; prototype Main other25 frozen bytes exact, only Goal provenance reconciled. | Readable immutable borrowed nodes, O(V) temporary storage/quadratic validation, depth256; three-tail/callable/indexed/non-List record refusals. Native Acc/QuickSort/full #61 open. | Continue distinct bounded downstream work; three-tail/callable/indexed/native Acc/QuickSort/full61 remain open. |
 | #61 native Acc/QuickSort (historical #44/#49) | C4 `a3b6bce` pins native refusal; C7-C9 retain it. Applied List resolves only the first representation obligation. C23 now separately delivers existing-source native insertion sorting; no indexed Acc/QuickSort implementation. | Historical checked/trusted status 4/no product; Root C9 sorting-boundary gate passes. Structural FFTT remains separate. Fresh C23 checked/trusted indexed QuickSort status4/no products retained. | C4-C9 task/prototype Main published; no native Acc epoch publication. | Indexed SizedList and callable recursive Acc fields remain unsupported; no producer defect established. | Report concrete indexed/callable representation needs through Merge; keep work bounded and downstream. |
 | #61 remaining public contracts (historical #49) | General/boxed callbacks, effects, higher Identity, recursive captures and shared nominal exchange remain explicit limits; C16 advances only fixed borrowed unary/binary scalar inputs. | Local/joint gates verify supported cases and refusals, not general completion. | Historical tasks/prototype Main published; no publication of general missing contracts. | Need bounded justified representation/demand contracts. | Preserve refusals; route shared needs through Merge. |
 
@@ -645,6 +661,24 @@ pinned/current producer images and emitted C/headers match byte-for-byte.
 Evidence and exact publication files are in the [epoch handoff](2026-10-03-C-BACKEND-EPOCH1-HANDOFF.md).
 
 ### Assessment
+
+2026-10-04, Root agent C25 integration decision within existing scope:
+adopt the verified bounded downstream prototype with at most two dedicated direct
+Self fields using the existing borrowed pointer/caller arena ABI. Iterative
+validation records active/completed reachable nodes, checks each active child and
+tag, accepts shared finite DAGs and rejects cycles/nulls/malformed fields. Temporary
+checked malloc storage is freed before computation; status3 returns before arena/
+output mutation. Storage is O(V), pointer identity searches make worst-case work
+quadratic. Caller arena capacity does not bound validation scratch. Readable
+immutable initialized nodes remain caller preconditions. Native computation keeps
+the existing depth256/status4, while identity validates deeper finite DAGs.
+Copied emitter-selected metadata truthfully distinguishes branching receipt;
+single-tail generated products remain exact. SAN covers clients/source/raw/oracle,
+backend/helpers/producer/object/archive O2. Three-tail/callable/indexed/non-List
+record/effect/unselected contracts still refuse. No producer/schema/checker/IR/
+source erasure, public generic ABI, actual cost, accepted adoption, native
+Acc/QuickSort/full61 or Goal completion. This supersedes C25 private preparation
+only; historical failures remain retained.
 
 2026-10-04, Root agent C24 integration decision within existing scope:
 retain exact represented selected classifier Term identity in private known-call
@@ -1138,6 +1172,9 @@ shared IR, checker or image fields. The later 2026-10-03 lane assignment permits
 this target work while Main continues SE1, superseding the earlier AP6 hold.
 
 ### Plan
+
+- [x] C25: qualify/publish exact26 two-direct-Self prototype on current E18+MEM9+E19;
+  retain scratch/lifetime/refusal/resource bounds and full native Acc/QuickSort criteria.
 
 - [x] C24: qualify exact16 selected applied-type/private operand-phase correction
   on current E18+MEM9 and publish task/Main prototype; preserve initial failures,

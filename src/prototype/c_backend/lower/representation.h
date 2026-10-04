@@ -42,5 +42,6 @@ void pg_c_representation_type(FILE *, const struct pg_c_representation *);
 void pg_c_representation_private_type(FILE *, const struct pg_c_representation *);
 void pg_c_representation_declarations(FILE *, const struct pg_c_representations *);
 int pg_c_representation_list(const struct pg_c_representation *, size_t *cell, size_t *payload);
+int pg_c_representation_branching(const struct pg_c_representation *);
 
 #endif

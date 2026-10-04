@@ -122,7 +122,9 @@ static int receipt(const char *path, const struct pg_c_link_plan *plan, const ch
 		if (contract->natural) fputs(",\"checked-nat32\",\"conditional-match\"", file);
 		if (plan->data_count) fputs(",\"fieldful-tagged-values\",\"conditional-match\"", file);
 		if (contract->value_fields) fputs(",\"nested-value-fields\"", file);
-		if (recursive) fputs(",\"single-tail-nodes\",\"direct-recursive-match\",\"known-ih-thunks\",\"arena-construction\"", file);
+		if (recursive) fputs(contract->branching ?
+			",\"two-self-nodes\",\"direct-recursive-match\",\"known-ih-thunks\",\"arena-construction\"" :
+			",\"single-tail-nodes\",\"direct-recursive-match\",\"known-ih-thunks\",\"arena-construction\"", file);
 		if (contract->copy_out) fputs(",\"finite-list-copy-out\",\"array-to-list-copy\"", file);
 		fputc(']', file);
 	}
@@ -169,7 +171,7 @@ static int receipt(const char *path, const struct pg_c_link_plan *plan, const ch
 		fputs(",\"fields\":\"int32-int64-selected-enum32", file);
 		if (contract->natural) fputs("-selected-nat32", file);
 		if (contract->value_fields) fputs("-selected-value-data", file);
-		if (recursive) fputs("-single-self-tail", file);
+		if (recursive) fputs(contract->branching ? "-at-most-two-direct-self-fields" : "-single-self-tail", file);
 		fputs("\",\"invalid_input\":2,", file);
 		fputs(recursive ? "\"allocation_failure\":3,\"depth_limit\":4,\"failure_output\":\"unchanged\",\"allocation_rollback\":true}" :
 			"\"invalid_input_output\":\"unchanged\"}", file);

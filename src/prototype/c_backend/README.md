@@ -731,25 +731,25 @@ evaluator, and refuses ambiguous reused layouts before writing either stream.
 General recursive containers and native Acc/QuickSort remain AP6.4/AP6.5 work;
 the supported finite List/array conversion is described below.
 
-### Single-tail recursive data
+### Direct Self recursive data
 
 The same `data SOURCE ALIAS` directive now also selects closed unindexed data
-with at most one direct Self field per constructor; other fields remain Int32,
+with at most two direct Self fields per constructor; other fields remain Int32,
 Int64, selected enum32 or selected nat32. A two-constructor List with one nullary
 terminal and one payload/Self cell may also contain previously selected complete
 nonrecursive value data. Record payloads in other recursive shapes still reject.
 This covers List/Nat shapes. A recursive selection uses
 `const struct ap_data_ALIAS *` for native parameters/results and Self fields.
 An explicit terminal constructor is a node; NULL is an invalid source value.
-General trees with two Self fields, recursive function/thunk fields, indexed and
-dependent containers still reject. The selection does not add artifact fields,
+Three or more Self fields, recursive function/thunk fields, indexed and dependent
+containers still reject. The selection does not add artifact fields,
 source recursion rules or producer changes.
 
 Components with a recursive selection add `struct ap_c_arena *arena` as the
 first argument of every public export. Zero initialize the arena, then release
 its allocations with `ap_arena_ALIAS_destroy(&arena)`, where ALIAS is the first
 nat32 selection, or the first recursive data selection if there is no nat32.
-Inputs are borrowed immutable finite chains; the caller
+Inputs are borrowed immutable finite acyclic nodes; the caller
 keeps every reachable node readable until all results sharing it are retired.
 Constructor nodes belong to the supplied arena. Identity may return its input;
 append copies the left chain and shares its right input. Destroying the arena
@@ -768,8 +768,9 @@ ap_export_length(&arena, result, &count);
 ap_arena_List_destroy(&arena);
 ```
 
-Public validation checks active enum/tag fields, non-null tails and cycles with
-an iterative two-pointer walk before computation or allocation. Every pointer
+For single-tail selections, public validation checks active enum/tag fields,
+non-null tails and cycles with an iterative two-pointer walk before computation
+or allocation. Every pointer
 must refer to a readable, properly initialized C node; this ABI cannot validate
 arbitrary addresses. Return statuses are 0 success, 1 null output/arena, 2 invalid
 chain/tag, 3 allocation failure and 4 recursive depth limit. All failures preserve
@@ -796,12 +797,36 @@ substitution, source graph mutation or new checking authority is used by emissio
 stable selection by a stored Bool flag over 511 length/flag cases. It checks all
 native products, source evaluator agreement, determinism, immutable input images,
 allocation rollback with actual malloc failure, bounded recursion, malformed
-tails/tags/cycles and retained tree/thunk/callback/effect refusals. The raw Oracle
+tails/tags/cycles, the former nullary Tree refusal as a positive client and retained
+thunk/callback/effect refusals. The raw Oracle
 gate separately compares recursive sum/append with the existing evaluator while
 forbidding evaluation/substitution during emission and checking graph/store counts.
 This gate covers Bool-field selection; the numeric partition and copy-out gate
 below extends this boundary. Acc/QuickSort, dynamic callbacks and demanded
 Identity remain incomplete.
+
+`check-c-multi-tail` covers two direct Self fields under the same borrowed pointer
+and caller-arena ABI. Field and constructor positions come from the selected
+declaration, including a reversed layout. An iterative traversal validates every
+active child and selected enum field. It records active/completed node identities,
+rejects cycles and permits shared finite subtrees. Temporary validation storage
+uses malloc and is freed on every exit before computation; failure returns 3
+without changing output or arena metadata. Arena capacity bounds result nodes,
+not that temporary storage. Validation uses O(V) storage and linear identity
+searches with quadratic worst-case work in the number of distinct reachable nodes;
+no comparative cost claim is made. Computation still has the existing depth limit,
+while identity can borrow inputs deeper than 256. Inputs must remain readable and
+immutable for the whole call and every result that shares them.
+
+The gate checks source/object/archive/raw clients, six source/readback observations,
+202 finite Trees in each layout, 1,616 separate existing-Core comparisons, deep
+shared DAGs, both child/cycle positions and every tested temporary/result malloc
+failure. Prior arena results, output and rollback are preserved. Historical Tree
+controls in List/enum-array/value-record gates are explicitly positive; native
+nat32 Tree selection, three-tail/callable/indexed/effect/unselected and non-List
+record payload contracts retain refusals. No branching array helper, source
+evaluation during emission, producer field or native Acc/QuickSort implementation
+is supplied by this increment.
 
 ### Private selected types and existing source sorting
 
@@ -936,7 +961,7 @@ and results intact. Copy-out reuses finite-node and active-field validation.
 24 source observations, reversed constructor/field order, all allocation failure
 positions, copied-input independence and 300-node conversion. Distinct enum arrays
 remain incompatible C types. Multi-payload nodes have no array helper; recursive
-aggregate payloads, trees and native Acc/QuickSort remain unsupported.
+aggregate payloads, branching array helpers and native Acc/QuickSort remain unsupported.
 
 Finite record payload arrays use the selected `struct ap_data_ALIAS` by value.
 All active nested fields are validated before copy-in allocation or copy-out
@@ -947,7 +972,8 @@ or producer change. `check-c-record-list` verifies 259 cases per C product,
 13 source observations, reversed fields, nested invalid tags, cycles, resource
 rollback and 300-node finite copies. The old Recursive/Aggregates refusal shapes
 are explicitly positive; missing/later selections, recursive aggregates, multiple
-tails, non-List record payloads, callable/indexed fields remain status-4 controls.
+record payloads, three or more tails, non-List record payloads, callable/indexed fields remain
+status-4 controls; the former nullary two-tail Tree is explicitly positive.
 
 ```c
 struct ap_c_arena arena = {0};

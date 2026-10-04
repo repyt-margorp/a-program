@@ -130,19 +130,21 @@ int pg_c_representations_native(struct pg_c_representations *table, struct pg_gr
 				arity != c->count || c->count > SIZE_MAX / sizeof(*c->fields)) return -1;
 			c->fields = pg_alloc(storage, c->count * sizeof(*c->fields));
 			if (!c->fields) return -1;
+			size_t recursive_fields = 0;
 			for (size_t k = c->count; k; --k, fields = fields->parent) {
 				/* The declaration prefix ends in its dedicated Self binder.
-					* Only a direct, single recursive field has a node contract. */
+					* At most two direct Self fields have a borrowed node contract. */
 				if (fields->judgement != PG_JUDGEMENT_VALUE || !fields->declared_type ||
 					fields->declared_type->kind != PG_REFERENCE) return -1;
 				const struct pg_c_representation *f = pg_c_representation_find(table, fields->declared_type->as.reference);
 				if (!f && instance.count) f = pg_c_applied_parameter(&instance, fields->declared_type->as.reference);
+				int self = 0;
 				if (!f && prefix && fields->declared_type->as.reference == prefix->binder &&
 					pg_universe_level(prefix->declared_type, &level)) {
-					if (c->tail != SIZE_MAX) return -1;
-					c->tail = k - 1; r->recursive = 1; f = r;
+					if (++recursive_fields > 2) return -1;
+					c->tail = k - 1; r->recursive = 1; f = r; self = 1;
 				}
-				if (!f || (f == r && c->tail != k - 1) ||
+				if (!f || (f == r && !self) ||
 					(f->constructors && !f->natural && f != r && f->recursive)) return -1;
 				c->fields[k - 1] = f;
 			}
@@ -228,6 +230,17 @@ void pg_c_representation_declarations(FILE *out, const struct pg_c_representatio
 		for (size_t j = 0; j < r->count; ++j)
 			fprintf(out, "#define AP_%s_%s_C%zu UINT32_C(%zu)\n", r->constructors ? "DATA" : "ENUM", r->alias, j, j);
 	}
+}
+
+int pg_c_representation_branching(const struct pg_c_representation *r)
+{
+	if (!r->recursive) return 0;
+	for (size_t j = 0; j < r->count; ++j) {
+		size_t tails = 0;
+		for (size_t k = 0; k < r->constructors[j].count; ++k)
+			if (r->constructors[j].fields[k] == r && ++tails > 1) return 1;
+	}
+	return 0;
 }
 
 int pg_c_representation_list(const struct pg_c_representation *r, size_t *cell, size_t *payload)
