@@ -71,13 +71,6 @@ static const struct pg_term *natural(struct pg_graph *graph, const struct pg_dat
 	return term;
 }
 
-static const struct pg_term *integer(struct pg_graph *graph, const char *type, int value)
-{
-	const struct pg_object *literal = pg_host_integer(graph, pg_host_type(type), value);
-	assert(literal);
-	return pg_reference(graph, literal);
-}
-
 static const struct pg_term *evaluate(struct pg_program *program, const struct pg_term *call)
 {
 	struct pg_graph *graph = &program->graph;
@@ -98,24 +91,17 @@ static int64_t integer_result(struct pg_program *program, const struct pg_term *
 	return value;
 }
 
-static size_t boolean_result(struct pg_program *program, const struct pg_data_layout *boolean, const struct pg_term *call)
-{
-	const struct pg_term *result = evaluate(program, call);
-	const struct pg_data_layout *owner; size_t position, arity;
-	assert(result->kind == PG_REFERENCE && pg_data_constructor_view(result->as.reference, &owner, &position, &arity));
-	assert(owner == boolean && !arity);
-	return position;
-}
-
 /* Existing Core evaluates the admitted source after inert emission. These
 	* finite comparisons are descriptive, not a new transformation checker. */
 static void oracle(struct pg_program *program, const struct pg_c_link_plan *plan,
-	const struct pg_occurrence *fingerprint, const struct pg_occurrence *count, const char *path)
+	const struct pg_occurrence *fingerprint, const struct pg_occurrence *count,
+	const struct pg_occurrence *pair_code, const char *path)
 {
-	assert(plan->count == 10 && plan->natural_count == 1 && plan->data_count == 1 && plan->enum_count == 1);
+	assert(plan->count == 7 && plan->natural_count == 1 && plan->data_count == 2 && plan->enum_count == 1);
 	struct pg_graph *graph = &program->graph;
 	const struct pg_data_layout *nat = layout(plan->naturals[0].subject);
-	const struct pg_data_layout *list = layout(plan->data[0].subject), *boolean = layout(plan->enums[0].subject);
+	const struct pg_data_layout *list = layout(plan->data[0].subject), *pair = layout(plan->data[1].subject);
+	const struct pg_data_layout *boolean = layout(plan->enums[0].subject);
 	FILE *file = fopen(path, "w"); assert(file);
 	fputs("#include \"component.h\"\n#include <assert.h>\n"
 		"static uint32_t fingerprint(const struct ap_data_List *list) { uint32_t a[4], code = 0; size_t written;\n"
@@ -130,44 +116,34 @@ static void oracle(struct pg_program *program, const struct pg_c_link_plan *plan
 			pg_reference(graph, pg_data_constructor(list, 1)), natural(graph, nat, values[i - 1])), input);
 		fprintf(file, "{ uint32_t a[3] = {%u,%u,%u}; const struct ap_data_List *input, *out;\n"
 			"assert(!ap_from_List(&arena, a, %zu, &input));\n", values[0], values[1], values[2], length);
-		for (unsigned form = 0; form < 6; ++form) {
-			const struct pg_term *call = plan->exports[form < 2 ? form : 2].subject->core;
-			if (form >= 2) call = app(graph, call, natural(graph, nat, form - 2));
-			call = app(graph, call, input);
+		for (unsigned form = 0; form < 5; ++form) {
+			const struct pg_term *call = app(graph, plan->exports[form].subject->core, input);
 			call = app(graph, fingerprint->core, app(graph, pg_reference(graph, &pg_total_result_operation), call));
 			int64_t expected = integer_result(program, call);
-			if (form < 2) fprintf(file, "assert(!ap_export_%s(&arena, input, &out));\n", plan->exports[form].alias);
-			else fprintf(file, "assert(!ap_export_insert(&arena, %u, input, &out));\n", form - 2);
+			fprintf(file, "assert(!ap_export_%s(&arena, input, &out));\n", plan->exports[form].alias);
 			fprintf(file, "assert(fingerprint(out) == UINT32_C(%" PRId64 "));\n", expected); ++cases;
 		}
-		const struct pg_term *identity = app(graph, plan->exports[9].subject->core, input);
-		identity = app(graph, fingerprint->core, app(graph, pg_reference(graph, &pg_total_result_operation), identity));
-		fprintf(file, "assert(!ap_export_fixed_list_generic(&arena, input, &out) && out == input);\n"
-			"assert(fingerprint(out) == UINT32_C(%" PRId64 "));\n", integer_result(program, identity)); ++cases;
 		fputs("ap_arena_Nat_destroy(&arena); }\n", file);
 	}
 	for (uint32_t n = 0; n <= 8; ++n) {
-		const struct pg_term *call = app(graph, plan->exports[3].subject->core, natural(graph, nat, n));
+		const struct pg_term *call = app(graph, plan->exports[6].subject->core, natural(graph, nat, n));
 		call = app(graph, count->core, app(graph, pg_reference(graph, &pg_total_result_operation), call));
-		fprintf(file, "{ uint32_t out; assert(!ap_export_fixed_id(&arena, %u, &out) && out == UINT32_C(%" PRId64 ")); }\n",
+		fprintf(file, "{ uint32_t out; assert(!ap_export_fixed_nat(&arena, %u, &out) && out == UINT32_C(%" PRId64 ")); }\n",
 			n, integer_result(program, call)); ++cases;
 	}
-	for (size_t form = 4; form <= 5; ++form) for (int value = -1; value <= 1; ++value) {
-		const struct pg_term *call = app(graph, plan->exports[form].subject->core, integer(graph, form == 4 ? "Int32" : "Int64", value));
-		fprintf(file, "{ int%s_t out; assert(!ap_export_%s(&arena, %d, &out) && out == INT64_C(%" PRId64 ")); }\n",
-			form == 4 ? "32" : "64", plan->exports[form].alias, value, integer_result(program, call)); ++cases;
+	for (unsigned form = 0; form < 11; ++form) {
+		unsigned n = form ? (form - 1) / 2 : 0, flag = form ? (form - 1) % 2 : 0;
+		const struct pg_term *input = pg_reference(graph, pg_data_constructor(pair, form ? 1 : 0));
+		if (form) input = app(graph, app(graph, input, natural(graph, nat, n)),
+			pg_reference(graph, pg_data_constructor(boolean, flag)));
+		const struct pg_term *call = app(graph, plan->exports[5].subject->core, input);
+		call = app(graph, pair_code->core, app(graph, pg_reference(graph, &pg_total_result_operation), call));
+		fprintf(file, "{ struct ap_data_Pair input = {.tag = %u, .fields.c1 = {%u,{%u}}}, out;\n"
+			"assert(!ap_export_fixed_pair(&arena, input, &out));\n"
+			"assert((out.tag ? out.fields.c1.f0 * 2 + out.fields.c1.f1.tag + 1 : 0) == UINT32_C(%" PRId64 ")); }\n",
+			form ? 1 : 0, n, flag, integer_result(program, call)); ++cases;
 	}
-	for (unsigned flag = 0; flag < 2; ++flag) {
-		const struct pg_term *call = app(graph, plan->exports[6].subject->core, pg_reference(graph, pg_data_constructor(boolean, flag)));
-		fprintf(file, "{ struct ap_enum_Bool out; assert(!ap_export_fixed_bool(&arena, (struct ap_enum_Bool){%u}, &out) && out.tag == %zu); }\n",
-			flag, boolean_result(program, boolean, call)); ++cases;
-	}
-	for (uint32_t left = 0; left < 5; ++left) for (uint32_t right = 0; right < 5; ++right) {
-		const struct pg_term *call = app(graph, app(graph, plan->exports[7].subject->core, natural(graph, nat, left)), natural(graph, nat, right));
-		fprintf(file, "{ struct ap_enum_Bool out; assert(!ap_export_compare(&arena, %u, %u, &out) && out.tag == %zu); }\n",
-			left, right, boolean_result(program, boolean, call)); ++cases;
-	}
-	assert(cases == 637);
+	assert(cases == 445);
 	fputs("ap_arena_Nat_destroy(&arena); return 0; }\n", file); assert(!fclose(file));
 }
 
@@ -190,6 +166,7 @@ int main(int argc, char **argv)
 	}
 	const struct pg_occurrence *fingerprint = select_subject(program, roots[0], "fingerprint");
 	const struct pg_occurrence *number = select_subject(program, roots[0], "count");
+	const struct pg_occurrence *pair_code = select_subject(program, roots[0], "pair_code");
 	FILE *source = fopen(argv[2], "w"), *header = fopen(argv[3], "w"); assert(source && header);
 	size_t terms = program->graph.terms.count, objects = program->graph.objects.count;
 	size_t proofs = program->typing.proofs.count, occurrences = program->typing.occurrences.count;
@@ -201,8 +178,8 @@ int main(int argc, char **argv)
 	assert(program->graph.terms.count == terms && program->graph.objects.count == objects);
 	assert(program->typing.proofs.count == proofs && program->typing.occurrences.count == occurrences);
 	assert(!fclose(source) && !fclose(header));
-	oracle(program, &plan, fingerprint, number, argv[4]);
+	oracle(program, &plan, fingerprint, number, pair_code, argv[4]);
 	pg_program_destroy(program); pg_c_link_destroy(&plan);
-	puts("Known selected type binding emission inert; separate existing Core supplies 637 source-sort/identity comparisons");
+	puts("Selected applied type binding emission inert; separate existing Core supplies 445 List/Pair/Nat comparisons");
 	return 0;
 }

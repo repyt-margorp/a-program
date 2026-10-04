@@ -26,6 +26,7 @@ static void finite_cases(void)
 		assert(!ap_export_sort(&arena, input, &out)); equal_list(out, sorted, length);
 		assert(!ap_export_sort_alias(&arena, input, &out)); equal_list(out, sorted, length);
 		assert(!ap_export_list_id(&arena, input, &out) && out == input);
+		assert(!ap_export_fixed_list_generic(&arena, input, &out) && out == input);
 		for (uint32_t pivot = 0; pivot < 4; ++pivot) {
 			uint32_t inserted[5]; size_t position = 0;
 			while (position < length && values[position] < pivot) ++position;

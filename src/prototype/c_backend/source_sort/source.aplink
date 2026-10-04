@@ -17,3 +17,4 @@ export fixed_int64 fixed_int64
 export fixed_bool fixed_bool
 export compare compare
 export list_id list_id
+export fixed_list_generic fixed_list_generic

@@ -35,7 +35,7 @@ struct expression {
 	const struct argument *pending, *arguments, *cursor;
 	size_t count, parameter, capture_count, id;
 	const struct pg_c_representation *type, *match, *expected;
-	const struct pg_object *nominal;
+	const struct pg_term *nominal;
 	const struct pg_c_constructor_representation *construction;
 	struct expression *container, *foreign;
 	size_t constructor, field;
@@ -510,7 +510,8 @@ static int inline_call(struct expression *e, const void **out)
 	}
 	const struct argument *pending = NULL;
 	for (size_t i = e->count; i > consumed; --i) {
-		pending = argument(e->function->module, NULL, NULL, e->inputs[i - 1]->value, pending);
+		/* Retain the value phase, even when its C operand came from a call. */
+		pending = argument(e->function->module, NULL, NULL, e->inputs[i - 1], pending);
 		if (!pending) return -1;
 	}
 	return child(e, e->count, body, environment, pending, out);
@@ -598,6 +599,16 @@ static int constructor(struct expression *e, const struct pg_c_representation *t
 static int lower(struct expression *e, size_t slot, const void **out)
 {
 	const struct pg_c_representations *representations = &e->function->module->representations;
+	/* Exact selected type terms stay private; no type computation is run. */
+	if (!e->pending && pg_c_representation_term(representations, e->term)) {
+		const struct pg_term *head = e->term;
+		while (head->kind == PG_APPLICATION) head = head->as.application.function;
+		if (head->kind == PG_REFERENCE &&
+			(pg_data_declaration_view(head->as.reference) || pg_host_type_name(head->as.reference))) {
+			e->nominal = e->term; e->value = e;
+			return 0;
+		}
+	}
 	if (e->head->kind == PG_REFERENCE) {
 		const struct pg_data_layout *layout;
 		size_t position, arity;
@@ -608,13 +619,6 @@ static int lower(struct expression *e, size_t slot, const void **out)
 		const struct pg_object *object = e->head->as.reference, *type;
 		if (object->kind == PG_BINDER) {
 			return forward(e, lookup(e->environment, object), 0);
-		}
-		/* A selected type constant stays a private identity token. Bind it
-			* through known lambdas; no runtime or public Universe ABI exists. */
-		if (pg_c_representation_find(representations, object) &&
-			(pg_data_declaration_view(object) || pg_host_type_name(object))) {
-			e->nominal = object; e->value = e;
-			return 0;
 		}
 		size_t count;
 		const unsigned char *bytes;
