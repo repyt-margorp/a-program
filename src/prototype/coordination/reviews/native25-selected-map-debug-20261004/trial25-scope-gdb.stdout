@@ -1,0 +1,11 @@
+Breakpoint 1 at 0x614c8: file /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/tests/typed_structure.c, line 721.
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
+
+Program received signal SIGABRT, Aborted.
+0x00007ffff7e4c95c in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+#0  0x00007ffff7e4c95c in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x00007ffff7df7cc2 in raise () from /lib/x86_64-linux-gnu/libc.so.6
+#2  0x00007ffff7de04ac in abort () from /lib/x86_64-linux-gnu/libc.so.6
+#3  0x00007ffff7de0420 in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+#4  0x00005555555b59b7 in main (argc=1, argv=0x7fffffffdb98) at /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/tests/typed_structure.c:752

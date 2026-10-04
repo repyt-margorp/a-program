@@ -1,0 +1,67 @@
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
+
+Program received signal SIGSEGV, Segmentation fault.
+0x00005555555bb93b in generated_contexts (typing=0x7fffffffd600) at /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/tests/identity.c:1971
+1971			assert(pg_evidence_context_map(pg_evidence_premise(left, 2))->count == count - 1);
+#0  0x00005555555bb93b in generated_contexts (typing=0x7fffffffd600) at /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/tests/identity.c:1971
+#1  0x00005555555cc5f0 in main () at /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/tests/identity.c:3475
+#0  0x00005555555bb93b in generated_contexts (typing=0x7fffffffd600) at /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/tests/identity.c:1971
+1971			assert(pg_evidence_context_map(pg_evidence_premise(left, 2))->count == count - 1);
+terms = 0
+cube = 0x555559239bb0
+target = 0x55555923a250
+declarations = 3
+declaration = 0x0
+proofs = 0
+dimension = 1
+dimensions = {graph = 0x7fffffffd780, maps = {buckets = 0x5555555ee830, capacity = 64, count = 53}, binding_faces = {buckets = 0x5555555f3690, capacity = 512, count = 448}}
+__PRETTY_FUNCTION__ = "generated_contexts"
+empty = 0x55555577fd20
+universe = 0x55555577fe20
+source = 0x555555c4c570
+initial = 0x555555c4c570
+comparison_max = 180585
+cube_work = {graph = 0x0, storage = {blocks = 0x0, terms = {buckets = 0x0, capacity = 0, count = 0}, objects = {buckets = 0x0, capacity = 0, count = 0}}, jobs = {buckets = 0x0, capacity = 0, count = 0}, normal_forms = {buckets = 0x0, capacity = 0, count = 0}}
+input = 0x555555c4c5e0
+domain = 0x555555c4c670
+argument = 0x555555c4c700
+body_context = 0x555555c4c750
+body_variable = 0x555555c4c7c0
+path_type = 0x555555c4ca70
+path_source = 0x555555c4cb60
+functions = {0x555555c4f830, 0x555555c4fd10}
+permutations = {{0, 1, 2}, {0, 2, 1}, {1, 0, 2}, {1, 2, 0}, {2, 0, 1}, {2, 1, 0}}
+source_call = 0x555555c50170
+function_type = 0x555555bd3d10
+function_name = 0x555555bd3da0
+neutral_source = 0x555555bd3e80
+neutral_call = 0x555555bd4700
+order = 0x555555c4d5e0
+single = 0x7fffffffcd00
+constant = {kind = PG_ENDPOINT_ZERO, axis = 0}
+excessive = {dimension = 18446744073709551615}
+large = {dimension = 32}
+proofs_before = 42825
+faces_before = 445
+work = {graph = 0x7fffffffd780, storage = {blocks = 0x0, terms = {buckets = 0x0, capacity = 0, count = 0}, objects = {buckets = 0x0, capacity = 0, count = 0}}, jobs = {buckets = 0x5555555edec0, capacity = 64, count = 0}, normal_forms = {buckets = 0x5555556488b0, capacity = 64, count = 0}}
+centers = {0x555559239bd0, 0x555555ad4b00, 0x555555ad4b10, 0x555555ad4b20, 0x555555ad4b30, 0x555555ad4b40, 0x555555ad4b50, 0x555555ad4b60, 0x555555ad4b70}
+paths = {0x55555923a3e0, 0x40, 0x0, 0x100, 0x7fffffffd240, 0x5555555be339 <action_scope_exchange+4576>, 0x7fffffffcc60, 0x7fffffffd780, 0x555555acb7c0}
+repeated_paths = {0x5555555e5bf8, 0x7fffffffd088, 0x186a0, 0x0, 0x7fffffffcc10, 0x55555555d127 <pg_whnf_work_destroy+290>, 0x0, 0x7fffffffd080, 0x7fffffffcc10}
+left = 0x55555923a470
+right = 0x55555923a4c0
+rl = 0x7fffffffd0a8
+rr = 0x7fffffffdbb8
+count = 1
+ztype = 0x0
+e = 0x0
+dependent = 0x0
+dependent_cube = 0x0
+ambient = 0x0
+line = 0x0
+suffix = 0x0
+ev = 0x0
+saved_left = 0x0
+saved_right = 0x0
+point = 0x0
+foreign = {graph = 0xffffffffffffff60, owner_key = 0x0, contexts = {buckets = 0x401, capacity = 140737352414208, count = 93824998288000}, scopes = {buckets = 0x5555555ef160, capacity = 93824998242224, count = 5732627600}, occurrences = {buckets = 0x555555b0f7b0, capacity = 93824992866416, count = 140737488341664}, context_maps = {buckets = 0x55555555847a <pg_index_destroy+49>, capacity = 140737488346040, count = 93824992866688}, context_projections = {buckets = 0x7fffffffcaa0, capacity = 140737352397005, count = 140737488341696}, context_lifts = {buckets = 0x4030, capacity = 93824998224944, count = 16432}, occurrence_actions = {buckets = 0x555555b0f460, capacity = 140737352402168, count = 93824997964256}, occurrence_inputs = {buckets = 0x555555b0b430, capacity = 18446744073709551456, count = 0}, typed_queries = {buckets = 0x401, capacity = 140737352414208, count = 0}, induction_requests = {buckets = 0x7ffff7f9dac0, capacity = 93824997978464, count = 16432}, empty_scope = 0x555555ad3190, substitutions = {graph = 0x7ffff7e584f8, storage = {blocks = 0x555555acb9e0, terms = {buckets = 0x555555acf160, capacity = 18446744073709551456, count = 0}, objects = {buckets = 0x401, capacity = 140737352414208, count = 127}}, jobs = {buckets = 0x7ffff7e5b400 <free+384>, capacity = 140737488341888, count = 93824998092968}, environments = {buckets = 0x7fffffffcb90, capacity = 93824997964256, count = 140737488341952}}, free_waits = 0x55555555847a <pg_index_destroy+49>}

@@ -1,0 +1,14 @@
+Breakpoint 1 at 0x614c8: file /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/tests/typed_structure.c, line 721.
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
+
+Breakpoint 1, read_scoped (file=0x5555555c72a0, root=4) at /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/tests/typed_structure.c:721
+721				assert(pg_evidence_classifier(pg_context_declared_input(&typing, destination)) == scopes[i]->type->classifier);
+$1 = 4
+$2 = {index = {next = 0x555555668910, hash = 6679382410173167296}, judgement = PG_JUDGEMENT_CONTEXT, context = 0x555555625ec0, parent = 0x0, indices = 0x0, type = 0x555555626280, admission_owner = 0x5555555c74a0}
+$3 = {index = {next = 0x0, hash = 13480893777458604377}, judgement = PG_JUDGEMENT_VALUE_TYPE, context = 0x0, core = 0x55555561ddf0, classifier = 0x55555561dd40, type = 0x0, annotation = 0x0, origin = 0x0, selection = 0, map = 0x0, induction = 0x0, operand_count = 0, map_count = 0, admission_owner = 0x5555555c74a0, construction = 2, certificate = 0x0, operands = 0x555555626308}
+$4 = {index = {next = 0x0, hash = 9845379010777820160}, judgement = PG_JUDGEMENT_SUBSTITUTION, source = 0x555555625ec0, destination = 0x5555556706d0, count = 1, admission_owner = 0x5555555c74a0, images = 0x5555556707f8}
+$5 = {index = {next = 0x555555669950, hash = 5180560983736615024}, judgement = PG_JUDGEMENT_CONTEXT, context = 0x5555556706d0, parent = 0x0, indices = 0x0, type = 0x555555626280, admission_owner = 0x5555555c74a0}
+$6 = {index = {next = 0x0, hash = 13480893777458604377}, judgement = PG_JUDGEMENT_VALUE_TYPE, context = 0x0, core = 0x55555561ddf0, classifier = 0x55555561dd40, type = 0x0, annotation = 0x0, origin = 0x0, selection = 0, map = 0x0, induction = 0x0, operand_count = 0, map_count = 0, admission_owner = 0x5555555c74a0, construction = 2, certificate = 0x0, operands = 0x555555626308}
+#0  read_scoped (file=0x5555555c72a0, root=4) at /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/tests/typed_structure.c:721
+#1  0x00005555555b5c70 in main (argc=3, argv=0x7fffffffdaf8) at /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/tests/typed_structure.c:771

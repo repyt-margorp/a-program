@@ -1,0 +1,66 @@
+{
+  "date_UTC": "2026-10-04T16:52:43.977450+00:00",
+  "notice_SHA": "8b3828932d99e0421882af4f3bf5e68a2a4231cae7b0b861e274afce36365364",
+  "history": {
+    "19": {
+      "manifest_SHA": "b1eb9d18ef08dfd9af07e7a6381b385b4f73b241d68329ee1db7a56e02949ea8",
+      "all_retained485_files_exact": true,
+      "all_inputs_exact": 467,
+      "inputs_manifest_SHA": "975cc33390357cb495f734675349c80139f34c36416848d28955a29be148a658",
+      "runtime120_SHA_independently_recomputed": "01b83817e9313d294d18eeed5350ca57454bf932c1530686f311f165c4937bac",
+      "terminal": {
+        "source_o2_build": 0,
+        "full_source_o2": 0,
+        "san_build": 0,
+        "native_san": 0,
+        "full_synthesis_san": 0,
+        "full_source_san": 0,
+        "owner_o2_build": 2,
+        "owner_build_failure": "core.c directly names removed receipts fields and proofs capacity; original compile2 retained, no Core/IADT/Identity execution",
+        "synthesis_o2": "trial18/input125ee6112ff0, exact same runtime120 and synthesis.c as trial19",
+        "source_runtime120": "01b83817e9313d294d18eeed5350ca57454bf932c1530686f311f165c4937bac",
+        "all_input467": "975cc33390357cb495f734675349c80139f34c36416848d28955a29be148a658",
+        "concurrency": "three correctness handles briefly overlapped after calls yielded sessions; all terminal, no timing/sample/benchmark claim"
+      }
+    },
+    "25": {
+      "manifest_SHA": "2e25d8477951f242f4c05de841b5e97ae54d72d20f24086c3503a94f4ac7f8b4",
+      "all_retained485_files_exact": true,
+      "all_inputs_exact": 468,
+      "inputs_manifest_SHA": "71a42ab7d91a8ab3161e3048a90f03c460b84b6c67d50ecee45f1fa7ae80e801",
+      "runtime120_SHA_independently_recomputed": "76a4032bbd660ab24e8d261cedc79bfec06bd361f93ca92a26915b1e5b07a1ff",
+      "terminal": {
+        "build": 0,
+        "core": 134,
+        "iadt": 134,
+        "identity": 139,
+        "typed": 134,
+        "runtime_manifest": "76a4032bbd660ab24e8d261cedc79bfec06bd361f93ca92a26915b1e5b07a1ff",
+        "input_manifest": "71a42ab7d91a8ab3161e3048a90f03c460b84b6c67d50ecee45f1fa7ae80e801",
+        "unwaived": "Identity crash and scoped-lift selected destination formation failure; no broad/public/READY verdict."
+      }
+    }
+  },
+  "Root_runtime_replay": false,
+  "Source19_identity_contract_change": "motive and alternate zero-work self-reindex expected to share native admitted typed owner; actual subject/classifier/context/view and invalid-allocation/foreign checks retained. No independent proof that requested distinct-scope/invalid-motive coverage is complete from changed pointer assertions alone.",
+  "Source19_full_script_same_as18": true,
+  "old18_failure_preserved": true,
+  "eval_header_contract_unchanged19_and25": true,
+  "debug_snapshots_at_review": {
+    "trial25-debug-results.json": "d5e123a0ffde249b83684babd2ebb9bb7382a010b83981b99841512477a7f0bd",
+    "trial25-identity-gdb.stdout": "dbfd2a54e195f97a729d23e6b7ccab01d9eff22890a92bf6a9aea5443fb031f5",
+    "trial25-identity-gdb.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "trial25-scope-corrected-gdb-0.stdout": "43e3a7b0c82de255772902b0513727f704367dcdbec8c97ede45aabef1d29f73",
+    "trial25-scope-corrected-gdb-0.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "trial25-scope-corrected-gdb-1.stdout": "329f19b42a31fec70df5e9665326ddf463713737ff3d1a77c4526781be5095f6",
+    "trial25-scope-corrected-gdb-1.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "trial25-scope-gdb.stdout": "1326955baeb2233680df838ada04053df353c87bf23e298a49067214d1600964",
+    "trial25-scope-second-gdb.stdout": "0a50dc358c9fa8439d3acb7781c06dc2f2e152f57c279551ad1451171e2d3a75"
+  },
+  "debug_limits": "Debugger command exit0 reproduces a failing condition; neither identity0 nor scope0 in debug-results is a semantic gate pass. Original native25 gate Identity139/scoped-read134 remains unwaived; these debug files newly snapshotted at review are distinct from immutable485 history.",
+  "source_observation": "Native25 typing.h:78 map stores raw source/destination Context and images, no selected Scope. evidence.c:5993-5999 map premise0/1 calls conclusion_receipt on raw Context; evidence.c:45-56 selects raw Context.checked_scope. This loses alternate selected Scope formation on the same Context. typed_structure.c:706-721 holds same raw Context/Term with distinct Scope formation, lifts each, and requires destination declared classifier equal that selected Scope; assertion unchanged. Existing false-Universe9 Scope and wrong-root/Scope controls remain at733 onward. This is a concrete prototype typed-fact loss, not an acceptedfc52755b bug or old receipt-identity requirement.",
+  "identity_test_classification": "Native25 Identity1971 still dereferences premise2 as deleted prefix map; debugger reproduces SIGSEGV. Its native map returns actual image atpremise2, so legacy prefix-history inspection requires deliberate normative map/Scope/direction/capture coverage migration, not reintroducing a receipt chain solely for this test. No Identity pass follows.",
+  "Assessment": "Original Job owns required source/destination selected Scope facts on existing native map/index and ordinary admission/complete-key/lifetime repair. Retain semantic bound checks, wrong-scope/false-motive negatives and old failures. This does not authorize another receipt graph/checker/index, accepted code edit, raw membership trust, expected-type fallback, C convenience producer fields or generic erasure. Extra native owner bytes/copies must enter later net memory/time accounting. Native19 older Source/SAN outcomes do not qualify new76a runtime; temporary selector/new full gates/public/strict3/frontier/AP6/joint/cost remain open.",
+  "Root_retained_debug_path": "src/prototype/coordination/reviews/native25-selected-map-debug-20261004",
+  "Root_debug_manifest_SHA": "9d063c44df62fb87869797b20106c140baa69f5bcb062c36a1bdca05eaa70d4f"
+}

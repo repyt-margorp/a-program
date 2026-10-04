@@ -320,6 +320,20 @@ additional fuel. No full acceptance suite was rerun for this audit-only change.
 
 ## Assessment
 
+2026-10-04, [native19/25 exact static review](../src/prototype/coordination/reviews/20261004-native19-25-selected-map-review.json):
+older native19 full Source O2/affected native/Synthesis/Source SAN0 advances
+its runtime01b83817 only. New76a4032b fails Core/IADT134, Identity139 and
+scoped-read134. Unlike legacy receipt inequality, the unchanged Scope-bound
+test exposes a required typed fact: same raw Context/Term, distinct selected
+Scopes/Universe bounds, but map endpoint recovery picks Context.checked_scope.
+Adopt the original owner diagnosis within existing prototype scope: repair
+indispensable selected endpoints in native map/index with ordinary admission
+and complete selection keys/lifetime, preserving semantic negative coverage
+and all old failures. Retire obsolete prefix-history test inspection
+deliberately with normative map controls; do not restore a receipt graph
+just for identity compatibility. Added bytes/copies enter later net accounting.
+No current accepted bug, new authority, READY/public/joint/cost pass follows.
+
 2026-10-04, inquiry desk agent review direction within the existing audit scope,
 not a new human design approval: native18 Source134 at motive receipt-pointer
 inequality is not yet a demonstrated typing/frontier defect. The original Job

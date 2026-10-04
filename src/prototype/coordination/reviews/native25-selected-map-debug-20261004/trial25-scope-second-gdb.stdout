@@ -1,0 +1,15 @@
+Breakpoint 1 at 0x614c8: file /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/tests/typed_structure.c, line 721.
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
+
+Breakpoint 1, read_scoped (file=0x5555555c72a0, root=4) at /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/tests/typed_structure.c:721
+721				assert(pg_evidence_classifier(pg_context_declared_input(&typing, destination)) == scopes[i]->type->classifier);
+
+Breakpoint 1, read_scoped (file=0x5555555c72a0, root=4) at /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/tests/typed_structure.c:721
+721				assert(pg_evidence_classifier(pg_context_declared_input(&typing, destination)) == scopes[i]->type->classifier);
+$1 = 5
+$2 = (const struct pg_term *) 0x5555556320e0
+$3 = {index = {next = 0x0, hash = 13480893777458604377}, judgement = PG_JUDGEMENT_VALUE_TYPE, context = 0x0, core = 0x55555561ddf0, classifier = 0x55555561dd40, type = 0x0, annotation = 0x0, origin = 0x0, selection = 0, map = 0x0, induction = 0x0, operand_count = 0, map_count = 0, admission_owner = 0x5555555c74a0, construction = 2, certificate = 0x0, operands = 0x555555626308}
+$4 = {index = {next = 0x0, hash = 9845379010777820160}, judgement = PG_JUDGEMENT_SUBSTITUTION, source = 0x555555625ec0, destination = 0x5555556706d0, count = 1, admission_owner = 0x5555555c74a0, images = 0x5555556707f8}
+$5 = (const struct pg_scope * const) 0x55555565c060
+$6 = (const struct pg_scope * const) 0x55555565c0a0

@@ -1,7 +1,7 @@
 # Parallel Development: Inquiry Desk, Merge and Workers
 
 Date: 2026-10-03
-Status: approved Performance promotion fc52755b complete; original acceptance363/adopted4 verified separately. Currentc206 C41 actual measure/outer composition passes fresh O2/SAN35 and frozen12 prototype task publication is complete; C32-C40 dependencies are integrated atc3de4aa. Checked down/Identity/capture and general native qualification remain with original C42. Job native18 full Source134 remains unwaived; Performance confirms shared lifetime boundary read-only. All expired cost agreements released; no new grant/sample/hold. Original Goals/timer unchanged.
+Status: acceptedfc52755b/c206 and C41 prototype publication remain exact. Native19 older Source/SAN outcomes advance; new native25 Scope-bound semantic failure/owner tests remain open, original Job repairs selected map facts. C42 manual scoped action client gates terminal, freeze pending. Performance original Goal reports BLOCKED awaiting actual exact36 RSS/time grant; zero samples, no hold or owner reset. Root timer unchanged.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `fd45c42`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -20,12 +20,33 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | 2 | `c-backend`: downstream C design | #61 (supersedes #44/#49); shared policy #47 | C33 faithful manual executable delivered; currentc206 C41 actual measure/outer plus Acc/partition/append/accessibility/comparison composition O2/SAN35 verified. Frozen12 task35612104 published and prototype Main integration recorded. Manual checked down/refinement/capture gap is original C42 priority; full generalized/native criteria open. C32 sealed/parked |
 | 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Approved current frame deletion accepted; original363 plus adopted4 verified separately. Actual matched peakRSS/time pending safe all-owner window; peripheral MEM10/spine/empty arrays parked |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
-| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | Native-owner deletion trial18 history480/all467 inputs verified; full Synthesis0/context-scopes0 recorded, full Source134 retained. Trial17 redundant completed-request history rejected/restored; selector/full Source/affected SAN/public/strict3/joint frontier/cost remain. E25-E27 parked |
+| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | Native19 older full Source O2/SAN0 verified from frozen485; native25 frozen485/all468 has Core/IADT134, Identity139, scoped-read134. Actual selected Scope bounds lost by raw Context map endpoint recovery; original Job repairs indispensable facts in native map/index. Selector/full new-runtime gates/public/strict3/joint/cost open, no READY |
 | 6 | `verification-audit`: independent read-mostly suite/debt inventory | #59 / PR #60, #51 | Bounded static inventory/pilot complete; measured cost deferred, full #59 remains open |
 | 7 | `test-suite`: implement coverage-preserving test reductions | #59 / PR #60 | Bounded Goal complete; exact7 taskbc16df9 pushed/remote verified, Root raw/assembly review complete, prototype Main36a27be integrated |
 | 8 | `issue-audit`: evidence-backed GitHub disposition | All open Issues/PRs | Bounded Goal complete; verified dispositions, task8bb5018/Mainb461ace; #61 retains C residuals |
 
 ### Current Delivery Status
+
+2026-10-04, [native19/25 selected-map review](../src/prototype/coordination/reviews/20261004-native19-25-selected-map-review.json):
+both immutable485 histories and all467/468 inputs/runtime120 independently
+match. Older01b83817 Source19 full O2/native/Synthesis/Source SAN0 is historical,
+with Core owner compile2 retained; it does not qualify newer76a4032b. New
+native25 Core/IADT134, Identity139 and scoped-read134 remain unwaived. Actual
+map endpoint recovery chooses raw Context.checked_scope despite two selected
+Scopes with distinct Universe bounds. The unchanged classifier assertion and
+false-scope controls establish a semantic boundary distinct from obsolete
+receipt-pointer identity. Original Job repairs required endpoint facts on
+the existing native map/index and accounts extra bytes/copies; no new receipt
+graph/checker/authority. [Boundary routed to original three](../src/prototype/coordination/inbox/native19-25-selected-map-boundary-20261004.json).
+
+[C42 candidate](../src/prototype/coordination/reviews/20261004-c42-private-terminal-review.json)
+is labeled hand-authored three-branch scoped action on current acceptedc206,
+owner O2/SAN client19 terminal0; Root retained16/rawargv/current products
+verified, no Root replay or frozen publication yet.
+[Performance Goal change](../src/prototype/coordination/reviews/20261004-performance-measurement-blocked-review.json):
+original owner reports BLOCKED after three required-grant turns, retaining
+objective/model. No reset/resume/new owner or measurement occurred. Feasibility
+intervals remain availability only; Job safe acknowledgment still required.
 
 2026-10-04, inquiry desk review routed to the original Job owner: classify the
 native18 motive receipt-pointer inequality by actual typed subject/Scope/motive

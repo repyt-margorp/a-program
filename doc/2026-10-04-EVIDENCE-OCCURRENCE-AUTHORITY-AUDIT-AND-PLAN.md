@@ -1,7 +1,7 @@
 # Evidence and Typed Occurrence Authority Audit
 
 Date: 2026-10-04
-Status: static Markdown audit delivered and reviewed; native-owner prototype deletes Evidence allocations/index/alternative iteration, but Synthesis failures and owner-local migration leave implementation qualification open.
+Status: requested static audit delivered; native-owner prototype physically deletes redundant Evidence. Older native19 Source/SAN gates advance, while new native25 exposes indispensable selected Scope-bound facts and owner test migration. Original Job repair/full qualification and net costs remain open.
 Code baseline: Main `c205d507a8568bfdda355e247a78b4e67464f294`.
 Relevant local edits: `src/evidence.c` (+16/-3), `src/evidence.h` (+5/-0)
 at initial inspection; these are unowned work and must be preserved.
@@ -157,6 +157,8 @@ SE work list. No measured peak/time gain or new accepted decision follows.
   retain disposition, with a concrete next refactor and verification scope.
 
 ## Progress
+
+2026-10-04, [native19/25 review](../src/prototype/coordination/reviews/20261004-native19-25-selected-map-review.json): old receipt identity and genuine selected Scope bounds are distinguished; histories/inputs pinned, latest native25 semantic failure unwaived. Original Job retains necessary map endpoint facts, without a second receipt graph. Full new-runtime/joint/cost criteria remain in the single SE1-SE5 work list.
 
 | Date | Problem | Result | Next Step |
 | --- | --- | --- | --- |

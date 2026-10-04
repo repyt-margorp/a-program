@@ -1,0 +1,94 @@
+{
+  "date_UTC": "2026-10-04T16:57:52.984752+00:00",
+  "notice_SHA": "bec5dba8369fa2dceff9102698e5da3e3a782c5f9a69197032fc1f92da453d9a",
+  "candidate_retained_inputs_exact": 16,
+  "live_input_differences": [],
+  "phases": {
+    "O2": {
+      "rows": 19,
+      "all_expected_zero": true,
+      "raw_argv_exact": true,
+      "command": {
+        "argv": [
+          "sh",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/acc_down/check.sh",
+          "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/pointer-check",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch42-acc-down-20261004/down.a",
+          "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/main",
+          "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/c_acc_mockup_oracle",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch42-acc-down-20261004/candidate-O2"
+        ],
+        "environment": {
+          "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+          "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch42-acc-down-20261004/tmp",
+          "CLIENT_CFLAGS": "-O2"
+        },
+        "started": "2026-10-04T16:44:03.894444+00:00",
+        "finished": "2026-10-04T16:44:05.610193+00:00",
+        "exit": 0
+      },
+      "source_and_client_sort": "0,1,2,2,3,|",
+      "six_C41_generated_products_exact": true
+    },
+    "SAN": {
+      "rows": 19,
+      "all_expected_zero": true,
+      "raw_argv_exact": true,
+      "command": {
+        "argv": [
+          "sh",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/acc_down/check.sh",
+          "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/pointer-check",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch42-acc-down-20261004/down.a",
+          "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/main",
+          "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/c_acc_mockup_oracle",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch42-acc-down-20261004/candidate-SAN"
+        ],
+        "environment": {
+          "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+          "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch42-acc-down-20261004/tmp",
+          "CLIENT_CFLAGS": "-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+          "ASAN_OPTIONS": "detect_leaks=1:halt_on_error=1",
+          "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+        },
+        "started": "2026-10-04T16:44:05.610595+00:00",
+        "finished": "2026-10-04T16:44:17.319870+00:00",
+        "exit": 0
+      },
+      "source_and_client_sort": "0,1,2,2,3,|",
+      "six_C41_generated_products_exact": true
+    }
+  },
+  "Root_runtime_replay": false,
+  "frozen_handoff": "Pending; no implementation/task/Main publication from availability notice.",
+  "probe_source": "current acceptedfc52755b/c206 pointer/source fixture; field probes and producer inspectors O2 only, no Root replay.",
+  "scope": "Labeled hand-authored closed Nat/LT/refinement action/captured raw-down-vs-IH candidate, not generated/general Identity/erasure. Source witness/action equivalence beyond three pinned LT branches remains open; zero-down manual, no full61/adoption/Goal/cost claim.",
+  "probe_counts": {
+    "succ_access": {
+      "fields": 3,
+      "right": 1,
+      "left": 2,
+      "path_count_each": 2,
+      "maps_each": [
+        6,
+        10,
+        10
+      ]
+    },
+    "nat_access": {
+      "fields": 6,
+      "right": 4,
+      "left": 2,
+      "path_count_each": 2,
+      "maps_each": [
+        8,
+        10,
+        10,
+        6,
+        10,
+        10
+      ]
+    }
+  },
+  "availability": "Owned96330/71637 reported terminal0/reaped, light freeze next; feasible16:50-17:00 only. No actual drain/hold/grant, no sample, expired16:25-16:35 not reused."
+}
