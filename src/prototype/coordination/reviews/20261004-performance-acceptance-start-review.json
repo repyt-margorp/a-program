@@ -1,0 +1,34 @@
+{
+  "date_UTC": "2026-10-04T11:15:37.858935+00:00",
+  "notice": "/home/repyt/workspace/a-program-workers/performance/src/prototype/coordination/outbox/performance-critical-current-acceptance-start-20261004.txt",
+  "notice_sha256": "79dffd7ae3e072005ab2df84d784a09d20b432088cb66b23ded8448333b31161",
+  "preceding_review": "20261004-performance-ready-job-frontier-review.json",
+  "worker_reported": "One bounded j1 correctness acceptance gate started against unchanged old-prototype4de98c37, not a measurement or accepted94a20003 producer. Initial missing-five-fixture preflight preserved; v2 adds only exact five Git blobs from0c76f286 to existing E25 fixtures. Preflight634 files/1280 pins and158 paths reported, not independently rehashed here.",
+  "launch_record_path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/current_e25_order_stateless_frames_v1_full_acceptance_20261004/launched-process.json",
+  "launch_record_sha256": "1063bcd755444f4cf7cc98ecfcc3b29a20923a860dc159b23cb6224318c973f3",
+  "launch_record": {
+    "pid": 5,
+    "process_group": 5,
+    "argv": [
+      "make",
+      "-j1",
+      "-k",
+      "-i",
+      "-f",
+      "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/current_e25_order_stateless_frames_v1_acceptance_v2_20261004/trial/src/Makefile",
+      "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+      "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+      "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/current_e25_order_stateless_frames_v1_full_acceptance_20261004/build-candidate-o2",
+      "SHELL=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_verification/make_shell.py",
+      "check-acceptance"
+    ],
+    "cwd": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/current_e25_order_stateless_frames_v1_acceptance_v2_20261004/trial",
+    "start_UTC": "2026-10-04T11:14:12.941750+00:00",
+    "timeout_seconds": 1200
+  },
+  "Root_assessment": "Continue existing bounded owner work; preserve every recipe exit because make -k -i aggregate success cannot waive failures. Old-E25 full acceptance is useful frozen evidence but current accepted port still required. Supersedes previous all-heavy-children-terminal availability report; recheck actual drain before any future exclusive slot. No PID/process-group mutation was performed.",
+  "cost_grant_or_collector": false,
+  "fresh_Root_execution": false,
+  "Goal_lifecycle_change": false,
+  "new_user_approval": false
+}

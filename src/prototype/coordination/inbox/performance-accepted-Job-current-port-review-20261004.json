@@ -1,0 +1,61 @@
+{
+  "date_UTC": "2026-10-04T11:13:54.499096+00:00",
+  "kind": "performance-focused-READY-review-and-accepted-source-alignment",
+  "provenance": "Merge operational decision within existing main-problem priority and shared-source coordination. Worker notices are evidence, not new human approval.",
+  "consumed_notice_sha256": "bcfd1a8d358dfe6b4379ef738430469c02f54e01b6d5a5d8e9e740d70e9a87e7",
+  "Root_review_path": "src/prototype/coordination/reviews/20261004-performance-ready-job-frontier-review.json",
+  "Root_review_sha256": "7e1a07b6b143e3559f5c7510f1ae8e9f11d6b053a2002eb554fe9e51eddef6df",
+  "accepted_commit": "94a20003b976475b1ed38025e61acb6cdbdab92c",
+  "accepted_runtime120_manifest": "930997b62db85814718d0d5ac151f392bfae243a447d5d0d5f2adbde66cba5ae",
+  "accepted_manifest_path": "src/prototype/solver_inputs/accepted_promotion/20261004/runtime.sha256",
+  "source_input": "Use committed94a20003 clean accepted files; Main contains unrelated unstaged edits that must not enter the port. Root clean checkout available at /home/repyt/workspace/a-program-workers/merge-storage-20261003/accepted-job-promotion.",
+  "decision": "Defer this exact old-prototype 600s/36-job configuration for the current accepted cost goal. E25 differs from accepted runtime in18 paths; Surface, excluded optimizations/checkpoint modules and default save profile change the basis. Preserve frozen READY and all historical failures; qualify four-file delta against clean accepted94a20003 in prototype, then prepare matched current pair/config before an exclusive slot. This is a source dependency, not a blanket owner hold.",
+  "next": "Continue existing prototype Goal: preserve frozen51/cost6; reconstruct only eval.c/eval.h/eval_internal.h/eval_io.c delta in an isolated prototype input set against accepted94a20003, retain required reusable results and all callback/lifetime/fuel/negative contracts, qualify compact-default and explicit materialized save/load bytes plus affected consumers. Prepare one matched36-job normal-O2 current pair/config; Root schedules exclusive drain after review. No accepted-source writes or extra micro-epoch is authorized by this receipt.",
+  "profile": "--save, --save-inputs and REPL :save are compact/recomputable; --save-materialized explicitly retains typed results; decoder default1M unchanged. Old E25 trial carried additional Surface/optimizations/checkpoint modules.",
+  "source_basis_comparison": {
+    "configuration_sha256": "4a414f41dd4c734febf39beb76fa5fe59685d22753b6ac178e9411a1db0f7303",
+    "pins": 301,
+    "pin_mismatches": [],
+    "jobs": 36,
+    "maximum_seconds": 600,
+    "per_run_seconds": 180,
+    "source_pair": [
+      "a87cba42d8c3b2e3ed19392c941a2e1cede00fd01c26a707f354a44d54fca31b",
+      "4de98c378bce942b016812762c7f93aa03debed98a48cd9eb3ad5ccbd3efec53"
+    ],
+    "source_manifest_count": [
+      128,
+      128
+    ],
+    "only_runtime_differences": [
+      "src/eval.c",
+      "src/eval.h",
+      "src/eval_internal.h",
+      "src/eval_io.c"
+    ],
+    "old_baseline_differences_from_committed_accepted_source": [
+      "src/artifact/derivation.c",
+      "src/artifact/derivation.h",
+      "src/artifact/schedule.c",
+      "src/artifact/schedule.h",
+      "src/artifact/source.c",
+      "src/artifact/source.h",
+      "src/conversion.c",
+      "src/eval.c",
+      "src/graph.c",
+      "src/graph.h",
+      "src/main.c",
+      "src/source_io.h",
+      "src/support.c",
+      "src/support.h",
+      "src/syntax.c",
+      "src/syntax.h",
+      "src/syntax_io.c",
+      "src/synthesis.c"
+    ]
+  },
+  "cost_grant": false,
+  "collector_launch": false,
+  "original_owner_lifecycle_unchanged": true,
+  "new_user_approval": false
+}

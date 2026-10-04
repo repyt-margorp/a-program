@@ -1,0 +1,322 @@
+{
+  "date_UTC": "2026-10-04T11:13:54.499096+00:00",
+  "Main_at_review": "3825a2d302dbfa8e1e6d627b8cf141e5c5861bbb",
+  "accepted_Job_commit": "94a20003b976475b1ed38025e61acb6cdbdab92c",
+  "accepted_runtime120_manifest": "930997b62db85814718d0d5ac151f392bfae243a447d5d0d5f2adbde66cba5ae",
+  "notices": {
+    "performance": {
+      "path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/coordination/outbox/performance-critical-E25-frame-order-ready-cost-request-20261004.txt",
+      "sha256": "bcfd1a8d358dfe6b4379ef738430469c02f54e01b6d5a5d8e9e740d70e9a87e7",
+      "exact": true
+    },
+    "job-evidence": {
+      "path": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/coordination/outbox/critical-frontier-qualified-progress-20261004.txt",
+      "sha256": "e37fda0a7c044aab8d5b676b2c84c685eca04884312d5bc5098aec235a06078f",
+      "exact": true
+    }
+  },
+  "scope": "Fresh Root static evidence/hash review, with worker execution reports retained separately; no Root runtime rerun, promotion, measurement or new approval.",
+  "performance": {
+    "status": "Focused READY against immutable prototype E25; task/Main publication and current accepted qualification pending.",
+    "frozen_epochs": {
+      "current_e25_order_stateless_frames_v1": {
+        "sha256": "56a76599689a0c4307683a0799459cddb64e5bb79b36a4e978e94c6d0fbfeb82",
+        "count": 50,
+        "exact": true,
+        "files": [
+          "analysis.md",
+          "candidate-source.sha256",
+          "canonical/eval.c",
+          "canonical/eval.h",
+          "canonical/eval_internal.h",
+          "canonical/eval_io.c",
+          "combined-current-E25.patch",
+          "completed-inputs-after.json",
+          "completed-inputs-before.json",
+          "completed-summary.json",
+          "completed-verification.sha256",
+          "consumers-inputs-after.json",
+          "consumers-inputs-before.json",
+          "consumers-summary.json",
+          "consumers-verification.sha256",
+          "cuts-inputs-after.json",
+          "cuts-inputs-before.json",
+          "cuts-summary.json",
+          "cuts-verification.sha256",
+          "focused-inputs-after.json",
+          "focused-inputs-before.json",
+          "focused-summary.json",
+          "focused-verification.sha256",
+          "frame-layer.patch",
+          "frame-source-preparation.json",
+          "freeze_frame_composition_epoch.py",
+          "handoff.json",
+          "inspect_frame_composition_layout.py",
+          "inspect_frame_composition_layout_retry.py",
+          "layouts-inputs-before.json",
+          "layouts-verification.sha256",
+          "layouts_retry-inputs-after.json",
+          "layouts_retry-inputs-before.json",
+          "layouts_retry-summary.json",
+          "layouts_retry-verification.sha256",
+          "order-layer.patch",
+          "ordering-controls-manifest.sha256",
+          "ordering-source-layout-manifest.sha256",
+          "original-E25-source.sha256",
+          "pin_frame_composition.py",
+          "prepare_frame_composition.py",
+          "qualify_frame_composition_completed.py",
+          "qualify_frame_composition_consumers.py",
+          "qualify_frame_composition_cuts.py",
+          "qualify_frame_composition_focused.py",
+          "readback_transport_bounds_test.c",
+          "source-inputs-after.json",
+          "source-inputs-before.json",
+          "source-verification.sha256",
+          "verify.mk"
+        ]
+      },
+      "current_e25_order_stateless_frames_v1_cost_proposal": {
+        "sha256": "0b27607b285ed201acb3dbaf8a66e4201fa1ac41c6095e36afb1441c4cec3a3e",
+        "count": 5,
+        "exact": true,
+        "files": [
+          "build-provenance.json",
+          "configuration-proposed.json",
+          "correctness.json",
+          "prepare_frame_composition_cost.py",
+          "proposal.json"
+        ]
+      }
+    },
+    "private_manifests": {
+      "focused": {
+        "manifest_sha256": "152018c70ea0749adf6e08964e40e2f20afb79f7a494b420807c56661a14846d",
+        "listed": 456,
+        "declared": 456,
+        "mismatches": [],
+        "exact": true
+      },
+      "cuts": {
+        "manifest_sha256": "8c84c0913ce3df20b746d30055c4e7b8f631654c307f6b66965e47771ae48e52",
+        "listed": 2926,
+        "declared": 2926,
+        "mismatches": [],
+        "exact": true
+      },
+      "consumers": {
+        "manifest_sha256": "f41b0d867c4d2bbe87ea8a2bf5cc944395cdf5acc74c693a0e0f43a58856816d",
+        "listed": 167,
+        "declared": 167,
+        "mismatches": [],
+        "exact": true
+      },
+      "completed": {
+        "manifest_sha256": "d9e2b4e62084f55236e71f2018acb59081b3991545357ed38be726159b7edace",
+        "listed": 318,
+        "declared": 318,
+        "mismatches": [],
+        "exact": true
+      },
+      "layouts": {
+        "manifest_sha256": "3d8a5cee23c0d149f87337de9dd216e0992d344136790f73bbb1aed65a2cc37f",
+        "listed": 6,
+        "declared": 6,
+        "mismatches": [],
+        "exact": true
+      },
+      "layouts_retry": {
+        "manifest_sha256": "0a961f54fed1b02da9b338099b5cd3632cdf65592a3bc867cf76ae181a69093a",
+        "listed": 8,
+        "declared": 8,
+        "mismatches": [],
+        "exact": true
+      },
+      "source": {
+        "manifest_sha256": "85eab708afb61c0480b553d995d43911080b80917a807df89f7145fd9c31e159",
+        "listed": 135,
+        "declared": 135,
+        "mismatches": [],
+        "exact": true
+      }
+    },
+    "cost_configuration_review": {
+      "configuration_sha256": "4a414f41dd4c734febf39beb76fa5fe59685d22753b6ac178e9411a1db0f7303",
+      "pins": 301,
+      "pin_mismatches": [],
+      "jobs": 36,
+      "maximum_seconds": 600,
+      "per_run_seconds": 180,
+      "source_pair": [
+        "a87cba42d8c3b2e3ed19392c941a2e1cede00fd01c26a707f354a44d54fca31b",
+        "4de98c378bce942b016812762c7f93aa03debed98a48cd9eb3ad5ccbd3efec53"
+      ],
+      "source_manifest_count": [
+        128,
+        128
+      ],
+      "only_runtime_differences": [
+        "src/eval.c",
+        "src/eval.h",
+        "src/eval_internal.h",
+        "src/eval_io.c"
+      ],
+      "old_baseline_differences_from_committed_accepted_source": [
+        "src/artifact/derivation.c",
+        "src/artifact/derivation.h",
+        "src/artifact/schedule.c",
+        "src/artifact/schedule.h",
+        "src/artifact/source.c",
+        "src/artifact/source.h",
+        "src/conversion.c",
+        "src/eval.c",
+        "src/graph.c",
+        "src/graph.h",
+        "src/main.c",
+        "src/source_io.h",
+        "src/support.c",
+        "src/support.h",
+        "src/syntax.c",
+        "src/syntax.h",
+        "src/syntax_io.c",
+        "src/synthesis.c"
+      ]
+    },
+    "worker_reported_terminal_gates": {
+      "focused": {
+        "commands": 14,
+        "unexpected_failures": 0
+      },
+      "paired": {
+        "commands": 2044,
+        "unexpected_failures": 0,
+        "paired_images_exact": 146,
+        "inert_resaves_exact": 584
+      },
+      "consumers": {
+        "commands": 94,
+        "unexpected_failures": 0,
+        "lifetime_outputs_equal": 3,
+        "checkpoint_families": 7
+      },
+      "completed": {
+        "commands": 30,
+        "unexpected_failures": 0,
+        "six_DONE_fuels_equal": true,
+        "strict_commands_exit": [
+          1,
+          1
+        ],
+        "strict_reload_failures_each": 3
+      },
+      "layout_retry": "Nine sizes/alignments/extents equal; intentional head_ready offset144->108. Initial field-map failure preserved; no binary ABI claim."
+    },
+    "net_cost_accounting": "Necessary readback entry88->96, aligned individual extent96 unchanged, loader/writer each adds8*n before rounding. Include ordering plus frame layers in net pair.",
+    "Root_decision": "Defer this exact old-prototype 600s/36-job configuration for the current accepted cost goal. E25 differs from accepted runtime in18 paths; Surface, excluded optimizations/checkpoint modules and default save profile change the basis. Preserve frozen READY and all historical failures; qualify four-file delta against clean accepted94a20003 in prototype, then prepare matched current pair/config before an exclusive slot. This is a source dependency, not a blanket owner hold.",
+    "cost_slot_granted": false,
+    "collector_started": false,
+    "actual_RSS_or_elapsed_measurements": false,
+    "current_accepted_port_verified": false,
+    "all_historical_failures_unwaived": true
+  },
+  "job-evidence": {
+    "status": "Private frontier v6 WIP, explicitly NOT READY; excluded from completed accepted Job promotion.",
+    "static_evidence": {
+      "qualification_v6.json": {
+        "sha256": "921917c81b487ae55edaf098c608dbfd71727ccae8cdb461ff610de888298288",
+        "expected_exact": true,
+        "records": 14,
+        "raw_logs_mismatches": [],
+        "exits": [
+          [
+            "qualified-o2-v6-build-source",
+            0
+          ],
+          [
+            "qualified-o2-v6-synthesis",
+            0
+          ],
+          [
+            "qualified-o2-v6-build-checked",
+            0
+          ],
+          [
+            "qualified-o2-v6-checked",
+            0
+          ],
+          [
+            "qualified-o2-v6-build-common",
+            0
+          ],
+          [
+            "qualified-o2-v6-common",
+            0
+          ],
+          [
+            "qualified-san-v6-build-source",
+            0
+          ],
+          [
+            "qualified-san-v6-synthesis",
+            0
+          ],
+          [
+            "qualified-san-v6-build-checked",
+            0
+          ],
+          [
+            "qualified-san-v6-checked",
+            0
+          ],
+          [
+            "qualified-san-v6-build-common",
+            0
+          ],
+          [
+            "qualified-san-v6-common",
+            0
+          ],
+          [
+            "qualified-parent-o2-v6-build-common",
+            0
+          ],
+          [
+            "qualified-parent-o2-v6-common",
+            -6
+          ]
+        ]
+      },
+      "public_v6.json": {
+        "sha256": "e2c24eccc4c8fb303f1ea6dd24900573a3ad38a6982f4445a71e0485a7aae573",
+        "expected_exact": true,
+        "records": 2,
+        "raw_logs_mismatches": [],
+        "exits": [
+          [
+            "public-o2-v6-build",
+            0
+          ],
+          [
+            "public-o2-v6-strict",
+            1
+          ]
+        ]
+      },
+      "snapshot_v6": {
+        "sha256": "997d0a7ed4eb3f841f87e2c9488dd47311a54819bce868293a9944d597c85a0b",
+        "listed": 10,
+        "mismatches": []
+      }
+    },
+    "worker_source156": "e3dee3da4e34f8ab12094ef4406de67323b77df5b83455d2eb4f6b3acd261c8a",
+    "worker_runtime128": "aee66f41a34874ed0d22241aed36d26b10876188461b2fd63bb25e7f790f91ec",
+    "worker_reported": "Ordinary Lambda factory and Domain normalization reconnect, twelve destroyed-owner O2/SAN cuts and wrong canonical child pass; initial/omitted child guards added, unsupported Pi retained. Public52 images/full fuel TSV equal common old prototype baseline; strict exit1 and three reload failures remain.",
+    "retained_counterexamples": "Unchanged parent Lambda capture SIGABRT; original Source guard exit2 and stale named-field failures preserved. One-line named-field fixture bridge is existing Root-qualified4866786a, not new policy.",
+    "remaining": "Actual Body-selected rule, native normalization/typed-query child frontier and current accepted composition; full SE/AP, strict3, joint and costs remain.",
+    "current_accepted_port_verified": false
+  },
+  "other_workers": "C33 separately published prototype/current accepted qualified; C34 exact15/raw332 static verified/current qualification pending; C32 parked. Surface/static-audit/sort-library/test-suite/issue-audit bounded owners remain stopped, not resumed.",
+  "issues": "Prior live nine-open/zero-PR review retained; no issue closures or fresh issue-criteria changes in these notices.",
+  "Goal_service": "Root blocked unchanged; no Goal/model/session reset, resume or duplicate owner.",
+  "timer": "Original six-hour timer unchanged; next2026-10-04T13:44:22Z"
+}

@@ -1,7 +1,7 @@
 # Parallel Development: Inquiry Desk, Merge and Workers
 
 Date: 2026-10-03
-Status: accepted Job94a20003 pushed/remote exact, live Main Core/IADT/CLI0; six unowned edits remain unstaged. C33 actual Acc QuickSort mockup task588b2cb/prototype integration083c2592, Root final-profile O2/SAN gates0; C32 stays parked. C34 exact15/raw332 verified, current qualification pending. Job frontier and Performance order/frame trials remain private. Full strict/frontier/actual-cost criteria remain open; four bounded owners stay stopped. No Goal reset.
+Status: accepted Job94a20003 pushed/remote exact, live Main Core/IADT/CLI0; six unowned edits remain unstaged. C33 actual Acc QuickSort mockup task588b2cb/prototype integration083c2592, Root final-profile O2/SAN gates0; C32 stays parked. C34 exact15/raw332 verified, current qualification pending. Performance order/frame is focused READY against frozen prototype E25; current accepted qualification and cost remain pending. Job frontier v6 remains private WIP. Full strict/frontier/actual-cost criteria remain open; four bounded owners stay stopped. No Goal reset.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `fd45c42`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -26,6 +26,32 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | 8 | `issue-audit`: evidence-backed GitHub disposition | All open Issues/PRs | Bounded Goal complete; verified dispositions, task8bb5018/Mainb461ace; #61 retains C residuals |
 
 ### Current Delivery Status
+
+2026-10-04 11:11 UTC, superseding Performance/Job evidence review at Main3825a2d3:
+Performance focused READY is original prototype E25a87cba42 ->4de98c37,
+with only four evaluator files changed. Root verified frozen50 records plus
+manifest, all4016 records in seven private manifests, costproposal5 plus manifest
+and301 configuration pins. Worker terminal146 paired images/584 inert resaves
+are exact; focused14, paired2044 and consumers94 report no unexpected failures.
+The600s/36-job request is deferred because its prototype source differs from
+accepted94a20003 in18 paths, including Surface, excluded optimizations/checkpoint
+modules and CLI retention profile. It cannot establish current accepted cost.
+Route the preserved candidate to an isolated current accepted comparison with
+compact-default and explicit materialized gates; no blanket owner hold or new
+approval is implied. Job v6 Lambda/Domain reconnection has12 O2/SAN qualification
+commands0; unchanged-parent counterexample SIGABRT and public strict1/three
+reload failures remain. Root verified ten frozen source/control files, both
+qualification/public report digests and16 raw logs. Body/normalization/query
+frontier is still WIP; neither trial was included in accepted promotion.
+[Review and exact evidence](../src/prototype/coordination/reviews/20261004-performance-ready-job-frontier-review.json).
+No runtime rerun, collector, cost grant, issue closure or Goal lifecycle change.
+
+11:14 UTC superseding availability: Performance started one bounded j1 old-E25
+full acceptance gate after restoring only five exact missing Git fixtures.
+Every recipe exit remains required because `make -k -i` can hide aggregate failure.
+Outcomes are pending; this does not qualify accepted94a20003. Continue the existing
+owner work and recheck drain before any future exclusive slot.
+[Launch review](../src/prototype/coordination/reviews/20261004-performance-acceptance-start-review.json).
 
 2026-10-04 09:34 UTC, primary work has changed after the human correction.
 All three owners actually acknowledged: C actual Acc QuickSort executable C
@@ -618,9 +644,9 @@ cost slot or accepted edit; protected9/timer unchanged, next07:44:22 UTC.
 
 | Owner / issue scope | Delivered and verified | Not yet delivered / next boundary |
 | --- | --- | --- |
-| Job/Evidence; SE1-SE5 / AP0, #51/#47 | Reviewed Job and necessary Source/Evidence/query dependencies accepted/pushed94a20003; runtime120930997b6, compact-default acceptance coverage, five owner/18 CLI sanitizer controls, live local-edit Core/IADT/CLI0. [Promotion receipt](../src/prototype/solver_inputs/accepted_promotion/20261004/review.json) | Full SE/AP, charged advanced Source frontier and strict3 remain open. Same fixture compact1369677 versus old1365999; explicit materialized20728552 growth is not a memory win. First-Lambda factory/reconnection WIP excluded. Original HEAD/staged tree preserved, index stat-cache refresh recorded. |
+| Job/Evidence; SE1-SE5 / AP0, #51/#47 | Reviewed Job and necessary Source/Evidence/query dependencies accepted/pushed94a20003; runtime120930997b6, compact-default acceptance coverage, five owner/18 CLI sanitizer controls, live local-edit Core/IADT/CLI0. [Promotion receipt](../src/prototype/solver_inputs/accepted_promotion/20261004/review.json). Private v6 Lambda/Domain qualification12 commands0 and parent counterexample retained; ten frozen files/two reports/16 raw logs verified in latest review. | Full SE/AP, Body-selected/normalization/query frontier and strict3 remain open. Same fixture compact1369677 versus old1365999; explicit materialized20728552 growth is not a memory win. v6 runtime128aee66f41 is private WIP excluded from adoption; current accepted composition pending. Original HEAD/staged tree preserved, index stat-cache refresh recorded. |
 | C backend; #61 | C33 faithful manual actual Acc QuickSort exact11 task588b2cb/prototype integration083c2592; Root current final compact-default O2/SAN9 rows each0, source3/Core341/resource controls. Worker READY before deadline. [C33 review](../src/prototype/c_backend/verification/core-epoch33.json) | Closed Nat/LT mockup only; general automatic indexed/Fold/motive/capture lowering, effects/ownership/full61/cost remain. C32 micro-convenience implementation parked. C34 declaration-only exact15/raw332 static verified; current qualification/publication pending. |
-| Performance; #56/#51/#52 | V3/MEM2/MEM3/MEM4/MEM5/MEM9 prototypes delivered. Current frame cumulative15/raw14/all280 and costproposal14/36/all297 reviewed. New roots15/private25/source256/all274/raw6 exact; Tree16 used25435872-linked7650176-frame27360 leaves17758336 unclassified. Spine preparation20/source25967429 only computation.c/iadt.c equals fresh four-patch composition;126 others/evaluator and three fixtures exact. [Review](../src/prototype/performance_followup/current-roots-spines-prepared-held-root-review.json) | Runtime byte HOLD original paired6/146/inert29/48 plus new spine3/146+15/24/strict/all history unwaived; capacity/cumulative counts do not establish RSS/peak/time/dead/reclaim. Spine focused19/raw22/16 outputs exact, original setup2 retained and separate retry restores only exact Makefile support. Private fresh-process cuts1460/all284 and inert49/all293 verified, still paired3/146+inert15/24 failures. Goal visibly pursuing; immutable final freeze/current consumers/lifetime gates pending. New cost slot deferred/ungranted; full acceptance/current E22 composition/original codec disposition/actual cost/adoption open; continue bounded owned work without blanket hold Current readback-order controls19 frozen pins exact, worker historical/repeated148 commands0 and composed frame focused14 commands0; full146 pairs/584 resaves running, no current accepted-producer or actual matched peak-RSS/time claim. |
+| Performance; #56/#51/#52 | V3/MEM2/MEM3/MEM4/MEM5/MEM9 prototypes delivered; peripheral spines/cumulative attribution remain separately preserved. Order/stateless-frame focused READY on frozen E25a87 ->4de98c37: worker focused14/paired2044/consumers94 with no unexpected failures,146 paired images/584 inert resaves exact, six DONE fuels and lifetime outputs preserved. Root verified50 frozen records, seven private manifests/all4016 records and costproposal5/36jobs/all301 pins. [Latest review](../src/prototype/coordination/reviews/20261004-performance-ready-job-frontier-review.json) | Prototype task/Main publication and current accepted94a20003 composition/full acceptance/downstream C remain pending.600s config4a414f41 is exact but deferred: baseline differs from accepted in18 paths. Prepare qualified accepted pair before next current-cost slot. Entry88->96 and loader/writer each+8*n count in net cost. Actual peak RSS/time absent; all historical paired/inert/observer/setup failures and strict3 remain unwaived. Original owner continues bounded prototype work; no blanket hold. |
 | Surface; #57 | Verified prototype integrated, completed owner stopped | Accepted policy/promotion and selector diagnostics unresolved; no owner restart |
 | Static audit; #59/PR #60 | Task7ed3ad1/Main5683755; Root385 source/114 archived dependency hashes and exact inventory verified; bounded Goal achieved | Dynamic/full #59 and controlled cost remain open; no static-owner restart |
 | Sort; #41/F3-F5 | PR54 and finite-function task5e6ed84/Main966c4e1 integrated; bounded Goal achieved, focused gates0 | Accepted Sort/F5 and broader interfaces remain separate |
@@ -652,8 +678,8 @@ reporting subsystem. Its audit cover is pinned to `37de1e8`, not current Main.
 | Order / owner | Issue or PR | Next deliverable and dependency |
 | --- | --- | --- |
 | 0 / desk -> Merge | Workflow | All three original implementation owners actually acknowledged major-problem priority. Goal objective intact/blocked service label unchanged; event-driven work active. C actual Acc mockup deadline21:16:56UTC; Job Source codec/frontier; Performance dominant deletion/matched RSS-time. Original owners/Job HEAD-index/timer retained; next scheduled13:44:22UTC |
-| 1 / Job, Root reviews independently | SE/AP, #51 | Implement deterministic discovery/relocation of retained Source inputs/checked reusable owners and genuine frontier reconnection; coordinate eval_io ordering with Performance. E25 active review finished/task e2569fb0/Mainca6551db/current affected24+7 pass; full strict3/frontier/codec/SE/AP remain. E26 owner-reported broad terminal0/no heavy children; E26/E27 parked; original HEAD/index/ref retained |
-| 1 / performance + Root shared-owner review | #56 / #51 | Complete dominant stateless-head deletion acceptance and matched peak RSS/elapsed-time; own needed eval_io auxiliary readback ordering, one joint current sourcea87cba42. Old cost14/36jobs/all297/config7448f3f4 stays exact/separate c414->80b and superseded for next current measurement; fresh qualified E25 pair/config and exclusive drain required. All paired/inert/strict failures retained, peripheral micro-epochs parked |
+| 1 / Job, Root reviews independently | SE/AP, #51 | Reviewed ownership accepted94a20003; continue genuine retained Source frontier. v6 Lambda/Domain private qualification is progress, not READY; next Body-selected rule, normalization/typed-query child state and current accepted composition. Full strict3/SE/AP remain. E26/E27 parked; original HEAD/staged tree preserved |
+| 1 / performance + Root shared-owner review | #56 / #51 | Preserve focused READY E25a87 ->4de98c37 and causal ordering controls; port only four-file delta to isolated accepted94a20003 producer, qualify compact-default/materialized bytes, lifetime/fuel and affected consumers, then prepare matched36-job peak RSS/time configuration and exclusive drain. Exact old-prototype600s request4a414f41 is deferred, not a current accepted cost grant. Historical failures retained; peripheral micro-epochs parked |
 | Complete bounded / test-suite; Root publishes | #59 / PR #60 | Verified pilot removes22 duplicate calls with all distinct outcomes preserved; Root raw/assembly review complete. Exact7 taskbc16df9/Main36a27be prototype integrated; broader inventory/cost/accepted adoption remain open |
 | Complete bounded / issue-audit | All open Issues/PRs | Verified comments/dispositions,44/49 superseded by61; nine issues open. Owner stopped; Root resumes coordination, no repeat audit |
 | Complete bounded / verification-audit | #59 / PR #60; #51 | Static inventory/pilot delivered and worker complete; four-job measured cost remains deferred, full #59 open. Do not restart the completed owner automatically |
@@ -674,6 +700,11 @@ their owners. Add review items only for material changes; no duplicate task grap
 ## 1. Inquiry Desk and Merge Ownership
 
 ### Subjective (User)
+
+2026-10-04, paraphrase of worker-notification review instructions in this
+conversation: review handoff/progress within the existing user-authorized scope;
+worker READY notices and scheduled review timers are evidence, not new approval.
+Report material status to the inquiry desk without resuming or duplicating owners.
 
 2026-10-04 09:19 UTC, English paraphrase of the latest explicit human
 correction relayed by the inquiry desk: all three active implementation
