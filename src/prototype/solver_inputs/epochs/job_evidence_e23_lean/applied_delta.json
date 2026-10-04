@@ -1,0 +1,16 @@
+{
+  "files": [
+    {
+      "file": "src/artifact/source.c",
+      "added": 6,
+      "removed": 3
+    },
+    {
+      "file": "checkpoint_tests/source_checkpoint_test.c",
+      "added": 6,
+      "removed": 2
+    }
+  ],
+  "additional_control": "None: use exact E22 standalone source_frontier_copied_owner.c already listed in input manifest",
+  "docs": "Lean reports only; one active SE work list outside freeze."
+}

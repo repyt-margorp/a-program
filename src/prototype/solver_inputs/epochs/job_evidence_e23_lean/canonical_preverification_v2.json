@@ -1,0 +1,22 @@
+{
+  "parent_task": "Exact private E22 source1566491c060/lean31manifest233fa25a, locally full-qualified but unpublished on E18taska8f52a0; supersedes preparation-time broad-pending status. E19/E20/E21/current Main/E10 excluded.",
+  "files": [
+    {
+      "source": "src/artifact/source.c",
+      "canonical": "src/prototype/solver_inputs/artifact_source.c.patch",
+      "parent_canonical_sha256": "0f6e7bff546fb9ceea1d453b72a3f56cf6e110e683103bb6b3451864e238252d",
+      "candidate_canonical_sha256": "908224194a591326266043af5ef6706a73a4cef0c9d9c3932750d258dcc7e963",
+      "reverse_exact_private_parent_and_apply_candidate_raw_exact": true
+    },
+    {
+      "source": "checkpoint_tests/source_checkpoint_test.c",
+      "canonical": "src/prototype/solver_inputs/checkpoint_test_patches/source_checkpoint_test.c.patch",
+      "parent_canonical_sha256": "a78bab355020287c33321117e301294f48fbcefe5dbf674efe557eb4528f0bea",
+      "candidate_canonical_sha256": "fa1de4d98ec998f2565604a46d09577b0e67b497831d2dca56d48cc44bb5bd09",
+      "reverse_exact_private_parent_and_apply_candidate_raw_exact": true
+    }
+  ],
+  "AP_base_and_live_canonical_untouched": true,
+  "parent_is_published": false,
+  "provenance_correction": "Original field label inherited published from E22 helper; parent_task already explicitly said private/unpublished. Correct label only, with identical code/source/binary/test/delta hashes; preserve original focused11 and report."
+}

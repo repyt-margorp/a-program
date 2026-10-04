@@ -1,0 +1,10 @@
+{
+  "parent_task": "Exact private E22 source1566491c060 / locally full-qualified unpublished lean31 manifest233fa25a; based on E18 taska8f52a0",
+  "parent_source156": "6491c0601bbfee817afe118bc3017a2d419cc539b9e4b8683772ab5cdea729fa",
+  "candidate_source156": "71cba39eafe479372323d71c7a886211d097e9b858be8b21c3402937708ac5fe",
+  "applied_delta": "3b0a60c13ff9c5454d9e59100041e9353b5b4e85346aa45aa1b69f03c346a729",
+  "all156_after_apply_exact": true,
+  "canonical_reverse_exact_private_parent_and_candidate_apply_raw_exact": true,
+  "parent_is_published": false,
+  "shared_git_untouched": true
+}

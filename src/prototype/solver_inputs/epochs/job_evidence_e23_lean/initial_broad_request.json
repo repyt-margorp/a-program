@@ -1,0 +1,32 @@
+{
+  "commands": [
+    "make",
+    "--jobserver-style=pipe",
+    "-f",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/artifact_persistence/build.mk",
+    "-j1",
+    "OVERLAY=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch23",
+    "BUILD=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch23/o2",
+    "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+    "CHECKPOINT_TESTS=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch23/checkpoint_tests/",
+    "ARTIFACT_TESTS=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch23/artifact_tests/",
+    "check-acceptance",
+    "check-artifact-semantic",
+    "check-artifact-source-checkpoint",
+    "check-artifact-derivation-checkpoint",
+    "check-artifact-definition-checkpoint",
+    "check-artifact-namespace-frontier",
+    "check-artifact-namespace-body-frontier",
+    "check-artifact-constructor-checkpoint",
+    "check-artifact-normalization-checkpoint"
+  ],
+  "source_manifest_sha256": "71cba39eafe479372323d71c7a886211d097e9b858be8b21c3402937708ac5fe",
+  "reuse": "None: new private O2 directory; focused wrapper binary is not substituted. All acceptance/semantic/seven checkpoint recipes unskipped.",
+  "parent_task": "Exact private E22 source1566491c060/lean31manifest233fa25a, locally full-qualified/unpublished; on E18taska8f52a0, E19/E20/E21/current Main/E10 excluded. Supersedes preparation-time broad-pending status.",
+  "overlay_inputs_manifest_sha256": "2a4fe10e020ab9aedac4107aec79805ef00a01f6a50bad044d5a20f98af05d09",
+  "scheduling": "Serial j1 independent correctness under direct human superseding workflow; no comparative timing/RSS grant.",
+  "environment": {
+    "TMPDIR": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch23/private_tmp"
+  },
+  "rerun_provenance": "First actual E23 broad recipe; actual471 inputs exact. Corrected focused12 preserves original11/canonical-label provenance. Parent two retention134/new0; E22 locally full-qualified/unpublished, not published or current joint."
+}
