@@ -1,0 +1,362 @@
+{
+  "publication": {
+    "task": "7b883a8eb123faab0e288661229196ffdebfe232",
+    "task_parent": "0388736ad3e5b7fca30ff2added9d558c0cef96a",
+    "Main_parent": "c9fa658d5b6fa3812ef3f5229de2fe91f36a8f78",
+    "exact10_task": {
+      "doc/2026-10-03-C-BACKEND-GOAL.md": "c6f56736f23d6b716d2a7f548d14499d6f5a7b06cd9e2e30ae81bc9a466fae66",
+      "doc/2026-10-04-C-BACKEND-INTEGER-PREDICATE-PLAN.md": "7ea47685be79a09ee6a06bfbad9d0ff92000e2b0837f6a9fd25e8046fb4dce3e",
+      "doc/2026-10-04-C-BACKEND-EPOCH20-HANDOFF.md": "b8e9bf218caf7fbfb7bfdaa0e90320adb3cb294e2b4b8dc21c52fff5be04cd25",
+      "src/prototype/c_backend/README.md": "4439bbf38cef8eb36626e37b45b471cd38ddbb38a0de07b2ab104b70f1d279c9",
+      "src/prototype/c_backend/build.mk": "23e7a352fcebde426077bb0763b99fa8a49942446d070c4dad1e4ca22acf2c74",
+      "src/prototype/c_backend/predicate_integer/fixture.p": "014d5b84254a33ddadf913b1b74f3de271f60c7d6a04cadd885be68bf02be2b3",
+      "src/prototype/c_backend/predicate_integer/predicate.aplink": "09c8ef8afdf17d6bddd87bb61ea99157662a4e59bad6c268cce3c629095a17ac",
+      "src/prototype/c_backend/predicate_integer/client.c": "e5be583f2b551240f33213e8a1f62905bd3b2ed73405f289986c88f052c3d22b",
+      "src/prototype/c_backend/predicate_integer/check.sh": "edc8e54a775bebcebb0a7f6284fc9d3d56c93fc87f6a5f507b8a98fb5b9fbf12",
+      "src/prototype/c_backend/predicate_integer/build.mk": "235f0f452abd315dbe5df6c99a81b1dc77e029d9f92a8bdae41a3fc1384d057f"
+    },
+    "Root_current_report_sha256": "3a4121381486117d31ec09bb5bc3e7272018feb954f94efd2daec78aa57dfda1",
+    "source128": "c414202a4abb79301b04431b75008fa828dd60712b50518a1d4824e5d555b64b",
+    "worker_live_tracked_files_preserved": 1815,
+    "Goal_provenance_only_Main_reconciliation": true,
+    "C21_live_lowering_trials_excluded": true,
+    "current_backend_O2_rebuilt_MEM9_producer_reused": true,
+    "accepted_adoption_or_Goal_completion": false,
+    "task_remote_exact": true,
+    "Main_merge": "f8134616dd29ff9dca11d307a302f27f4bc3a958",
+    "Main_remote_exact": true,
+    "exact9_Main_bytes": true,
+    "reviewed_Main_Goal_sha256": "1c23a0097dc48d33b27d75d511603ebd00886a1e657db2a63f103e5508067bc7",
+    "protected9_exact": true
+  },
+  "current_Root_report_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c20-current-e18-mem9-gates/Root-results.json",
+  "current_Root_report_sha256": "3a4121381486117d31ec09bb5bc3e7272018feb954f94efd2daec78aa57dfda1",
+  "current_source128": "c414202a4abb79301b04431b75008fa828dd60712b50518a1d4824e5d555b64b",
+  "current_producer_basis": "Frozen current E18 with exact MEM9 scan deletion applied; fresh MEM9 correctness/public52 qualification retained, no accepted/default producer replacement.",
+  "MEM9_current_qualification_retained_sha256": "2c99cd8348afdf5e20cac75c43be9660fbf7e0f14322af3d92832a050d72e437",
+  "backend_rebuilt_O2_sha256": "3ce991cfe27990636213f1ce2e861211823e04238b72d1a231608810936bd9f5",
+  "exact_prequalified_MEM9_producer_reused_sha256": "f31c3472c8eee75f27552b7f68f9670aadfbd819faf2109f150a6bf74bc3e2af",
+  "checks": [
+    {
+      "gate": "backend-build",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c20-publication/src/prototype/c_backend/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4",
+        "ROOT=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c20-current-e18-mem9-gates/build",
+        "REPO=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4",
+        "TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/tests",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c20-current-e18-mem9-gates/build/a-to-c"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "1daff78167509c2b2816ff0cd75b5c7c09b90687e912a81ce8125b0bed004f0f",
+      "sanitizer_scope": "Current E18+MEM9 backend O2 rebuilt; existing qualified producer reused",
+      "retained_raw_phase_file_count": 0
+    },
+    {
+      "gate": "integer-o2",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c20-publication/src/prototype/c_backend/predicate_integer/check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c20-current-e18-mem9-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/build-candidate-o2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c20-current-e18-mem9-gates/integer-o2"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "2f0228689154f202c90705d06f314cb1e14595d43d31254d170ca2d080491a0e",
+      "sanitizer_scope": "O2",
+      "status_rows": 77,
+      "expected_counts": {
+        "0": 26,
+        "3": 1,
+        "4": 50
+      },
+      "all_rows_match": true,
+      "status_sha256": "612f1db8685e7966d73f1f71e945ab18cfa28ddc74a3a19fe566f4ab7518a29b",
+      "retained_raw_phase_file_count": 284
+    },
+    {
+      "gate": "parent-units-o2",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c20-publication/src/prototype/c_backend/predicate_units/check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c20-current-e18-mem9-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/build-candidate-o2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c20-current-e18-mem9-gates/parent-units-o2"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "a512c3612ad91333f9e8fce2062b0f71038793ea69995e0e77cfeee167e1bd3a",
+      "sanitizer_scope": "O2",
+      "status_rows": 119,
+      "expected_counts": {
+        "0": 116,
+        "1": 3
+      },
+      "all_rows_match": true,
+      "status_sha256": "cde10befbc2948c0b07a825316dfb612dae0abecd773a80192b45b45f5232ec5",
+      "retained_raw_phase_file_count": 481,
+      "C19_generated_C_H_exact_count": 24
+    },
+    {
+      "gate": "integer-san",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c20-publication/src/prototype/c_backend/predicate_integer/check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c20-current-e18-mem9-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/build-candidate-o2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c20-current-e18-mem9-gates/integer-san"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "2f0228689154f202c90705d06f314cb1e14595d43d31254d170ca2d080491a0e",
+      "sanitizer_scope": "Clients/source product bodies; C19 adapter/source bodies also SAN; backend/producer/object/archive/shared remain O2",
+      "status_rows": 77,
+      "expected_counts": {
+        "0": 26,
+        "3": 1,
+        "4": 50
+      },
+      "all_rows_match": true,
+      "status_sha256": "612f1db8685e7966d73f1f71e945ab18cfa28ddc74a3a19fe566f4ab7518a29b",
+      "retained_raw_phase_file_count": 284
+    },
+    {
+      "gate": "parent-units-san",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c20-publication/src/prototype/c_backend/predicate_units/check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c20-current-e18-mem9-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/build-candidate-o2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c20-current-e18-mem9-gates/parent-units-san"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "a512c3612ad91333f9e8fce2062b0f71038793ea69995e0e77cfeee167e1bd3a",
+      "sanitizer_scope": "Clients/source product bodies; C19 adapter/source bodies also SAN; backend/producer/object/archive/shared remain O2",
+      "status_rows": 119,
+      "expected_counts": {
+        "0": 116,
+        "1": 3
+      },
+      "all_rows_match": true,
+      "status_sha256": "cde10befbc2948c0b07a825316dfb612dae0abecd773a80192b45b45f5232ec5",
+      "retained_raw_phase_file_count": 481,
+      "C19_generated_C_H_exact_count": 24
+    }
+  ],
+  "all_current_pins_after_exact": true,
+  "current_pin_count": 399,
+  "all_current_raw_phase_files_hashes_rechecked": true,
+  "worker_input_review_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c20-input-review.json",
+  "worker_input_review_sha256": "2a4377470ff654a6849961a6cb642be77dc9e56da0964d9d8a32700474e6fec5",
+  "worker_frozen_manifest": {
+    "date": "2026-10-04T00:19:19.409343+00:00",
+    "lane": "c-backend",
+    "epoch": "C20",
+    "state": "exact task snapshot ready; awaiting delegated Root publication/current-producer qualification",
+    "parent": "0388736ad3e5b7fca30ff2added9d558c0cef96a",
+    "branch": "parallel/c-backend-20261003",
+    "commit_message": "prototype: verify integer predicate List boundaries",
+    "files": [
+      {
+        "path": "doc/2026-10-03-C-BACKEND-GOAL.md",
+        "sha256": "c6f56736f23d6b716d2a7f548d14499d6f5a7b06cd9e2e30ae81bc9a466fae66"
+      },
+      {
+        "path": "doc/2026-10-04-C-BACKEND-INTEGER-PREDICATE-PLAN.md",
+        "sha256": "7ea47685be79a09ee6a06bfbad9d0ff92000e2b0837f6a9fd25e8046fb4dce3e"
+      },
+      {
+        "path": "doc/2026-10-04-C-BACKEND-EPOCH20-HANDOFF.md",
+        "sha256": "b8e9bf218caf7fbfb7bfdaa0e90320adb3cb294e2b4b8dc21c52fff5be04cd25"
+      },
+      {
+        "path": "src/prototype/c_backend/README.md",
+        "sha256": "4439bbf38cef8eb36626e37b45b471cd38ddbb38a0de07b2ab104b70f1d279c9"
+      },
+      {
+        "path": "src/prototype/c_backend/build.mk",
+        "sha256": "23e7a352fcebde426077bb0763b99fa8a49942446d070c4dad1e4ca22acf2c74"
+      },
+      {
+        "path": "src/prototype/c_backend/predicate_integer/fixture.p",
+        "sha256": "014d5b84254a33ddadf913b1b74f3de271f60c7d6a04cadd885be68bf02be2b3"
+      },
+      {
+        "path": "src/prototype/c_backend/predicate_integer/predicate.aplink",
+        "sha256": "09c8ef8afdf17d6bddd87bb61ea99157662a4e59bad6c268cce3c629095a17ac"
+      },
+      {
+        "path": "src/prototype/c_backend/predicate_integer/client.c",
+        "sha256": "e5be583f2b551240f33213e8a1f62905bd3b2ed73405f289986c88f052c3d22b"
+      },
+      {
+        "path": "src/prototype/c_backend/predicate_integer/check.sh",
+        "sha256": "edc8e54a775bebcebb0a7f6284fc9d3d56c93fc87f6a5f507b8a98fb5b9fbf12"
+      },
+      {
+        "path": "src/prototype/c_backend/predicate_integer/build.mk",
+        "sha256": "235f0f452abd315dbe5df6c99a81b1dc77e029d9f92a8bdae41a3fc1384d057f"
+      }
+    ],
+    "manifest_sha256": "9c4eae8e9eaa82d4d5f40e46e7bb568b0b570ecfc6cde95f1403f233f449bfc0",
+    "snapshot_sha256": "0d84aab19e50d51eaa79f65c9e2dc593d60116256a5a9056f43f5577b44a2061",
+    "runs_sha256": "5db420c5c741e928a2a4bc573a17b3369895d25089ddc7e5f7c61d2d0327db38",
+    "raw_file_count": 1416,
+    "qualified_inputs_count": 142,
+    "qualified_inputs_sha256": "df9d523c49f388b9ed6df68166f84656b759d5c834e70f779899b8b5b038877a",
+    "verification_sha256": "d85bb18b1387a8d6e35478069aeffc3bf4b1721785bebd9110c9505761420426",
+    "style_sha256": "540b09ab1bdf5923faab1859b84e4d43cca0e4780897f1da94257ccb85c679aa",
+    "source_deltas_sha256": "abd42a8c56a4223d1300c0273b88c8218b508fdedd1e68ddbc2dd19aad4fe771",
+    "gates": {
+      "O2-final": {
+        "exit": 0,
+        "rows": 77
+      },
+      "SAN-final": {
+        "exit": 0,
+        "rows": 77
+      }
+    },
+    "expected_failures": "one no-fuel3 +50 checked/trusted refusal4 per phase",
+    "initial_failures_retained": [
+      "direct-probe/admit exit1 List IH application fixture mistake",
+      "O2-gate exit1 receipt cc/ar path harness mismatch"
+    ],
+    "integration_needs": "Root exact task publication/current-producer review; no shared interface changes; native Acc/QuickSort/full #61 remain open",
+    "authority": "prototype only; no emitter/ABI/schema/producer/source-erasure change, promotion, cost or Goal completion"
+  },
+  "worker_historical_verification": {
+    "date": "2026-10-04T00:16:18.768863+00:00",
+    "head": "0388736ad3e5b7fca30ff2added9d558c0cef96a",
+    "branch": "parallel/c-backend-20261003",
+    "producer": "50cd56b2a52b7e370bc7ecb3436c4993e2e5d6a2",
+    "runtime128_verified": 128,
+    "runtime_manifest_reported": "9ba2b33cbe8bc68eac338073506bcb205f36d20cb0a34f9f88607d975ef07740",
+    "qualified_inputs": 142,
+    "phases": {
+      "O2-final": {
+        "exit": 0,
+        "row_count": 77,
+        "exits": {
+          "0": 26,
+          "3": 1,
+          "4": 50
+        },
+        "gate_sha256": "a9750d0aff445bb3fa7fac49a9b79478758cbf719bc88d911131525a6863295a",
+        "rows_sha256": "612f1db8685e7966d73f1f71e945ab18cfa28ddc74a3a19fe566f4ab7518a29b"
+      },
+      "SAN-final": {
+        "exit": 0,
+        "row_count": 77,
+        "exits": {
+          "0": 26,
+          "3": 1,
+          "4": 50
+        },
+        "gate_sha256": "ec2eac8f0311e1943416b83ceafaf6c43d40bbd026c34998ad30c1e206954802",
+        "rows_sha256": "612f1db8685e7966d73f1f71e945ab18cfa28ddc74a3a19fe566f4ab7518a29b"
+      }
+    },
+    "input_image_sha256": "3e490f9490e4f245ffead3a5ddcb7568c8574bf22073f42e28e54db2fed3cfe2",
+    "source_observations": 6,
+    "list_cases_per_width_per_client": 341,
+    "filter_calls_per_width_per_client": 2046,
+    "source_semantics": "all/none constant or captured Bool, no data-dependent signed comparison",
+    "backend_rebuilt": false,
+    "producer_rebuilt": false,
+    "broad_or_timing_run": false,
+    "prior_task_verified": [
+      {
+        "path": "doc/2026-10-03-C-BACKEND-GOAL.md",
+        "sha256": "d1bae6ae6ba6a498b33acb802b9a86f720009194650259f3b3a34dd25e1da012"
+      },
+      {
+        "path": "doc/2026-10-04-C-BACKEND-PREDICATE-UNITS-PLAN.md",
+        "sha256": "711ab1e3af58c813fc2363875cb7085d49496f06f7aa45f4cac6e5031ac08a5e"
+      },
+      {
+        "path": "doc/2026-10-04-C-BACKEND-EPOCH19-HANDOFF.md",
+        "sha256": "65dc80a156b63a1aad9a8f080e32751e5fa9c1ed2e31d39c888b4b1cf4f94b33"
+      },
+      {
+        "path": "src/prototype/c_backend/README.md",
+        "sha256": "662058147fc5907578f95426c47fc09798417476c00c17e834fd0cebe00c8183"
+      },
+      {
+        "path": "src/prototype/c_backend/build.mk",
+        "sha256": "0c707eb8a710f2ce55e19010bf42ec6928b98b2951ebe136698f6cbdf2dddbd7"
+      },
+      {
+        "path": "src/prototype/c_backend/predicate_units/adapter.h",
+        "sha256": "1b09fd681d0c713ce47a321b3538311e747be0b5d4195020b0bd3a983512c330"
+      },
+      {
+        "path": "src/prototype/c_backend/predicate_units/adapter.c",
+        "sha256": "75c929305434ce5fa427d33f6ea06795b5f662ef9f62d65d9c3624deb6750f53"
+      },
+      {
+        "path": "src/prototype/c_backend/predicate_units/client.c",
+        "sha256": "6c51acee35d1c9f7d703a19bd28951d19920c34e8094652c553aa9d96492cede"
+      },
+      {
+        "path": "src/prototype/c_backend/predicate_units/wrong_type.c",
+        "sha256": "10252c5f2801802155acd112b9f15a9d0ce25c1a4e173cbdfc27068f7330ee34"
+      },
+      {
+        "path": "src/prototype/c_backend/predicate_units/check.sh",
+        "sha256": "bba5ec0973db18a3138cf545ab68931fba5a7e2602352f87cd15701a71b9b394"
+      },
+      {
+        "path": "src/prototype/c_backend/predicate_units/build.mk",
+        "sha256": "0055685640fab6644f4d6d4f24abcca57ccc217929575707360d4676283a6c00"
+      }
+    ],
+    "san_scope": "O1 clients plus source product body; emitted object/archive, backend and producer O2",
+    "initial_failures": [
+      "direct-probe/admit exit1: fixture erroneously applies pivot to List IH",
+      "O2-gate exit1: receipt tool-path mismatch in repeated harness invocation"
+    ],
+    "intermediate_terminal_gates": "O2-terminal/SAN each75 pass, before loaded-image controls; retained, not independent counts",
+    "refusals": "25 cases checked/trusted status4, no product/output",
+    "limitations": [
+      "known/captured predicate arguments at recursive target boundary",
+      "dynamic signed enum-result callbacks",
+      "native indexed/callable Acc and QuickSort",
+      "existing finite borrowed input, output non-overlap and depth/allocation contracts"
+    ]
+  },
+  "worker_retained142_and_raw1416_all_actual_files_hashed": true,
+  "current_all77_integer_expected_rows_and_parent119_O2_SAN_match": true,
+  "current_C19_generated48_C_H_bytes_exact_prior_E18": true,
+  "C20_only_new_fixture_client_script_harness_build": "345 lines plus4 prototype build registration lines; no emitter/ABI/producer/schema change.",
+  "assessment": "Test-only existing native ABI boundary epoch: direct signed List all/none forms lower; known/captured delayed predicate arguments retain honest refusal. Not a numeric comparator/generic partition, source erasure, ABI/schema/producer change or native QuickSort/Acc completion. Target-shape explanation is code inference; not instrumented proof of failure cause.",
+  "worker_initial_failures_retained": [
+    "direct-probe rejected1 due to applying pivot to List IH",
+    "O2-gate1 deterministic receipt compare, tool paths mismatch"
+  ],
+  "C21_action_review": {
+    "notice_sha256": "a007390ddbefd4195c9cd58784e0996eb7f3e2a4c1e0de4155c73716f4e122c0",
+    "plan_path": "/home/repyt/workspace/a-program-workers/c-backend/doc/2026-10-04-C-BACKEND-RECURSIVE-CAPTURE-PLAN.md",
+    "plan_sha256_at_review": "3af2551432b3df2a8c668ba69056183ab6e94b11d4d37f946c04926722884ddd",
+    "status": "Separate private known-lambda recursive capture trial. Worker first build admits two unary captures, subsequent force/thunk/partial-application inspection probes eight emissions; terminal UI observations are not independent current-Main proof or final C21 frozen handoff.",
+    "shared_boundary": "No public ABI/producer/schema/checker change requested. C21 live lowering excluded from C20 task/Main and current Root tests. Preserve historical C20 negatives; any new expectations need explicit new-epoch positive/refusal coverage.",
+    "publication_or_adoption": false
+  },
+  "limits": "Fresh Root current E18+MEM9 source128c414202a qualification: rebuild O2 backend, reuse exact MEM9-qualified producer; C20 77 and C19 119 expected rows each O2/client-source SAN. C19 48 generated C/H bytes exact prior E18; finite coverage shared across products. C20 six source observations Int32; Int64 extrema native C controls. All/none predicates ignore numeric pivots; no signed comparator/general partition proof. Checked/trusted 25 refusals/no-fuel3 remain. No fresh whole broad/full checkpoint suite/actual wall-RSS, native Acc/QuickSort/full #61, foreign integer callback ABI, source erasure, accepted adoption or Goal completion. Existing borrowed finite readable storage/output nonoverlap/arena ownership and recursive depth contracts persist.",
+  "accepted_adoption_or_Goal_completion": false,
+  "worker_initial_failure_source_and_logs": {
+    "direct-probe/fixture.p": "381968d05c8d77e1862dac33c138a6acf45e8799e6417746ecab4dd13e42c85f",
+    "direct-probe/admit.out": "8e0dba3bdd28f1c6482183883278dda57b305e9d0728e98c19650bf8b8bc4dbb",
+    "direct-probe-corrected/fixture.p": "014d5b84254a33ddadf913b1b74f3de271f60c7d6a04cadd885be68bf02be2b3",
+    "O2/deterministic.out": "6c6666c190c6055ca15835cec307306a4903b6e9dc44637fb8815d14a41dd7b0"
+  },
+  "initial_receipt_mismatch_confirmed": "Retained deterministic.out diff changes only pinned absolute cc/ar paths to default cc/ar names in link.json."
+}
