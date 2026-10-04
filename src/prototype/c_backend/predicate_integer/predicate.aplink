@@ -1,0 +1,21 @@
+aplink 1
+artifact predicates.a
+abi c_native_v1
+target host-c11
+product source
+lowering native_direct_v1
+fallback reject
+enum32 Bool Bool
+enum32 Reverse Reverse
+data Numbers32 Numbers32
+data Numbers64 Numbers64
+export direct_keep32 direct_keep32
+export direct_drop32 direct_drop32
+export direct_keep64 direct_keep64
+export direct_drop64 direct_drop64
+export direct_filter32 direct_filter32
+export direct_filter64 direct_filter64
+export direct_select32 direct_select32
+export direct_select64 direct_select64
+export length32 length32
+export length64 length64
