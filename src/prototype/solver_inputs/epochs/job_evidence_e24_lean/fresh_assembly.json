@@ -1,0 +1,9 @@
+{
+  "parent_task": "a8f52a015f73fe7cfa067c3d5b122bef7e4532b4",
+  "parent_source156": "02241bd2fa031584e176ae16cbcebd825ec834e8e5bea4ea33f22e66ac4ae2ea",
+  "candidate_source156": "6685d68e1ae73a3497eebf6b5fe8ae334d0ba203296ee889371156f3e074a473",
+  "applied_delta": "6064f4734fc92b7548effa995307149dfaca75ac3013d6ff833dc6eba4d2ca10",
+  "all156_after_apply_exact": true,
+  "canonical_reverse_exact_published_parent_and_candidate_apply_raw_exact": true,
+  "shared_git_untouched": true
+}

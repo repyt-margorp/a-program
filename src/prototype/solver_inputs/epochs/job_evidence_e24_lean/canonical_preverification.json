@@ -1,0 +1,10 @@
+{
+  "parent_task": "a8f52a015f73fe7cfa067c3d5b122bef7e4532b4",
+  "source156": "6685d68e1ae73a3497eebf6b5fe8ae334d0ba203296ee889371156f3e074a473",
+  "canonical": "src/prototype/solver_inputs/synthesis_schema.c.patch",
+  "parent_canonical": "5bf4c0ae2bf6dfa2f482e5abfce07c02d9d68dcd35c3973c3867a9041cb46ad2",
+  "candidate_canonical": "ef5ac36f961525838fddd1144c095bf3bf84f2f7d3dee9656d8526e92b202e85",
+  "reverse_exact_published_parent_and_apply_candidate_raw_exact": true,
+  "AP_base_and_live_canonical_untouched": true,
+  "not_tested": true
+}

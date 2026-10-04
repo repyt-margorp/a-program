@@ -1,0 +1,9 @@
+{
+  "phase": "Parent control link/build; no runtime execution",
+  "exit": 2,
+  "report": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e24/parent-build.log",
+  "report_sha256": "c28d98674541e3f304fa91313342e0638cc1154eea3e37ea6817d55239553761",
+  "cause": "Control #include synthesis.c searched -I ROOT before -I TESTS and selected runtime synthesis.c, so test helper declarations were absent.",
+  "correction": "Test include directory first; fresh v2 private build dirs/requests. Source156/runtime/canonical unchanged.",
+  "initial_requests_sha256": "1957aba7acaeda3ec7f572a2787b14bc58bf6e6597219625c038365ea8a028cc"
+}

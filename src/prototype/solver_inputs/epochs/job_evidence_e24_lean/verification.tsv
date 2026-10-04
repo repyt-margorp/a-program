@@ -1,0 +1,26 @@
+group	gate_or_sample	variant	exit	report	report_sha256
+focused	build	parent	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e24/parent-build-v3.log	16156cc0350267cfbafb84f174c5a4311b9fb32f48bcb56eea6704c0f768895f
+focused	allocation-failure	parent	-6	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e24/parent-allocation-failure-v3.log	f50040ee4e74ab889780e45d0ec42ed5a0aa4ead30ead349b676fea6c3a20c2f
+focused	build	candidate	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e24/candidate-build-v4.log	233b90d4d5b907291cbee9ffabaebd2e3d0cfe8fbf9c91c2506e48717572c9b4
+focused	allocation-failure	candidate	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e24/candidate-allocation-failure-v4.log	807501eac78624d4a5cac65d2817972297a4b2d5b97efd5a09fbaee5c9813a7c
+focused	build	SAN	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e24/SAN-build-v4.log	223f38d5e6f06080b35e422e943967d75aeea83d3a15f3c4faf2bfe9b1f1800f
+focused	allocation-failure	SAN	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e24/SAN-allocation-failure-v4.log	807501eac78624d4a5cac65d2817972297a4b2d5b97efd5a09fbaee5c9813a7c
+synthesis	build	O2	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e24/O2-build-normal.log	03d51df052133b07ae403b9ae69abb55473de2043b5bbb32ea8d202f9dd92777
+synthesis	full-synthesis	O2	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e24/O2-full-synthesis-normal.log	c500145c76c988830cfbdc1160ad934e4662123bd2d058c1f2e5fd554499ff8f
+synthesis	build	SAN	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e24/SAN-build-normal.log	e9524352fd678987b03eb121bb78bbf05acf41551e41ce8adeaba702547db8bb
+synthesis	full-synthesis	SAN	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e24/SAN-full-synthesis-normal.log	c500145c76c988830cfbdc1160ad934e4662123bd2d058c1f2e5fd554499ff8f
+broad	broad		0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e24/broad.log	400044277941d80c971cfbf2ae2fea3bce029099ae94871d0d44161148569383
+supplemental	baseline-C-eight-scripts		0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e24/c.log	ba75979730070993983ff5519c6b93771a6f791bc9d28c6ccacabb28aadb3b3c
+supplemental	strict-public-original-three		1	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e24/partitions.log	cc796ad108e57ad194d1b4505080534408dea923fd4bc4e4c7b960e890bc4f3d
+census	census-build	E18	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e24/E18-census-build.log	67b9d347ac62ac44d10ba2303d81db22558523edf581667bfd338b6c747f0ebe
+census	list	E18	0		09415aa2a735ec7aa8caec257c1ab9792aabb16925c10ef70e678c865356c28d
+census	effect	E18	0		72e0f8e9f86cd28b121fc72ae8564ba30d81c3843e9311610ec7fa996ffc30b7
+census	captured	E18	0		76b0286b9f1fc79953c6882e34cf95d37fc0e8d4250abf677f7f449c4e4df2c2
+census	quick	E18	0		7e2e77a5910f4c94ef94b85782765126338066d6a74d6cd540dc54c556a9881c
+census	handler	E18	0		6aad30c07814eff6205ff8617869e379e20ee078a41a5b7674e6a6e409ce9da6
+census	census-build	E24	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e24/E24-census-build.log	5c388578e94a22d5325f2189710ac374aa8ee94cd4502eca0b5b480128a1a7df
+census	list	E24	0		09415aa2a735ec7aa8caec257c1ab9792aabb16925c10ef70e678c865356c28d
+census	effect	E24	0		72e0f8e9f86cd28b121fc72ae8564ba30d81c3843e9311610ec7fa996ffc30b7
+census	captured	E24	0		76b0286b9f1fc79953c6882e34cf95d37fc0e8d4250abf677f7f449c4e4df2c2
+census	quick	E24	0		7e2e77a5910f4c94ef94b85782765126338066d6a74d6cd540dc54c556a9881c
+census	handler	E24	0		6aad30c07814eff6205ff8617869e379e20ee078a41a5b7674e6a6e409ce9da6

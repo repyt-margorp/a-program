@@ -1,0 +1,18 @@
+{
+  "files": [
+    {
+      "file": "src/synthesis_schema.c",
+      "added": 18,
+      "removed": 10
+    }
+  ],
+  "additional_control": {
+    "file": "src/prototype/solver_inputs/controls/schema_input_allocation_failure.c",
+    "added": 98
+  },
+  "additional_build": {
+    "file": "schema_input_control.mk",
+    "added": 8
+  },
+  "docs": "Lean reports only; one active SE work list outside freeze."
+}

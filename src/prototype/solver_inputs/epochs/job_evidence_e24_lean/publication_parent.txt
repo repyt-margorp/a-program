@@ -1,0 +1,1 @@
+Exact published E18 taska8f52a015f73fe7cfa067c3d5b122bef7e4532b4/source15602241bd2. E19-E23/current Main/E10 excluded; E25 private collector deletion excluded. Original focused13 and setup history16 remain immutable; normal full Synthesis and broad independently qualified. No shared Git mutation.
