@@ -1,0 +1,61 @@
+{
+  "date_UTC": "2026-10-04T15:23:42.914422+00:00",
+  "notice_SHA": "c83317734385295072ce514de4b643fb3be8b9d556d3a51d66c9c97618972304",
+  "publication95_manifest_SHA": "a35bbcb0116663d4099a6debc594157f8ba72e51d7b7bb982ed9f80b82b76cb7",
+  "exact_files_verified_and_committed": 95,
+  "unchanged_component_files": 93,
+  "task_publication": {
+    "commit": "22b15cb2b90811c086a94121b06dcb33c3b8b695",
+    "parent": "e71528fa286e263c568d4f78f3f1281f90b5e86d",
+    "branch": "parallel/performance-20261003",
+    "isolated_clone": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/performance-publication95-isolated-git",
+    "manifest95": "a35bbcb0116663d4099a6debc594157f8ba72e51d7b7bb982ed9f80b82b76cb7",
+    "all95_committed_blobs_exact": true,
+    "original_worker_HEAD_branch_index_unchanged": {
+      "HEAD": "e71528fa286e263c568d4f78f3f1281f90b5e86d",
+      "branch_ref": "e71528fa286e263c568d4f78f3f1281f90b5e86d",
+      "index_SHA": "494d38599e7a6f649c936d2b4081c69765b91bc02f8f1a256b1c75328cce5867"
+    },
+    "accepted_runtime_changes": false,
+    "publication": "Pushed and remote exact",
+    "whitespace_check": "Original whole95 check2 retained. Only immutable unified-diff context prefix and raw TSV trailing tabs flagged; remaining93 paths check0. Frozen patch/log bytes deliberately preserved, no source/style change or test waiver.",
+    "remote_commit": "22b15cb2b90811c086a94121b06dcb33c3b8b695"
+  },
+  "Main_new_packet_paths": 93,
+  "already_identical_Main_scope_paths": 2,
+  "runtime_or_accepted_changes": false,
+  "Root_runtime_replay": false,
+  "historical_failures_waived": false,
+  "verification_scope": "Previously reviewed source55/cost6/evidence30/scope2 remain immutable; same acceptedc206 original363 and separate strict adopted4. This is evidence/prototype publication, not another promotion or full Goal closure.",
+  "measurement_scope_correction": "Exact36 job argv contain only source-checking steps/input/imports, no save/load flags. They can measure net candidate source-checking elapsed/peakRSS; they do not exercise separately described codec loader/writer8*n scratch. Preserve the frozen publication metadata but supersede its inclusive codec-cost wording for these36. Codec/persistence path cost stays separate and unmeasured.",
+  "fresh_safe_boundary_notices": {
+    "job-evidence": "8367ed3f2a82e0f567ed3b5f417a9dbdd19d1ec3621fa2edeb0c30b63a502c86",
+    "performance": "fc2c91fef90a78c772bb8174f85dc6415c0bfa88c1407a10cc6ebe08903eaa33"
+  },
+  "Performance_actual_acknowledgment_SHA": "0050a7c8b1569ebdb8f916bb6be7831946f356440e790b970a7cf38ec6e00b4e",
+  "Performance_acknowledgment": {
+    "UTC": "2026-10-04T15:18:46Z",
+    "lane": "performance",
+    "proposed_window_start_UTC": "2026-10-04T15:20:00Z",
+    "proposed_window_hard_end_UTC": "2026-10-04T15:30:00Z",
+    "grant_received": false,
+    "feasible": true,
+    "authoritative_owned_handle_probes": {
+      "88764": "write_stdin failed: Unknown process id 88764",
+      "46271": "write_stdin failed: Unknown process id 46271",
+      "38113": "write_stdin failed: Unknown process id 38113"
+    },
+    "no_other_owned_workload_handles_started": true,
+    "all_prior_launched_children_terminal_reaped": true,
+    "configuration_sha256": "262c46ac3f50313a164dab72ff88a40d684c1fe3c75954ce1362c9a1c0bffce9",
+    "jobs": 36,
+    "actual_input_pins_freshly_verified": 295,
+    "all_pins_unchanged": true,
+    "collector_or_sample_launched": false,
+    "safe_boundary_agreement": "Only light work from this acknowledgment through exact grant/release or proposed15:30 hard end. No new heavy build/profile/correctness or comparative sample on feasibility information. Existing Goal stays active; this is bounded coordination, not user design approval or session pause.",
+    "executor": "Root execution on our behalf compatible. Worker will launch only if a later explicit grant assigns Performance; never on Root-only grant.",
+    "measurement_limits": "Original36 jobs include source parsing/synthesis/conversion/imported proof helpers, no save/load flags. Extra8*n loader/writer scratch overhead remains independently described and unmeasured by these completed-source jobs. Historical frame extent240 does not transfer: actual accepted frame216/224 is pinned in existing nine-type layouts; sampled capacity is not RSS/time or per-site allocation attribution."
+  },
+  "Job_latest_progress_owner_report": "Trial13 input125 bee1d547 build0/Synthesis134 at legacy normalization identity assertion; requested/retained WHNF kind0 and endpoint alpha1 diagnostic. Source context-scopes134 after two inert resaves is a genuine frontier/consumer failure. Native graph remains NOT READY; Root has not independently reviewed these newer trial gates. Earlier pinned trial1-5 failures stay historical.",
+  "slot_state": "Job/Performance fresh15:18 safe boundaries and light-work agreement until15:30 or release; C actual feasibility/safe acknowledgment absent. No collector/grant/sample."
+}

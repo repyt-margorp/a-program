@@ -1,0 +1,23 @@
+{
+  "accepted_revision": "94a20003b976475b1ed38025e61acb6cdbdab92c",
+  "parent_source120": "930997b62db85814718d0d5ac151f392bfae243a447d5d0d5f2adbde66cba5ae",
+  "candidate_source120": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907",
+  "changed_runtime_files": [
+    "src/eval.c",
+    "src/eval.h",
+    "src/eval_internal.h",
+    "src/eval_io.c"
+  ],
+  "all116_other_runtime_files_and_two_Makefiles_exact": true,
+  "every_added_removed_line_per_file_exact_frozen_E25_delta": true,
+  "accepted_reify_contract_no_old_reuse_closed_preserved": true,
+  "tabs_and_English_ASCII_source_check": true,
+  "manual_edit_method": "apply_patch",
+  "patch_sha256": "d9eea6a4aa020030fe7d38c221407cf7ba4bf594aeb32c26fe16c36bc2d2dba4",
+  "branch": "parallel/performance-20261003",
+  "task_parent": "e71528fa286e263c568d4f78f3f1281f90b5e86d",
+  "chosen_future_commit_message": "prototype: recycle stateless frames on accepted baseline",
+  "original_failures_retained_no_waivers": true,
+  "compact_materialized_consumer_fuel_SAN_qualification_and_actual_peak_RSS_time_pending": true,
+  "runtime_READY_publication_cost_grant_collector_promotion_Goal_completion": false
+}

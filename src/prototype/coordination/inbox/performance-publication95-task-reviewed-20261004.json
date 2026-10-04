@@ -1,0 +1,10 @@
+{
+  "date_UTC": "2026-10-04T15:23:42.914422+00:00",
+  "task_commit": "22b15cb2b90811c086a94121b06dcb33c3b8b695",
+  "remote_branch": "parallel/performance-20261003",
+  "exact_files": 95,
+  "manifest_SHA": "a35bbcb0116663d4099a6debc594157f8ba72e51d7b7bb982ed9f80b82b76cb7",
+  "original_worker_local_HEAD_branch_index": "Preserved at e71528fa; isolated Git clone used, no fetch/ref/index mutation in original owner",
+  "Main": "Exact95 prototype/evidence packet integration prepared; two scope files already identical, new93 only. No accepted runtime changes.",
+  "cost_scope": "Consumed final ACK and no-save/load clarification: exact36 measure source-checking net RSS/time only; codec8*n scratch not exercised. Original frozen packets/failed records remain unchanged. C actual safe ACK still missing, so no collector or grant yet; light agreement expires15:30 automatically."
+}

@@ -1,0 +1,82 @@
+{
+	"lane": "performance",
+	"issue": "#56 / PR #58",
+	"epoch": "accepted94_frame_qualification_publication_v1",
+	"status": "Exact task-branch publication set; current RSS/time unmeasured and full Goal active",
+	"branch": "parallel/performance-20261003",
+	"task_parent": "e71528fa286e263c568d4f78f3f1281f90b5e86d",
+	"chosen_commit_message": "prototype: qualify accepted frame recycling",
+	"delegated_git_publication_authorized": true,
+	"worker_shared_git_mutation_or_sandbox_bypass": false,
+	"publication_files_including_this_record_and_manifest": 95,
+	"previous_immutable_component_files": 93,
+	"manifest": "src/prototype/performance_critical_frame/epochs/accepted94_frame_qualification_publication_v1/manifest.sha256",
+	"components": {
+		"accepted94_order_stateless_frames_v1": {
+			"files": 55,
+			"manifest_sha256": "62491132e5cf717662802b53296d15fc5a50b39d7e27011079fcaacef3c43d2b"
+		},
+		"accepted94_order_stateless_frames_v1_cost_proposal": {
+			"files": 6,
+			"manifest_sha256": "30a36ecfc57b5cf792b763be707fad492b140fc9a532c46d783dc6c5faf13a8d"
+		},
+		"accepted94_order_stateless_frames_v1_acceptance_addendum": {
+			"files": 30,
+			"manifest_sha256": "748d15832622ea212a357ec1593201e4ee7337daa5952e83163db64af47fd0af"
+		},
+		"accepted94_original_prefix_scope_addendum": {
+			"files": 2,
+			"manifest_sha256": "ca684cfb673f4cfad5894a359fc2c0e4c21c38e31fa6e6f2d78673f9049a46de"
+		}
+	},
+	"accepted_baseline": "94a20003b976475b1ed38025e61acb6cdbdab92c",
+	"accepted_performance_commit_by_Root": "fc52755b345a555e49a79df40549e9cb23d54088",
+	"parent_source120": "930997b62db85814718d0d5ac151f392bfae243a447d5d0d5f2adbde66cba5ae",
+	"candidate_source120": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907",
+	"runtime_files": ["src/eval.c", "src/eval.h", "src/eval_internal.h", "src/eval_io.c"],
+	"runtime_patch_sha256": "d9eea6a4aa020030fe7d38c221407cf7ba4bf594aeb32c26fe16c36bc2d2dba4",
+	"other116_runtime_files_and_original_Makefiles_exact": true,
+	"meaning_and_lifetime": "Recycle only stateless head frames after callback return. Stateful/opaque/materialized/return2 and escaped closure/spine lifetimes retained. Preserve existing accepted reify behavior, checked facts, pending progress, root-first DAG and exact-key lookup. Creation ordinal affects only auxiliary writer order; no new wire field/version, graph/index, cache deletion or authority.",
+	"verification": {
+		"local_focused_commands": 88,
+		"local_consumers_commands": 80,
+		"local_semantic_fuel_zero_budget_SAN_commands": 2296,
+		"local_endpoint_controls_O2_SAN": 12,
+		"candidate_inert_resaves_exact": "328/328",
+		"public_profile_pairs_inert_resume_exact": "12/96/96",
+		"original_accepted_Make_prefix": "363 recipes0 uncensored, all1308 after-pins exact; summaryfe412f8b",
+		"adopted_normative_appendix": "Root separate strict regressiona297d08f: four frame/order tests0 on identical runtime; scope2 keeps distinction, no combined invocation claimed",
+		"six_completed_fuels": {
+			"list": 1915,
+			"imported-local-sorted": 956507,
+			"trees4": 2318248,
+			"trees16": 7608511,
+			"trees64": 29780510,
+			"trees400": 183507626
+		},
+		"original_assertions_fixture_bytes_preserved": true
+	},
+	"failed_and_censored_records_unwaived": [
+		"Current strict3 each, original failed recipes, all52 images/full40-row fuel TSV preserved.",
+		"Current parent36/328 inert and20/164 paired bytes; isolated two-file15/29. Static bounded permutation causes are not a byte waiver or every historical failure.",
+		"Original physical observers, Identity observer, seven sanitizer failures, rejected V1/V2 and historical/current codec failures remain separate.",
+		"Old E25 full acceptance1200s/376 zero recipes is incomplete/censored, not pass; earlier setup/compatibility/layout predicate failures preserved.",
+		"Root withdrew the public957 counterexample rationale after correct same-profile controls; original artifacts retained and original unretained argv not claimed reconstructed.",
+		"Publication whole-file indentation predicate flagged inherited C block-comment alignment. Added runtime lines pass tabs/English; existing comments and original predicate failure preserved in private preflightf40fd902."
+	],
+	"unmeasured_cost": {
+		"jobs": 36,
+		"repetitions": 3,
+		"actual_input_pins": 295,
+		"configuration_sha256": "262c46ac3f50313a164dab72ff88a40d684c1fe3c75954ce1362c9a1c0bffce9",
+		"collector_sha256": "9c50c62d1ddc49e85c88abe94f95162c85096165afcdff7cd945bb9b9a004b71",
+		"per_run_seconds": 180,
+		"maximum_seconds": 600,
+		"samples_so_far": 0,
+		"requires_precise_exclusive_grant": true,
+		"limits": "Include loader/writer8*n order overhead in actual net completed-task RSS/time. Historical counts/capacity/native results are not current measured outcomes; source/proof/helper/startup/RSS limits retained."
+	},
+	"excluded": "Live plans, private new owner-capacity diagnosis/binaries, held MEM10/spine/empty-array runtimes, owner/C changes, newer Job epochs, new cost samples, accepted/default/Main edits or Goal closure.",
+	"original_component_handoffs_and_chosen_messages_preserved": true,
+	"next": "Root may publish these exact95 task files separately from integration. Current matched36 measurement and relevant downstream C remain separate; no publication or cost approval inferred from notifications."
+}

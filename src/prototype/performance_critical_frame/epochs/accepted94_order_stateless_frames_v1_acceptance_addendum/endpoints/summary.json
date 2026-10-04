@@ -1,0 +1,32 @@
+{
+  "terminal": true,
+  "source120": {
+    "parent": "930997b62db85814718d0d5ac151f392bfae243a447d5d0d5f2adbde66cba5ae",
+    "candidate": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907"
+  },
+  "commands": 12,
+  "unexpected_failures": 0,
+  "parent_candidate_O2_SAN_output_and_fuel_agreement": {
+    "trees_2": true,
+    "false_bool": true,
+    "false_tree": true
+  },
+  "historical_endpoint_fuels": {
+    "trees_2": 1170277,
+    "false_bool": 54737,
+    "false_tree": 41789
+  },
+  "fresh_endpoint_fuels": {
+    "trees_2": 1170277,
+    "false_bool": 54737,
+    "false_tree": 41789
+  },
+  "all_input_hashes_exact_after": true,
+  "limits": [
+    "Original hash-matched AP prefix fixtures and budget; fresh accepted94 parent/c206 candidate O2/SAN without a build or fixture/assertion/owner edit.",
+    "Positive and false concrete endpoints only, not identical cross-system proof/helper work or a universal theorem.",
+    "Any historical fuel change stays explicit; current parent/candidate output and fuel must agree.",
+    "No wall/RSS collector, comparative grant, new runtime epoch, accepted/Main action or Goal completion.",
+    "All original strict/observer/SAN/setup/censored/byte failures remain unwaived; broader accepted acceptance remains separate."
+  ]
+}

@@ -1,0 +1,765 @@
+{
+  "terminal": true,
+  "reused_original_compile_inspect_records": [
+    {
+      "label": "parent-compile-only",
+      "argv": [
+        "/usr/bin/x86_64-linux-gnu-gcc-14",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-O0",
+        "-g",
+        "-fno-eliminate-unused-debug-types",
+        "-I/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/parent/src",
+        "-c",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/header_layout_probe.c",
+        "-o",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_layouts_20261004/parent.o"
+      ],
+      "exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "parent-inspect-only",
+      "argv": [
+        "/usr/bin/gdb",
+        "--batch",
+        "-q",
+        "-nx",
+        "-iex",
+        "set auto-load off",
+        "-ex",
+        "set pagination off",
+        "-ex",
+        "set may-call-functions off",
+        "-ex",
+        "source /home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/layout.gdb.py",
+        "-ex",
+        "python print('READBACK_ENTRY_LAYOUT size=%d alignment=%d' % (gdb.lookup_type('struct readback_entry').sizeof, gdb.lookup_type('struct readback_entry').alignof))",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_layouts_20261004/parent.o"
+      ],
+      "exit": 0,
+      "log_sha256": "809a4dd1642d313edc1e3bb52595778729ef507de3b407fce8a9a3657bcd68c1"
+    },
+    {
+      "label": "candidate-compile-only",
+      "argv": [
+        "/usr/bin/x86_64-linux-gnu-gcc-14",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-O0",
+        "-g",
+        "-fno-eliminate-unused-debug-types",
+        "-I/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/candidate/src",
+        "-c",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/header_layout_probe.c",
+        "-o",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_layouts_20261004/candidate.o"
+      ],
+      "exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "candidate-inspect-only",
+      "argv": [
+        "/usr/bin/gdb",
+        "--batch",
+        "-q",
+        "-nx",
+        "-iex",
+        "set auto-load off",
+        "-ex",
+        "set pagination off",
+        "-ex",
+        "set may-call-functions off",
+        "-ex",
+        "source /home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/layout.gdb.py",
+        "-ex",
+        "python print('READBACK_ENTRY_LAYOUT size=%d alignment=%d' % (gdb.lookup_type('struct readback_entry').sizeof, gdb.lookup_type('struct readback_entry').alignof))",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_layouts_20261004/candidate.o"
+      ],
+      "exit": 0,
+      "log_sha256": "7a44d8562d0ce4b5bdd2c9c70a5eda75780aed34eddb9fd1141296a3fac0214d"
+    }
+  ],
+  "new_target_or_compiler_run": false,
+  "failed": 0,
+  "layouts": {
+    "parent": {
+      "target_started": false,
+      "inferior_calls": false,
+      "types": {
+        "pg_eval": {
+          "size": 136,
+          "alignment": 8,
+          "existing_16_byte_allocation_extent": 144,
+          "fields": {
+            "temporary": {
+              "offset_bytes": 0,
+              "size": 56
+            },
+            "current": {
+              "offset_bytes": 56,
+              "size": 16
+            },
+            "arguments": {
+              "offset_bytes": 72,
+              "size": 8
+            },
+            "status": {
+              "offset_bytes": 80,
+              "size": 4
+            },
+            "steps": {
+              "offset_bytes": 88,
+              "size": 8
+            },
+            "dispatch": {
+              "offset_bytes": 96,
+              "size": 8
+            },
+            "output": {
+              "offset_bytes": 104,
+              "size": 8
+            },
+            "frames": {
+              "offset_bytes": 112,
+              "size": 8
+            },
+            "head_ready": {
+              "offset_bytes": 120,
+              "size": 4
+            },
+            "task": {
+              "offset_bytes": 128,
+              "size": 8
+            }
+          }
+        },
+        "pg_whnf_job": {
+          "size": 336,
+          "alignment": 8,
+          "existing_16_byte_allocation_extent": 336,
+          "fields": {
+            "request": {
+              "offset_bytes": 0,
+              "size": 40
+            },
+            "machine": {
+              "offset_bytes": 40,
+              "size": 136
+            },
+            "certificate": {
+              "offset_bytes": 176,
+              "size": 8
+            },
+            "output": {
+              "offset_bytes": 184,
+              "size": 136
+            },
+            "status": {
+              "offset_bytes": 320,
+              "size": 4
+            },
+            "steps": {
+              "offset_bytes": 328,
+              "size": 8
+            }
+          }
+        },
+        "pg_execution": {
+          "size": 168,
+          "alignment": 8,
+          "existing_16_byte_allocation_extent": 176,
+          "fields": {
+            "machine": {
+              "offset_bytes": 0,
+              "size": 136
+            },
+            "status": {
+              "offset_bytes": 136,
+              "size": 4
+            },
+            "output": {
+              "offset_bytes": 144,
+              "size": 8
+            },
+            "result": {
+              "offset_bytes": 152,
+              "size": 8
+            },
+            "steps": {
+              "offset_bytes": 160,
+              "size": 8
+            }
+          }
+        },
+        "pg_argument": {
+          "size": 24,
+          "alignment": 8,
+          "existing_16_byte_allocation_extent": 32,
+          "fields": {
+            "value": {
+              "offset_bytes": 0,
+              "size": 16
+            },
+            "next": {
+              "offset_bytes": 16,
+              "size": 8
+            }
+          }
+        },
+        "pg_environment": {
+          "size": 32,
+          "alignment": 8,
+          "existing_16_byte_allocation_extent": 32,
+          "fields": {
+            "binder": {
+              "offset_bytes": 0,
+              "size": 8
+            },
+            "value": {
+              "offset_bytes": 8,
+              "size": 16
+            },
+            "parent": {
+              "offset_bytes": 24,
+              "size": 8
+            }
+          }
+        },
+        "pg_eval_frame": {
+          "size": 216,
+          "alignment": 8,
+          "existing_16_byte_allocation_extent": 224,
+          "fields": {
+            "caller": {
+              "offset_bytes": 0,
+              "size": 16
+            },
+            "arguments": {
+              "offset_bytes": 16,
+              "size": 8
+            },
+            "target": {
+              "offset_bytes": 24,
+              "size": 8
+            },
+            "continuation": {
+              "offset_bytes": 32,
+              "size": 8
+            },
+            "state": {
+              "offset_bytes": 40,
+              "size": 8
+            },
+            "parent": {
+              "offset_bytes": 48,
+              "size": 8
+            },
+            "answer": {
+              "offset_bytes": 56,
+              "size": 136
+            },
+            "cursor": {
+              "offset_bytes": 192,
+              "size": 8
+            },
+            "first": {
+              "offset_bytes": 200,
+              "size": 8
+            },
+            "last": {
+              "offset_bytes": 208,
+              "size": 8
+            }
+          }
+        },
+        "pg_nf_job": {
+          "size": 136,
+          "alignment": 8,
+          "existing_16_byte_allocation_extent": 144,
+          "fields": {
+            "request": {
+              "offset_bytes": 0,
+              "size": 40
+            },
+            "body": {
+              "offset_bytes": 40,
+              "size": 8
+            },
+            "certificate": {
+              "offset_bytes": 48,
+              "size": 8
+            },
+            "prefix": {
+              "offset_bytes": 56,
+              "size": 8
+            },
+            "phases": {
+              "offset_bytes": 64,
+              "size": 8
+            },
+            "head": {
+              "offset_bytes": 72,
+              "size": 8
+            },
+            "children": {
+              "offset_bytes": 80,
+              "size": 16
+            },
+            "stack": {
+              "offset_bytes": 96,
+              "size": 8
+            },
+            "depth": {
+              "offset_bytes": 104,
+              "size": 8
+            },
+            "capacity": {
+              "offset_bytes": 112,
+              "size": 8
+            },
+            "steps": {
+              "offset_bytes": 120,
+              "size": 8
+            },
+            "status": {
+              "offset_bytes": 128,
+              "size": 4
+            },
+            "stage": {
+              "offset_bytes": 132,
+              "size": 4
+            }
+          }
+        },
+        "pg_program": {
+          "size": 1256,
+          "alignment": 8,
+          "existing_16_byte_allocation_extent": 1264,
+          "fields": {
+            "graph": {
+              "offset_bytes": 0,
+              "size": 56
+            },
+            "typing": {
+              "offset_bytes": 56,
+              "size": 408
+            },
+            "evaluation": {
+              "offset_bytes": 464,
+              "size": 112
+            },
+            "synthesis": {
+              "offset_bytes": 576,
+              "size": 232
+            },
+            "imported_effects": {
+              "offset_bytes": 808,
+              "size": 192
+            },
+            "parser": {
+              "offset_bytes": 1000,
+              "size": 208
+            },
+            "allow_legacy_intrinsic_dot": {
+              "offset_bytes": 1208,
+              "size": 4
+            },
+            "exports": {
+              "offset_bytes": 1216,
+              "size": 24
+            },
+            "scope": {
+              "offset_bytes": 1240,
+              "size": 8
+            },
+            "root": {
+              "offset_bytes": 1248,
+              "size": 8
+            }
+          }
+        },
+        "pg_substitution_state": {
+          "size": 128,
+          "alignment": 8,
+          "existing_16_byte_allocation_extent": 128,
+          "fields": {
+            "context": {
+              "offset_bytes": 0,
+              "size": 104
+            },
+            "root": {
+              "offset_bytes": 104,
+              "size": 8
+            },
+            "input_storage": {
+              "offset_bytes": 112,
+              "size": 8
+            },
+            "status": {
+              "offset_bytes": 120,
+              "size": 4
+            }
+          }
+        }
+      }
+    },
+    "candidate": {
+      "target_started": false,
+      "inferior_calls": false,
+      "types": {
+        "pg_eval": {
+          "size": 136,
+          "alignment": 8,
+          "existing_16_byte_allocation_extent": 144,
+          "fields": {
+            "temporary": {
+              "offset_bytes": 0,
+              "size": 56
+            },
+            "current": {
+              "offset_bytes": 56,
+              "size": 16
+            },
+            "arguments": {
+              "offset_bytes": 72,
+              "size": 8
+            },
+            "status": {
+              "offset_bytes": 80,
+              "size": 4
+            },
+            "head_ready": {
+              "offset_bytes": 84,
+              "size": 4
+            },
+            "steps": {
+              "offset_bytes": 88,
+              "size": 8
+            },
+            "dispatch": {
+              "offset_bytes": 96,
+              "size": 8
+            },
+            "output": {
+              "offset_bytes": 104,
+              "size": 8
+            },
+            "frames": {
+              "offset_bytes": 112,
+              "size": 8
+            },
+            "free_frames": {
+              "offset_bytes": 120,
+              "size": 8
+            },
+            "task": {
+              "offset_bytes": 128,
+              "size": 8
+            }
+          }
+        },
+        "pg_whnf_job": {
+          "size": 336,
+          "alignment": 8,
+          "existing_16_byte_allocation_extent": 336,
+          "fields": {
+            "request": {
+              "offset_bytes": 0,
+              "size": 40
+            },
+            "machine": {
+              "offset_bytes": 40,
+              "size": 136
+            },
+            "certificate": {
+              "offset_bytes": 176,
+              "size": 8
+            },
+            "output": {
+              "offset_bytes": 184,
+              "size": 136
+            },
+            "status": {
+              "offset_bytes": 320,
+              "size": 4
+            },
+            "steps": {
+              "offset_bytes": 328,
+              "size": 8
+            }
+          }
+        },
+        "pg_execution": {
+          "size": 168,
+          "alignment": 8,
+          "existing_16_byte_allocation_extent": 176,
+          "fields": {
+            "machine": {
+              "offset_bytes": 0,
+              "size": 136
+            },
+            "status": {
+              "offset_bytes": 136,
+              "size": 4
+            },
+            "output": {
+              "offset_bytes": 144,
+              "size": 8
+            },
+            "result": {
+              "offset_bytes": 152,
+              "size": 8
+            },
+            "steps": {
+              "offset_bytes": 160,
+              "size": 8
+            }
+          }
+        },
+        "pg_argument": {
+          "size": 24,
+          "alignment": 8,
+          "existing_16_byte_allocation_extent": 32,
+          "fields": {
+            "value": {
+              "offset_bytes": 0,
+              "size": 16
+            },
+            "next": {
+              "offset_bytes": 16,
+              "size": 8
+            }
+          }
+        },
+        "pg_environment": {
+          "size": 32,
+          "alignment": 8,
+          "existing_16_byte_allocation_extent": 32,
+          "fields": {
+            "binder": {
+              "offset_bytes": 0,
+              "size": 8
+            },
+            "value": {
+              "offset_bytes": 8,
+              "size": 16
+            },
+            "parent": {
+              "offset_bytes": 24,
+              "size": 8
+            }
+          }
+        },
+        "pg_eval_frame": {
+          "size": 216,
+          "alignment": 8,
+          "existing_16_byte_allocation_extent": 224,
+          "fields": {
+            "caller": {
+              "offset_bytes": 0,
+              "size": 16
+            },
+            "arguments": {
+              "offset_bytes": 16,
+              "size": 8
+            },
+            "target": {
+              "offset_bytes": 24,
+              "size": 8
+            },
+            "continuation": {
+              "offset_bytes": 32,
+              "size": 8
+            },
+            "state": {
+              "offset_bytes": 40,
+              "size": 8
+            },
+            "parent": {
+              "offset_bytes": 48,
+              "size": 8
+            },
+            "answer": {
+              "offset_bytes": 56,
+              "size": 136
+            },
+            "cursor": {
+              "offset_bytes": 192,
+              "size": 8
+            },
+            "first": {
+              "offset_bytes": 200,
+              "size": 8
+            },
+            "last": {
+              "offset_bytes": 208,
+              "size": 8
+            }
+          }
+        },
+        "pg_nf_job": {
+          "size": 136,
+          "alignment": 8,
+          "existing_16_byte_allocation_extent": 144,
+          "fields": {
+            "request": {
+              "offset_bytes": 0,
+              "size": 40
+            },
+            "body": {
+              "offset_bytes": 40,
+              "size": 8
+            },
+            "certificate": {
+              "offset_bytes": 48,
+              "size": 8
+            },
+            "prefix": {
+              "offset_bytes": 56,
+              "size": 8
+            },
+            "phases": {
+              "offset_bytes": 64,
+              "size": 8
+            },
+            "head": {
+              "offset_bytes": 72,
+              "size": 8
+            },
+            "children": {
+              "offset_bytes": 80,
+              "size": 16
+            },
+            "stack": {
+              "offset_bytes": 96,
+              "size": 8
+            },
+            "depth": {
+              "offset_bytes": 104,
+              "size": 8
+            },
+            "capacity": {
+              "offset_bytes": 112,
+              "size": 8
+            },
+            "steps": {
+              "offset_bytes": 120,
+              "size": 8
+            },
+            "status": {
+              "offset_bytes": 128,
+              "size": 4
+            },
+            "stage": {
+              "offset_bytes": 132,
+              "size": 4
+            }
+          }
+        },
+        "pg_program": {
+          "size": 1256,
+          "alignment": 8,
+          "existing_16_byte_allocation_extent": 1264,
+          "fields": {
+            "graph": {
+              "offset_bytes": 0,
+              "size": 56
+            },
+            "typing": {
+              "offset_bytes": 56,
+              "size": 408
+            },
+            "evaluation": {
+              "offset_bytes": 464,
+              "size": 112
+            },
+            "synthesis": {
+              "offset_bytes": 576,
+              "size": 232
+            },
+            "imported_effects": {
+              "offset_bytes": 808,
+              "size": 192
+            },
+            "parser": {
+              "offset_bytes": 1000,
+              "size": 208
+            },
+            "allow_legacy_intrinsic_dot": {
+              "offset_bytes": 1208,
+              "size": 4
+            },
+            "exports": {
+              "offset_bytes": 1216,
+              "size": 24
+            },
+            "scope": {
+              "offset_bytes": 1240,
+              "size": 8
+            },
+            "root": {
+              "offset_bytes": 1248,
+              "size": 8
+            }
+          }
+        },
+        "pg_substitution_state": {
+          "size": 128,
+          "alignment": 8,
+          "existing_16_byte_allocation_extent": 128,
+          "fields": {
+            "context": {
+              "offset_bytes": 0,
+              "size": 104
+            },
+            "root": {
+              "offset_bytes": 104,
+              "size": 8
+            },
+            "input_storage": {
+              "offset_bytes": 112,
+              "size": 8
+            },
+            "status": {
+              "offset_bytes": 120,
+              "size": 4
+            }
+          }
+        }
+      }
+    }
+  },
+  "all_nine_sizes_alignments_extents_and_other_field_maps_equal": true,
+  "actual_accepted_pg_eval_size_extent": [
+    136,
+    144
+  ],
+  "actual_accepted_pg_whnf_size_extent": [
+    336,
+    336
+  ],
+  "head_ready_offsets_parent_candidate": [
+    120,
+    84
+  ],
+  "free_frames_offset": 120,
+  "entry_size_parent_candidate": [
+    88,
+    96
+  ],
+  "single_16_aligned_extent": [
+    96,
+    96
+  ],
+  "loader_array_and_writer_scratch_extra_each": "8*n bytes before rounding; net cost must include both",
+  "historical_absolute_offset_predicate_failure_retained": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_layouts_20261004/initial-layout-predicate-failure.json",
+  "all_pins_exact_after": true,
+  "binary_ABI_or_capacity_peak_RSS_time_claim": false
+}

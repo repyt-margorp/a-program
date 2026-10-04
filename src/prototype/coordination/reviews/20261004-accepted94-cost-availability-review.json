@@ -1,5 +1,5 @@
 {
-  "date_UTC": "2026-10-04T15:10:05.318757+00:00",
+  "date_UTC": "2026-10-04T15:23:42.914422+00:00",
   "Job_actual_notice_SHA": "9e6ff20252e165878adf0792a93db6dab4590def098cda70e8dd68e0cd4807fc",
   "Job_reported_prior_handles_terminal": [
     "57958",
@@ -21,7 +21,7 @@
     "38113"
   ],
   "Performance_samples": 0,
-  "C_feasibility_or_actual_ACK": "Not yet received",
+  "C_feasibility_or_actual_ACK": "Still not received; no grant or sample",
   "current_grant": false,
   "current_hold": false,
   "fresh_all295_pins": {
@@ -48,5 +48,14 @@
     "no_build_or_collector_launched": true
   },
   "next": "src/prototype/coordination/inbox/accepted94-frame-cost-window-feasibility-1520-20261004.json",
-  "old_ACKs_reused": false
+  "old_ACKs_reused": false,
+  "fresh_safe_boundary_notices": {
+    "job-evidence": "8367ed3f2a82e0f567ed3b5f417a9dbdd19d1ec3621fa2edeb0c30b63a502c86",
+    "performance": "fc2c91fef90a78c772bb8174f85dc6415c0bfa88c1407a10cc6ebe08903eaa33"
+  },
+  "current_light_work_agreements": {
+    "Job": "Through15:30 or explicit release",
+    "Performance": "Through15:30 or explicit release"
+  },
+  "measurement_scope": "Exact36 job argv contain only source-checking steps/input/imports, no save/load flags. They can measure net candidate source-checking elapsed/peakRSS; they do not exercise separately described codec loader/writer8*n scratch. Preserve the frozen publication metadata but supersede its inclusive codec-cost wording for these36. Codec/persistence path cost stays separate and unmeasured."
 }

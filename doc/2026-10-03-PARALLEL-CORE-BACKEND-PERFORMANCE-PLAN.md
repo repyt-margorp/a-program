@@ -27,6 +27,17 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 
 ### Current Delivery Status
 
+2026-10-04, [Performance exact95 publication review](../src/prototype/coordination/reviews/20261004-performance-publication95-review.json):
+isolated task commit22b15cb2 is pushed/remote exact; original owner local HEAD,
+branch and index remain unchanged. Source55/cost6/evidence30/scope2 plus metadata2
+are immutable; Main adds93 packet paths, with scope2 already identical. No runtime
+change or new adoption. Job/Performance actual15:18 safe acknowledgments agree
+light work until15:30/release; C actual feasibility/ACK remains absent, so no grant
+or collector. Scope correction: exact36 source-checking argv have no save/load;
+codec loader/writer8*n scratch is not exercised or cost-qualified by these jobs.
+Newer Job trial13/Source failures remain owner reports and unwaived, NOT READY;
+earlier Root-pinned five-trial history is not silently relabeled current.
+
 2026-10-04, [Performance bounded capacity review](../src/prototype/coordination/reviews/20261004-performance-bounded-owner-capacity-review.json):
 26 files including manifest, analysis3 and all261 actual pins verify; six charged
 states and arena/index/known-root counts recompute. Tree16/5M pending machine
@@ -2553,6 +2564,14 @@ Four cross-instrumentation raw image hashes differ; all 140 cross-build reads
 pass. No cross-instrumentation byte equality or wall/RSS speedup is claimed.
 
 ### Assessment
+
+2026-10-04, Root publication/scope decision: publish the exact95 packet from an
+isolated Git clone, preserving original owner refs/index and immutable records.
+The patch's context indentation and raw log TSV trailing fields are artifact
+syntax; retain the whole-file whitespace-check2 record, with other93 paths
+check0, without rewriting evidence. Source-checking36 cannot establish codec
+scratch cost; supersede the inclusive wording in frozen publication metadata
+for this measurement scope. C acknowledgment is still required before a grant.
 
 2026-10-04, Root accepts the bounded capacity/count observation with its limits;
 unclassified capacity is not reclaim permission or a peak/time result. Use the

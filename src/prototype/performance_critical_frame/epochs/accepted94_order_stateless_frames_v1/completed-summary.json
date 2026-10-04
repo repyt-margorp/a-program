@@ -1,0 +1,3366 @@
+{
+  "terminal": true,
+  "sources": {
+    "parent": "930997b62db85814718d0d5ac151f392bfae243a447d5d0d5f2adbde66cba5ae",
+    "candidate": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907"
+  },
+  "records": [
+    {
+      "label": "completed-parent-list",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/list.p"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "label": "completed-parent-imported-local-sorted",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--steps",
+        "1000000000",
+        "--legacy-intrinsic-dot",
+        "--imports",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/quick-local-provider.p",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/imported-local-sorted.p"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "10247a06d37f38c7f2055b5e8865908569dccf746edf6ae4fad263a01d829518"
+    },
+    {
+      "label": "completed-parent-trees4",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees4.p"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "775df37afe1464024ea41c3aae5bde666ffedcc4771dfb894f46f27fd64157c2"
+    },
+    {
+      "label": "completed-parent-trees16",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees16.p"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "f5e289c1ce771b2e2e0f3d5692211942e3a749de75db1ee255624e9a3b44ec10"
+    },
+    {
+      "label": "completed-parent-trees64",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees64.p"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "863fcfc39e5413f133d2bd49d4489d76bb270a6d0b13132b0186179250724a95"
+    },
+    {
+      "label": "completed-parent-trees400",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees400.p"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "7ba8df8b6c83ab421a4b89f1df1cfdc087483b38440654b32afcc30fc2402394"
+    },
+    {
+      "label": "completed-candidate-list",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/list.p"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "label": "completed-candidate-imported-local-sorted",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--steps",
+        "1000000000",
+        "--legacy-intrinsic-dot",
+        "--imports",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/quick-local-provider.p",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/imported-local-sorted.p"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "10247a06d37f38c7f2055b5e8865908569dccf746edf6ae4fad263a01d829518"
+    },
+    {
+      "label": "completed-candidate-trees4",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees4.p"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "775df37afe1464024ea41c3aae5bde666ffedcc4771dfb894f46f27fd64157c2"
+    },
+    {
+      "label": "completed-candidate-trees16",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees16.p"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "f5e289c1ce771b2e2e0f3d5692211942e3a749de75db1ee255624e9a3b44ec10"
+    },
+    {
+      "label": "completed-candidate-trees64",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees64.p"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "863fcfc39e5413f133d2bd49d4489d76bb270a6d0b13132b0186179250724a95"
+    },
+    {
+      "label": "completed-candidate-trees400",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees400.p"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "7ba8df8b6c83ab421a4b89f1df1cfdc087483b38440654b32afcc30fc2402394"
+    },
+    {
+      "label": "completed-candidate-san-list",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/list.p"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "label": "completed-candidate-san-imported-local-sorted",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--steps",
+        "1000000000",
+        "--legacy-intrinsic-dot",
+        "--imports",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/quick-local-provider.p",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/imported-local-sorted.p"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "10247a06d37f38c7f2055b5e8865908569dccf746edf6ae4fad263a01d829518"
+    },
+    {
+      "label": "write-save-parent-0",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-0.a",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/list.p"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "inert-parent-o2-save-parent-0",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-0-inert-parent-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-0.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-o2-save-parent-0",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-0.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "label": "inert-parent-san-save-parent-0",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-0-inert-parent-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-0.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-san-save-parent-0",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-0.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "label": "inert-candidate-o2-save-parent-0",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-0-inert-candidate-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-0.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-o2-save-parent-0",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-0.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "label": "inert-candidate-san-save-parent-0",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-0-inert-candidate-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-0.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-san-save-parent-0",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-0.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "label": "write-save-candidate-0",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-0.a",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/list.p"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "inert-parent-o2-save-candidate-0",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-0-inert-parent-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-0.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-o2-save-candidate-0",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-0.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "label": "inert-parent-san-save-candidate-0",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-0-inert-parent-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-0.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-san-save-candidate-0",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-0.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "label": "inert-candidate-o2-save-candidate-0",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-0-inert-candidate-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-0.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-o2-save-candidate-0",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-0.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "label": "inert-candidate-san-save-candidate-0",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-0-inert-candidate-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-0.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-san-save-candidate-0",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-0.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "label": "write-save-parent-1",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--steps",
+        "1",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-1.a",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/list.p"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "53f8a69a8b8dc96295f803e6a7d136cf7b53f4692ba7674ef404751fb31e9f0d"
+    },
+    {
+      "label": "inert-parent-o2-save-parent-1",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-1-inert-parent-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-1.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-o2-save-parent-1",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-1.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "label": "inert-parent-san-save-parent-1",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-1-inert-parent-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-1.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-san-save-parent-1",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-1.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "label": "inert-candidate-o2-save-parent-1",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-1-inert-candidate-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-1.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-o2-save-parent-1",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-1.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "label": "inert-candidate-san-save-parent-1",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-1-inert-candidate-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-1.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-san-save-parent-1",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-1.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "label": "write-save-candidate-1",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--steps",
+        "1",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-1.a",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/list.p"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "53f8a69a8b8dc96295f803e6a7d136cf7b53f4692ba7674ef404751fb31e9f0d"
+    },
+    {
+      "label": "inert-parent-o2-save-candidate-1",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-1-inert-parent-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-1.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-o2-save-candidate-1",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-1.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "label": "inert-parent-san-save-candidate-1",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-1-inert-parent-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-1.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-san-save-candidate-1",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-1.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "label": "inert-candidate-o2-save-candidate-1",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-1-inert-candidate-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-1.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-o2-save-candidate-1",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-1.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "label": "inert-candidate-san-save-candidate-1",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-1-inert-candidate-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-1.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-san-save-candidate-1",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-1.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "label": "write-save-parent-100",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--steps",
+        "100",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-100.a",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/list.p"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "43aa3a5ddc974f4263b25973872da49dea6c1e673961b82bddd77c094eff2401"
+    },
+    {
+      "label": "inert-parent-o2-save-parent-100",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-100-inert-parent-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-100.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-o2-save-parent-100",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-100.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "31d5b58370e1c232dcab4395d5b3a62f7338d8d1d3c9711c80ea356c2a75493a"
+    },
+    {
+      "label": "inert-parent-san-save-parent-100",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-100-inert-parent-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-100.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-san-save-parent-100",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-100.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "31d5b58370e1c232dcab4395d5b3a62f7338d8d1d3c9711c80ea356c2a75493a"
+    },
+    {
+      "label": "inert-candidate-o2-save-parent-100",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-100-inert-candidate-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-100.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-o2-save-parent-100",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-100.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "31d5b58370e1c232dcab4395d5b3a62f7338d8d1d3c9711c80ea356c2a75493a"
+    },
+    {
+      "label": "inert-candidate-san-save-parent-100",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-100-inert-candidate-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-100.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-san-save-parent-100",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-100.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "31d5b58370e1c232dcab4395d5b3a62f7338d8d1d3c9711c80ea356c2a75493a"
+    },
+    {
+      "label": "write-save-candidate-100",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--steps",
+        "100",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-100.a",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/list.p"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "43aa3a5ddc974f4263b25973872da49dea6c1e673961b82bddd77c094eff2401"
+    },
+    {
+      "label": "inert-parent-o2-save-candidate-100",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-100-inert-parent-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-100.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-o2-save-candidate-100",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-100.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "31d5b58370e1c232dcab4395d5b3a62f7338d8d1d3c9711c80ea356c2a75493a"
+    },
+    {
+      "label": "inert-parent-san-save-candidate-100",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-100-inert-parent-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-100.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-san-save-candidate-100",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-100.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "31d5b58370e1c232dcab4395d5b3a62f7338d8d1d3c9711c80ea356c2a75493a"
+    },
+    {
+      "label": "inert-candidate-o2-save-candidate-100",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-100-inert-candidate-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-100.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-o2-save-candidate-100",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-100.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "31d5b58370e1c232dcab4395d5b3a62f7338d8d1d3c9711c80ea356c2a75493a"
+    },
+    {
+      "label": "inert-candidate-san-save-candidate-100",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-100-inert-candidate-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-100.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-san-save-candidate-100",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-100.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "31d5b58370e1c232dcab4395d5b3a62f7338d8d1d3c9711c80ea356c2a75493a"
+    },
+    {
+      "label": "write-save-parent-957",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--steps",
+        "957",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-957.a",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/list.p"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "9a4e1ec4b5b7b76137e76d9f2741062be9f0c9c0ff1fff107f91e1fc5f79800d"
+    },
+    {
+      "label": "inert-parent-o2-save-parent-957",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-957-inert-parent-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-957.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-o2-save-parent-957",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-957.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "cbb9e3c3cc722926460da642532adbfd94f195ac2b09a83db9bd83d12924dfa5"
+    },
+    {
+      "label": "inert-parent-san-save-parent-957",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-957-inert-parent-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-957.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-san-save-parent-957",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-957.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "cbb9e3c3cc722926460da642532adbfd94f195ac2b09a83db9bd83d12924dfa5"
+    },
+    {
+      "label": "inert-candidate-o2-save-parent-957",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-957-inert-candidate-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-957.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-o2-save-parent-957",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-957.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "cbb9e3c3cc722926460da642532adbfd94f195ac2b09a83db9bd83d12924dfa5"
+    },
+    {
+      "label": "inert-candidate-san-save-parent-957",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-957-inert-candidate-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-957.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-san-save-parent-957",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-957.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "cbb9e3c3cc722926460da642532adbfd94f195ac2b09a83db9bd83d12924dfa5"
+    },
+    {
+      "label": "write-save-candidate-957",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--steps",
+        "957",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-957.a",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/list.p"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "9a4e1ec4b5b7b76137e76d9f2741062be9f0c9c0ff1fff107f91e1fc5f79800d"
+    },
+    {
+      "label": "inert-parent-o2-save-candidate-957",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-957-inert-parent-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-957.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-o2-save-candidate-957",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-957.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "cbb9e3c3cc722926460da642532adbfd94f195ac2b09a83db9bd83d12924dfa5"
+    },
+    {
+      "label": "inert-parent-san-save-candidate-957",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-957-inert-parent-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-957.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-san-save-candidate-957",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-957.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "cbb9e3c3cc722926460da642532adbfd94f195ac2b09a83db9bd83d12924dfa5"
+    },
+    {
+      "label": "inert-candidate-o2-save-candidate-957",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-957-inert-candidate-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-957.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-o2-save-candidate-957",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-957.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "cbb9e3c3cc722926460da642532adbfd94f195ac2b09a83db9bd83d12924dfa5"
+    },
+    {
+      "label": "inert-candidate-san-save-candidate-957",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-957-inert-candidate-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-957.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-san-save-candidate-957",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-957.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "cbb9e3c3cc722926460da642532adbfd94f195ac2b09a83db9bd83d12924dfa5"
+    },
+    {
+      "label": "write-save-parent-1914",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--steps",
+        "1914",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-1914.a",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/list.p"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "7d7f1d3d5284c2b301086d4fd412ea228075ef1edab28ebbb8fd534c6e180cf3"
+    },
+    {
+      "label": "inert-parent-o2-save-parent-1914",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-1914-inert-parent-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-1914.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-o2-save-parent-1914",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-1914.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "cbb9e3c3cc722926460da642532adbfd94f195ac2b09a83db9bd83d12924dfa5"
+    },
+    {
+      "label": "inert-parent-san-save-parent-1914",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-1914-inert-parent-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-1914.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-san-save-parent-1914",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-1914.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "cbb9e3c3cc722926460da642532adbfd94f195ac2b09a83db9bd83d12924dfa5"
+    },
+    {
+      "label": "inert-candidate-o2-save-parent-1914",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-1914-inert-candidate-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-1914.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-o2-save-parent-1914",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-1914.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "cbb9e3c3cc722926460da642532adbfd94f195ac2b09a83db9bd83d12924dfa5"
+    },
+    {
+      "label": "inert-candidate-san-save-parent-1914",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-1914-inert-candidate-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-1914.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-san-save-parent-1914",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-1914.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "cbb9e3c3cc722926460da642532adbfd94f195ac2b09a83db9bd83d12924dfa5"
+    },
+    {
+      "label": "write-save-candidate-1914",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--steps",
+        "1914",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-1914.a",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/list.p"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "7d7f1d3d5284c2b301086d4fd412ea228075ef1edab28ebbb8fd534c6e180cf3"
+    },
+    {
+      "label": "inert-parent-o2-save-candidate-1914",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-1914-inert-parent-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-1914.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-o2-save-candidate-1914",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-1914.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "cbb9e3c3cc722926460da642532adbfd94f195ac2b09a83db9bd83d12924dfa5"
+    },
+    {
+      "label": "inert-parent-san-save-candidate-1914",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-1914-inert-parent-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-1914.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-san-save-candidate-1914",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-1914.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "cbb9e3c3cc722926460da642532adbfd94f195ac2b09a83db9bd83d12924dfa5"
+    },
+    {
+      "label": "inert-candidate-o2-save-candidate-1914",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-1914-inert-candidate-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-1914.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-o2-save-candidate-1914",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-1914.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "cbb9e3c3cc722926460da642532adbfd94f195ac2b09a83db9bd83d12924dfa5"
+    },
+    {
+      "label": "inert-candidate-san-save-candidate-1914",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-1914-inert-candidate-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-1914.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-san-save-candidate-1914",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-1914.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "cbb9e3c3cc722926460da642532adbfd94f195ac2b09a83db9bd83d12924dfa5"
+    },
+    {
+      "label": "write-save-parent-1915",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--steps",
+        "1915",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-1915.a",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/list.p"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "label": "inert-parent-o2-save-parent-1915",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-1915-inert-parent-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-1915.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-o2-save-parent-1915",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-1915.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "cbb9e3c3cc722926460da642532adbfd94f195ac2b09a83db9bd83d12924dfa5"
+    },
+    {
+      "label": "inert-parent-san-save-parent-1915",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-1915-inert-parent-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-1915.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-san-save-parent-1915",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-1915.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "cbb9e3c3cc722926460da642532adbfd94f195ac2b09a83db9bd83d12924dfa5"
+    },
+    {
+      "label": "inert-candidate-o2-save-parent-1915",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-1915-inert-candidate-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-1915.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-o2-save-parent-1915",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-1915.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "cbb9e3c3cc722926460da642532adbfd94f195ac2b09a83db9bd83d12924dfa5"
+    },
+    {
+      "label": "inert-candidate-san-save-parent-1915",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-1915-inert-candidate-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-1915.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-san-save-parent-1915",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-parent-1915.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "cbb9e3c3cc722926460da642532adbfd94f195ac2b09a83db9bd83d12924dfa5"
+    },
+    {
+      "label": "write-save-candidate-1915",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--steps",
+        "1915",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-1915.a",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/list.p"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "label": "inert-parent-o2-save-candidate-1915",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-1915-inert-parent-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-1915.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-o2-save-candidate-1915",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-1915.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "cbb9e3c3cc722926460da642532adbfd94f195ac2b09a83db9bd83d12924dfa5"
+    },
+    {
+      "label": "inert-parent-san-save-candidate-1915",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-1915-inert-parent-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-1915.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-san-save-candidate-1915",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-1915.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "cbb9e3c3cc722926460da642532adbfd94f195ac2b09a83db9bd83d12924dfa5"
+    },
+    {
+      "label": "inert-candidate-o2-save-candidate-1915",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-1915-inert-candidate-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-1915.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-o2-save-candidate-1915",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-1915.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "cbb9e3c3cc722926460da642532adbfd94f195ac2b09a83db9bd83d12924dfa5"
+    },
+    {
+      "label": "inert-candidate-san-save-candidate-1915",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-1915-inert-candidate-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-1915.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-san-save-candidate-1915",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-candidate-1915.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "cbb9e3c3cc722926460da642532adbfd94f195ac2b09a83db9bd83d12924dfa5"
+    },
+    {
+      "label": "write-save-materialized-parent-0",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-0.a",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/list.p"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "inert-parent-o2-save-materialized-parent-0",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-0-inert-parent-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-0.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-o2-save-materialized-parent-0",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-0.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "label": "inert-parent-san-save-materialized-parent-0",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-0-inert-parent-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-0.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-san-save-materialized-parent-0",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-0.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "label": "inert-candidate-o2-save-materialized-parent-0",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-0-inert-candidate-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-0.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-o2-save-materialized-parent-0",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-0.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "label": "inert-candidate-san-save-materialized-parent-0",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-0-inert-candidate-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-0.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-san-save-materialized-parent-0",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-0.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "label": "write-save-materialized-candidate-0",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-0.a",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/list.p"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "inert-parent-o2-save-materialized-candidate-0",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-0-inert-parent-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-0.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-o2-save-materialized-candidate-0",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-0.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "label": "inert-parent-san-save-materialized-candidate-0",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-0-inert-parent-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-0.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-san-save-materialized-candidate-0",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-0.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "label": "inert-candidate-o2-save-materialized-candidate-0",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-0-inert-candidate-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-0.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-o2-save-materialized-candidate-0",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-0.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "label": "inert-candidate-san-save-materialized-candidate-0",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-0-inert-candidate-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-0.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-san-save-materialized-candidate-0",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-0.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "label": "write-save-materialized-parent-1",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--steps",
+        "1",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-1.a",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/list.p"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "53f8a69a8b8dc96295f803e6a7d136cf7b53f4692ba7674ef404751fb31e9f0d"
+    },
+    {
+      "label": "inert-parent-o2-save-materialized-parent-1",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-1-inert-parent-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-1.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-o2-save-materialized-parent-1",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-1.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "label": "inert-parent-san-save-materialized-parent-1",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-1-inert-parent-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-1.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-san-save-materialized-parent-1",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-1.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "label": "inert-candidate-o2-save-materialized-parent-1",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-1-inert-candidate-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-1.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-o2-save-materialized-parent-1",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-1.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "label": "inert-candidate-san-save-materialized-parent-1",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-1-inert-candidate-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-1.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-san-save-materialized-parent-1",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-1.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "label": "write-save-materialized-candidate-1",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--steps",
+        "1",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-1.a",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/list.p"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "53f8a69a8b8dc96295f803e6a7d136cf7b53f4692ba7674ef404751fb31e9f0d"
+    },
+    {
+      "label": "inert-parent-o2-save-materialized-candidate-1",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-1-inert-parent-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-1.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-o2-save-materialized-candidate-1",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-1.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "label": "inert-parent-san-save-materialized-candidate-1",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-1-inert-parent-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-1.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-san-save-materialized-candidate-1",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-1.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "label": "inert-candidate-o2-save-materialized-candidate-1",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-1-inert-candidate-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-1.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-o2-save-materialized-candidate-1",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-1.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "label": "inert-candidate-san-save-materialized-candidate-1",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-1-inert-candidate-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-1.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-san-save-materialized-candidate-1",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-1.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "label": "write-save-materialized-parent-100",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--steps",
+        "100",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-100.a",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/list.p"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "43aa3a5ddc974f4263b25973872da49dea6c1e673961b82bddd77c094eff2401"
+    },
+    {
+      "label": "inert-parent-o2-save-materialized-parent-100",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-100-inert-parent-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-100.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-o2-save-materialized-parent-100",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-100.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "31d5b58370e1c232dcab4395d5b3a62f7338d8d1d3c9711c80ea356c2a75493a"
+    },
+    {
+      "label": "inert-parent-san-save-materialized-parent-100",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-100-inert-parent-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-100.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-san-save-materialized-parent-100",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-100.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "31d5b58370e1c232dcab4395d5b3a62f7338d8d1d3c9711c80ea356c2a75493a"
+    },
+    {
+      "label": "inert-candidate-o2-save-materialized-parent-100",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-100-inert-candidate-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-100.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-o2-save-materialized-parent-100",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-100.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "31d5b58370e1c232dcab4395d5b3a62f7338d8d1d3c9711c80ea356c2a75493a"
+    },
+    {
+      "label": "inert-candidate-san-save-materialized-parent-100",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-100-inert-candidate-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-100.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-san-save-materialized-parent-100",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-100.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "31d5b58370e1c232dcab4395d5b3a62f7338d8d1d3c9711c80ea356c2a75493a"
+    },
+    {
+      "label": "write-save-materialized-candidate-100",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--steps",
+        "100",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-100.a",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/list.p"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "43aa3a5ddc974f4263b25973872da49dea6c1e673961b82bddd77c094eff2401"
+    },
+    {
+      "label": "inert-parent-o2-save-materialized-candidate-100",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-100-inert-parent-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-100.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-o2-save-materialized-candidate-100",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-100.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "31d5b58370e1c232dcab4395d5b3a62f7338d8d1d3c9711c80ea356c2a75493a"
+    },
+    {
+      "label": "inert-parent-san-save-materialized-candidate-100",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-100-inert-parent-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-100.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-san-save-materialized-candidate-100",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-100.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "31d5b58370e1c232dcab4395d5b3a62f7338d8d1d3c9711c80ea356c2a75493a"
+    },
+    {
+      "label": "inert-candidate-o2-save-materialized-candidate-100",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-100-inert-candidate-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-100.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-o2-save-materialized-candidate-100",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-100.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "31d5b58370e1c232dcab4395d5b3a62f7338d8d1d3c9711c80ea356c2a75493a"
+    },
+    {
+      "label": "inert-candidate-san-save-materialized-candidate-100",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-100-inert-candidate-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-100.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-san-save-materialized-candidate-100",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-100.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "31d5b58370e1c232dcab4395d5b3a62f7338d8d1d3c9711c80ea356c2a75493a"
+    },
+    {
+      "label": "write-save-materialized-parent-957",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--steps",
+        "957",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-957.a",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/list.p"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "9a4e1ec4b5b7b76137e76d9f2741062be9f0c9c0ff1fff107f91e1fc5f79800d"
+    },
+    {
+      "label": "inert-parent-o2-save-materialized-parent-957",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-957-inert-parent-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-957.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-o2-save-materialized-parent-957",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-957.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "dc94645b892a373ee5a428816e025cb4f9287c709724d2cca8dc5cae8597fd82"
+    },
+    {
+      "label": "inert-parent-san-save-materialized-parent-957",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-957-inert-parent-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-957.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-san-save-materialized-parent-957",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-957.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "dc94645b892a373ee5a428816e025cb4f9287c709724d2cca8dc5cae8597fd82"
+    },
+    {
+      "label": "inert-candidate-o2-save-materialized-parent-957",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-957-inert-candidate-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-957.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-o2-save-materialized-parent-957",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-957.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "dc94645b892a373ee5a428816e025cb4f9287c709724d2cca8dc5cae8597fd82"
+    },
+    {
+      "label": "inert-candidate-san-save-materialized-parent-957",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-957-inert-candidate-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-957.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-san-save-materialized-parent-957",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-957.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "dc94645b892a373ee5a428816e025cb4f9287c709724d2cca8dc5cae8597fd82"
+    },
+    {
+      "label": "write-save-materialized-candidate-957",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--steps",
+        "957",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-957.a",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/list.p"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "9a4e1ec4b5b7b76137e76d9f2741062be9f0c9c0ff1fff107f91e1fc5f79800d"
+    },
+    {
+      "label": "inert-parent-o2-save-materialized-candidate-957",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-957-inert-parent-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-957.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-o2-save-materialized-candidate-957",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-957.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "dc94645b892a373ee5a428816e025cb4f9287c709724d2cca8dc5cae8597fd82"
+    },
+    {
+      "label": "inert-parent-san-save-materialized-candidate-957",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-957-inert-parent-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-957.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-san-save-materialized-candidate-957",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-957.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "dc94645b892a373ee5a428816e025cb4f9287c709724d2cca8dc5cae8597fd82"
+    },
+    {
+      "label": "inert-candidate-o2-save-materialized-candidate-957",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-957-inert-candidate-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-957.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-o2-save-materialized-candidate-957",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-957.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "dc94645b892a373ee5a428816e025cb4f9287c709724d2cca8dc5cae8597fd82"
+    },
+    {
+      "label": "inert-candidate-san-save-materialized-candidate-957",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-957-inert-candidate-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-957.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-san-save-materialized-candidate-957",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-957.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "dc94645b892a373ee5a428816e025cb4f9287c709724d2cca8dc5cae8597fd82"
+    },
+    {
+      "label": "write-save-materialized-parent-1914",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--steps",
+        "1914",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-1914.a",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/list.p"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "7d7f1d3d5284c2b301086d4fd412ea228075ef1edab28ebbb8fd534c6e180cf3"
+    },
+    {
+      "label": "inert-parent-o2-save-materialized-parent-1914",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-1914-inert-parent-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-1914.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-o2-save-materialized-parent-1914",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-1914.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "76fe9fd7face2f84c00736b017f4c243bfb5e6f82a6c518e090d0f14daec035e"
+    },
+    {
+      "label": "inert-parent-san-save-materialized-parent-1914",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-1914-inert-parent-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-1914.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-san-save-materialized-parent-1914",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-1914.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "76fe9fd7face2f84c00736b017f4c243bfb5e6f82a6c518e090d0f14daec035e"
+    },
+    {
+      "label": "inert-candidate-o2-save-materialized-parent-1914",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-1914-inert-candidate-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-1914.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-o2-save-materialized-parent-1914",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-1914.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "76fe9fd7face2f84c00736b017f4c243bfb5e6f82a6c518e090d0f14daec035e"
+    },
+    {
+      "label": "inert-candidate-san-save-materialized-parent-1914",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-1914-inert-candidate-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-1914.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-san-save-materialized-parent-1914",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-1914.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "76fe9fd7face2f84c00736b017f4c243bfb5e6f82a6c518e090d0f14daec035e"
+    },
+    {
+      "label": "write-save-materialized-candidate-1914",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--steps",
+        "1914",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-1914.a",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/list.p"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "7d7f1d3d5284c2b301086d4fd412ea228075ef1edab28ebbb8fd534c6e180cf3"
+    },
+    {
+      "label": "inert-parent-o2-save-materialized-candidate-1914",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-1914-inert-parent-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-1914.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-o2-save-materialized-candidate-1914",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-1914.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "76fe9fd7face2f84c00736b017f4c243bfb5e6f82a6c518e090d0f14daec035e"
+    },
+    {
+      "label": "inert-parent-san-save-materialized-candidate-1914",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-1914-inert-parent-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-1914.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-san-save-materialized-candidate-1914",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-1914.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "76fe9fd7face2f84c00736b017f4c243bfb5e6f82a6c518e090d0f14daec035e"
+    },
+    {
+      "label": "inert-candidate-o2-save-materialized-candidate-1914",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-1914-inert-candidate-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-1914.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-o2-save-materialized-candidate-1914",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-1914.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "76fe9fd7face2f84c00736b017f4c243bfb5e6f82a6c518e090d0f14daec035e"
+    },
+    {
+      "label": "inert-candidate-san-save-materialized-candidate-1914",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-1914-inert-candidate-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-1914.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-san-save-materialized-candidate-1914",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-1914.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "76fe9fd7face2f84c00736b017f4c243bfb5e6f82a6c518e090d0f14daec035e"
+    },
+    {
+      "label": "write-save-materialized-parent-1915",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--steps",
+        "1915",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-1915.a",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/list.p"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "label": "inert-parent-o2-save-materialized-parent-1915",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-1915-inert-parent-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-1915.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-o2-save-materialized-parent-1915",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-1915.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "76fe9fd7face2f84c00736b017f4c243bfb5e6f82a6c518e090d0f14daec035e"
+    },
+    {
+      "label": "inert-parent-san-save-materialized-parent-1915",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-1915-inert-parent-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-1915.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-san-save-materialized-parent-1915",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-1915.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "76fe9fd7face2f84c00736b017f4c243bfb5e6f82a6c518e090d0f14daec035e"
+    },
+    {
+      "label": "inert-candidate-o2-save-materialized-parent-1915",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-1915-inert-candidate-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-1915.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-o2-save-materialized-parent-1915",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-1915.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "76fe9fd7face2f84c00736b017f4c243bfb5e6f82a6c518e090d0f14daec035e"
+    },
+    {
+      "label": "inert-candidate-san-save-materialized-parent-1915",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-1915-inert-candidate-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-1915.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-san-save-materialized-parent-1915",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-parent-1915.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "76fe9fd7face2f84c00736b017f4c243bfb5e6f82a6c518e090d0f14daec035e"
+    },
+    {
+      "label": "write-save-materialized-candidate-1915",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--steps",
+        "1915",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-1915.a",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/list.p"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "label": "inert-parent-o2-save-materialized-candidate-1915",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-1915-inert-parent-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-1915.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-o2-save-materialized-candidate-1915",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-1915.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "76fe9fd7face2f84c00736b017f4c243bfb5e6f82a6c518e090d0f14daec035e"
+    },
+    {
+      "label": "inert-parent-san-save-materialized-candidate-1915",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-1915-inert-parent-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-1915.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-parent-san-save-materialized-candidate-1915",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-1915.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "76fe9fd7face2f84c00736b017f4c243bfb5e6f82a6c518e090d0f14daec035e"
+    },
+    {
+      "label": "inert-candidate-o2-save-materialized-candidate-1915",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-1915-inert-candidate-o2.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-1915.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-o2-save-materialized-candidate-1915",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-1915.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "76fe9fd7face2f84c00736b017f4c243bfb5e6f82a6c518e090d0f14daec035e"
+    },
+    {
+      "label": "inert-candidate-san-save-materialized-candidate-1915",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "--steps",
+        "0",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-1915-inert-candidate-san.a",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-1915.a"
+      ],
+      "exit": 3,
+      "expected_exit": 3,
+      "censored": false,
+      "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+    },
+    {
+      "label": "resume-candidate-san-save-materialized-candidate-1915",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-san/pointer-check",
+        "--load",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004/save-materialized-candidate-1915.a"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "censored": false,
+      "log_sha256": "76fe9fd7face2f84c00736b017f4c243bfb5e6f82a6c518e090d0f14daec035e"
+    }
+  ],
+  "unexpected_command_failures": 0,
+  "six_fresh_accepted_completed_fuels": {
+    "list": 1915,
+    "imported-local-sorted": 956507,
+    "trees4": 2318248,
+    "trees16": 7608511,
+    "trees64": 29780510,
+    "trees400": 183507626
+  },
+  "historical_E25_expected_fuels_retained": {
+    "list": 1915,
+    "imported-local-sorted": 761848,
+    "trees4": 2318248,
+    "trees16": 7608511,
+    "trees64": 29780510,
+    "trees400": 183507626
+  },
+  "all_parent_candidate_completed_fuels_equal": true,
+  "public_profile_image_pairs": [
+    {
+      "profile": "--save",
+      "cut": 0,
+      "parent_sha256": "6a5c01a48dabbbf27cfebcc3bbe4428a30ea5c818dd47824cbd70724b7cf5577",
+      "candidate_sha256": "6a5c01a48dabbbf27cfebcc3bbe4428a30ea5c818dd47824cbd70724b7cf5577",
+      "equal": true
+    },
+    {
+      "profile": "--save",
+      "cut": 1,
+      "parent_sha256": "6a5c01a48dabbbf27cfebcc3bbe4428a30ea5c818dd47824cbd70724b7cf5577",
+      "candidate_sha256": "6a5c01a48dabbbf27cfebcc3bbe4428a30ea5c818dd47824cbd70724b7cf5577",
+      "equal": true
+    },
+    {
+      "profile": "--save",
+      "cut": 100,
+      "parent_sha256": "2480cca9513b064a4e1f56c198e9f71acbada3865a95ba463a7855b97bea734b",
+      "candidate_sha256": "2480cca9513b064a4e1f56c198e9f71acbada3865a95ba463a7855b97bea734b",
+      "equal": true
+    },
+    {
+      "profile": "--save",
+      "cut": 957,
+      "parent_sha256": "87822c1e831623b3294b3a287c824113d1377dc84f4a57a5e82f44570ebf740f",
+      "candidate_sha256": "87822c1e831623b3294b3a287c824113d1377dc84f4a57a5e82f44570ebf740f",
+      "equal": true
+    },
+    {
+      "profile": "--save",
+      "cut": 1914,
+      "parent_sha256": "87822c1e831623b3294b3a287c824113d1377dc84f4a57a5e82f44570ebf740f",
+      "candidate_sha256": "87822c1e831623b3294b3a287c824113d1377dc84f4a57a5e82f44570ebf740f",
+      "equal": true
+    },
+    {
+      "profile": "--save",
+      "cut": 1915,
+      "parent_sha256": "87822c1e831623b3294b3a287c824113d1377dc84f4a57a5e82f44570ebf740f",
+      "candidate_sha256": "87822c1e831623b3294b3a287c824113d1377dc84f4a57a5e82f44570ebf740f",
+      "equal": true
+    },
+    {
+      "profile": "--save-materialized",
+      "cut": 0,
+      "parent_sha256": "6a5c01a48dabbbf27cfebcc3bbe4428a30ea5c818dd47824cbd70724b7cf5577",
+      "candidate_sha256": "6a5c01a48dabbbf27cfebcc3bbe4428a30ea5c818dd47824cbd70724b7cf5577",
+      "equal": true
+    },
+    {
+      "profile": "--save-materialized",
+      "cut": 1,
+      "parent_sha256": "6a5c01a48dabbbf27cfebcc3bbe4428a30ea5c818dd47824cbd70724b7cf5577",
+      "candidate_sha256": "6a5c01a48dabbbf27cfebcc3bbe4428a30ea5c818dd47824cbd70724b7cf5577",
+      "equal": true
+    },
+    {
+      "profile": "--save-materialized",
+      "cut": 100,
+      "parent_sha256": "2480cca9513b064a4e1f56c198e9f71acbada3865a95ba463a7855b97bea734b",
+      "candidate_sha256": "2480cca9513b064a4e1f56c198e9f71acbada3865a95ba463a7855b97bea734b",
+      "equal": true
+    },
+    {
+      "profile": "--save-materialized",
+      "cut": 957,
+      "parent_sha256": "af36f96cfda1a6c9b2304d75e7a3e422129753ca1458f12fe714d7a1b0f97cd1",
+      "candidate_sha256": "af36f96cfda1a6c9b2304d75e7a3e422129753ca1458f12fe714d7a1b0f97cd1",
+      "equal": true
+    },
+    {
+      "profile": "--save-materialized",
+      "cut": 1914,
+      "parent_sha256": "c16017e5a3b379a43d3d678110236ea72ce648db1a0b891a9e93f61d5b40a7f4",
+      "candidate_sha256": "c16017e5a3b379a43d3d678110236ea72ce648db1a0b891a9e93f61d5b40a7f4",
+      "equal": true
+    },
+    {
+      "profile": "--save-materialized",
+      "cut": 1915,
+      "parent_sha256": "9807e22a72442798d054b803387eabb64472bf7ffe43d2b1702444f72939b105",
+      "candidate_sha256": "9807e22a72442798d054b803387eabb64472bf7ffe43d2b1702444f72939b105",
+      "equal": true
+    }
+  ],
+  "paired_byte_failures_unwaived": 0,
+  "inert_rows": 96,
+  "inert_byte_failures_unwaived": 0,
+  "all96_public_profile_resume_verdict_fuels_equal_between_readers_and_writers": true,
+  "all_source_tool_fixture_binary_pins_exact_after": true,
+  "all_launched_children_reaped": true,
+  "no_time_RSS_metrics_or_collector": true,
+  "runtime_READY": false,
+  "limits": [
+    "Same six complete AP proof inputs/argv suffixes as original cost request; independently observed accepted fuels, no fuel-policy/assertion edits.",
+    "Compact default and explicit materialized images preserved at six list prefixes, four O2/SAN inert/read consumers each; every byte difference remains failed.",
+    "Public saves preserve recomputable inputs/available typed results, not full machine checkpoints. Raw machine splits are separately tested.",
+    "Original strict3 and all historical byte/observer/SAN/setup/censored failures remain unwaived; no timing grant, promotion or full Goal completion."
+  ]
+}

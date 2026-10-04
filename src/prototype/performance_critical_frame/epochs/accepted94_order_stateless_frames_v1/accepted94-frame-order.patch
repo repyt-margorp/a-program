@@ -1,0 +1,128 @@
+--- a/src/eval.c
++++ b/src/eval.c
+@@ -75,7 +75,9 @@
+ 	const struct pg_eval_continuation *continuation, const void *state)
+ {
+ 	if (!machine->output || !continuation || !continuation->resume || !value.term) return -1;
+-	struct pg_eval_frame *frame = pg_alloc(&machine->temporary, sizeof(*frame));
++	struct pg_eval_frame *frame = machine->free_frames;
++	if (frame) machine->free_frames = frame->parent;
++	else frame = pg_alloc(&machine->temporary, sizeof(*frame));
+ 	if (!frame) return -1;
+ 	*frame = (struct pg_eval_frame){.caller = machine->current, .arguments = machine->arguments,
+ 		.target = target, .continuation = continuation, .state = state, .parent = machine->frames, .cursor = machine->arguments};
+@@ -117,6 +119,16 @@
+ 	(void)answer;
+ 	(void)state;
+ 	return -1; /* The descriptor is interpreted by resume_frame, never called. */
++}
++
++static void retire_frame(struct pg_eval *machine, struct pg_eval_frame *frame)
++{
++	/* Opaque callback state can borrow inline fields beyond this invocation. */
++	if (frame->state) return;
++	/* The callback has returned; its state and captured delivery are no longer
++	 * borrowed from this frame. Retained closures keep their own arena links. */
++	*frame = (struct pg_eval_frame){.parent = machine->free_frames};
++	machine->free_frames = frame;
+ }
+ 
+ static int resume_frame(struct pg_eval *machine)
+@@ -135,6 +147,7 @@
+ 		if (result != 2) {
+ 			/* Restored empty frames can still own decoded readback scratch. */
+ 			pg_materialize_destroy(&frame->answer);
++			retire_frame(machine, frame);
+ 			return result > 1 ? -1 : result;
+ 		}
+ 		/* A declined head leaves its caller unchanged. Resume charged readback
+@@ -165,6 +178,7 @@
+ 	machine->frames = frame->parent;
+ 	machine->head_ready = 0;
+ 	pg_materialize_destroy(&frame->answer);
++	/* Materialized callbacks keep their original arena-lifetime contract. */
+ 	return (head ? head->fallback : frame->continuation)->resume(machine, answer, frame->state);
+ }
+ 
+@@ -273,6 +287,7 @@
+ int pg_readback_index(struct readback_context *context, struct readback_entry *entry)
+ {
+ 	if (reify_find(context, entry->input)) return -1;
++	entry->order = context->results.count;
+ 	return pg_index_insert(&context->results, &entry->index, reify_hash(entry->input));
+ }
+ 
+@@ -290,6 +305,7 @@
+ 	memset(entry, 0, sizeof(*entry));
+ 	entry->input = closure;
+ 	entry->cursor = closure.environment;
++	entry->order = context->results.count;
+ 	if (pg_index_insert(&context->results, &entry->index, reify_hash(closure)) != 0) return NULL;
+ 	if (!closure.environment) entry->result = closure.term;
+ 	else {
+@@ -831,6 +847,7 @@
+ 	job->certificate = certificate;
+ 	pg_materialize_destroy(&job->output);
+ 	pg_graph_destroy(&job->machine.temporary);
++	job->machine.free_frames = NULL;
+ 	job->machine.current = (struct pg_closure){certificate->target, NULL};
+ 	job->machine.arguments = NULL;
+ 	return PG_EVAL_WHNF;
+--- a/src/eval.h
++++ b/src/eval.h
+@@ -28,12 +28,14 @@
+ 	struct pg_closure current;
+ 	const struct pg_argument *arguments;
+ 	enum pg_eval_status status;
++	int head_ready;
+ 	uint64_t steps;
+ 	/* Optional fixed semantic dispatcher. NULL preserves beta-only policy. */
+ 	int (*dispatch)(struct pg_eval *machine);
+ 	struct pg_graph *output;
+ 	struct pg_eval_frame *frames;
+-	int head_ready;
++	/* Stateless head frames, after their existing callback cleanup. */
++	struct pg_eval_frame *free_frames;
+ 	struct pg_eval_task *task;
+ };
+ 
+--- a/src/eval_internal.h
++++ b/src/eval_internal.h
+@@ -12,6 +12,8 @@
+ 	const struct pg_object *binder;
+ 	unsigned stage;
+ 	const struct pg_environment *cursor;
++	/* Creation order; restored entries use their existing wire record order. */
++	size_t order;
+ };
+ struct readback_context {
+ 	struct pg_graph *output;
+--- a/src/eval_io.c
++++ b/src/eval_io.c
+@@ -217,9 +217,23 @@
+ 	if (pg_dag_init(&entries, readback_child, NULL) || pg_graph_init(&entries.storage)) goto done;
+ 	if (root && pg_dag_add(&entries, root)) goto done;
+ 	/* Earlier arguments may leave reusable results outside the current root. */
+-	for (size_t i = 0; i < context->results.capacity; ++i)
+-		for (const struct pg_index_entry *entry = context->results.buckets[i]; entry; entry = entry->next)
+-			if (pg_dag_add(&entries, entry)) goto done;
++	if (context->results.count) {
++		if (context->results.count > SIZE_MAX / sizeof(struct readback_entry *)) goto done;
++		const struct readback_entry **ordered = pg_alloc(&entries.storage, context->results.count * sizeof(*ordered));
++		if (!ordered) goto done;
++		memset(ordered, 0, context->results.count * sizeof(*ordered));
++		for (size_t i = 0; i < context->results.capacity; ++i) {
++			for (const struct pg_index_entry *index = context->results.buckets[i]; index; index = index->next) {
++				const struct readback_entry *entry = (const struct readback_entry *)index;
++				if (entry->order >= context->results.count || ordered[entry->order]) goto done;
++				ordered[entry->order] = entry;
++			}
++		}
++		/* Keep all answers; pointer buckets only serve runtime lookup. Restored
++		 * record order is already child-before-parent and preserves discovery. */
++		for (size_t i = 0; i < context->results.count; ++i)
++			if (!ordered[i] || pg_dag_add(&entries, ordered[i])) goto done;
++	}
+ 	if (extra_count > SIZE_MAX / sizeof(struct pg_eval_configuration)) goto done;
+ 	if (entries.count > (SIZE_MAX / sizeof(struct pg_eval_configuration) - extra_count) / 4) goto done;
+ 	size_t total = 4 * entries.count + extra_count;

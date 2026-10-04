@@ -1,0 +1,1314 @@
+{
+  "terminal": true,
+  "sources": {
+    "parent": "930997b62db85814718d0d5ac151f392bfae243a447d5d0d5f2adbde66cba5ae",
+    "candidate": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907"
+  },
+  "records": [
+    {
+      "label": "build-parent-o2-core_test",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/accepted_verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/parent",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/parent/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-o2",
+        "REPO=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures",
+        "TESTS=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-o2/core_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "1b6476d96b63e7ed406a560b236fdc1587cbedd6e89a8af132e2cad571d2d429"
+    },
+    {
+      "label": "run-parent-o2-core_test",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-o2/core_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "ad16b0ada5d3856e14d12b1a282d142cde34521bcabd5a1dce47c4b6914550c2"
+    },
+    {
+      "label": "build-parent-o2-iadt_test",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/accepted_verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/parent",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/parent/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-o2",
+        "REPO=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures",
+        "TESTS=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-o2/iadt_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "d2933cbe066fce2aa1107dd5fdb77f6753db3194b989d0b30ec865e03d7277d7"
+    },
+    {
+      "label": "run-parent-o2-iadt_test",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-o2/iadt_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "4f4fae66b30deb1779f33a9e634b2fb139b3b70fd908e2c64c2bb5b23974514c"
+    },
+    {
+      "label": "build-parent-o2-synthesis_test",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/accepted_verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/parent",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/parent/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-o2",
+        "REPO=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures",
+        "TESTS=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-o2/synthesis_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "43078553623059e122584671677886a3f144ba665af82e74f3c3f86ffcb1821e"
+    },
+    {
+      "label": "run-parent-o2-synthesis_test",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-o2/synthesis_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "e68beba5fc2c6f65f590f3a0179e1887872cf5852fe47b562b1491e53af861de"
+    },
+    {
+      "label": "build-parent-o2-eval_io_test",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/accepted_verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/parent",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/parent/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-o2",
+        "REPO=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures",
+        "TESTS=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-o2/eval_io_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "39055fdbec7f69dad8482a0004435ad534ae9696094c262590b446b93c98cc62"
+    },
+    {
+      "label": "run-parent-o2-eval_io_test",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests/eval_io.sh",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-o2/eval_io_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "a7478709b3d6fa5a35c6435b8191e91eb943c08e320b4196027a77542da70b75"
+    },
+    {
+      "label": "build-parent-o2-source_io_test",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/accepted_verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/parent",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/parent/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-o2",
+        "REPO=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures",
+        "TESTS=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-o2/source_io_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "24aa980994392173c3270f5fc207ac9a07f7fef8d734d63d0512e820ad92cfe1"
+    },
+    {
+      "label": "run-parent-o2-source_io_test",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests/source_io.sh",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-o2/source_io_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "ab9f5495573feafadb68b3b741619f0bef57df94c2cb1b36414c92a43cf6af46"
+    },
+    {
+      "label": "build-parent-o2-identity_io_test",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/accepted_verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/parent",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/parent/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-o2",
+        "REPO=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures",
+        "TESTS=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-o2/identity_io_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "29d67a59de84881c4583a5965af7026bf3e0e733d12be1c25b44202370372b3e"
+    },
+    {
+      "label": "run-parent-o2-identity_io_test",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests/identity_io.sh",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-o2/identity_io_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "34aa3d9588db085e6fc93f0bcb20ed8229543498f1d916558d67ef5a6eccf96f"
+    },
+    {
+      "label": "build-parent-o2-host_test",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/accepted_verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/parent",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/parent/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-o2",
+        "REPO=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures",
+        "TESTS=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-o2/host_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "e8468299a3e8de4372346acb52b6e307d26a4431538ab11ea6501ca98f7570ff"
+    },
+    {
+      "label": "run-parent-o2-host_test",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-o2/host_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "470e8667d93d4de62d46caf36b8e41423d2c54d401aed928b0dab16273390299"
+    },
+    {
+      "label": "build-parent-o2-execution_test",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/accepted_verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/parent",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/parent/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-o2",
+        "REPO=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures",
+        "TESTS=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-o2/execution_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "1374403e3bca0fc642b759478cf945b256e3150dd19e7befd298e8cbbe33ae86"
+    },
+    {
+      "label": "run-parent-o2-execution_test",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-o2/execution_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "6f6ee1efdb27f08e88dab604929442ce174fbafd6be89208bbf69f7dcadb1e70"
+    },
+    {
+      "label": "build-parent-o2-identity_test",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/accepted_verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/parent",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/parent/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-o2",
+        "REPO=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures",
+        "TESTS=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-o2/identity_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "d430d204bec83efcca3efaba0c638b9cccfa5d0e3152f3bb385fd1a075af8f67"
+    },
+    {
+      "label": "run-parent-o2-identity_test",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-o2/identity_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "e3cace691cbc9183f39ef0dfe5936505aee97bc2950b09daa52d9619ad70ab8e"
+    },
+    {
+      "label": "build-parent-o2-program_test",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/accepted_verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/parent",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/parent/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-o2",
+        "REPO=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures",
+        "TESTS=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-o2/program_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "0a66b888e09ab5cd92b5c6feb8bb9f9e3a3f7884df367aa1da14f878ccaab58b"
+    },
+    {
+      "label": "image-cli-profiles-parent-o2",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests/image_cli.sh",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-o2/source_io_test",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-o2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-o2/program_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "349eba6bb6c18620666f0ee9b54f53997ca36c2f882ab55b4f065542abdce2a3"
+    },
+    {
+      "label": "build-candidate-o2-core_test",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/accepted_verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/candidate",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/candidate/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-o2",
+        "REPO=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures",
+        "TESTS=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-o2/core_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "dc15da0aef5a7eb2b6390d5acb0d758fb5f7a6ed2900619905cc7e0d893dce6c"
+    },
+    {
+      "label": "run-candidate-o2-core_test",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-o2/core_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "ad16b0ada5d3856e14d12b1a282d142cde34521bcabd5a1dce47c4b6914550c2"
+    },
+    {
+      "label": "build-candidate-o2-iadt_test",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/accepted_verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/candidate",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/candidate/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-o2",
+        "REPO=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures",
+        "TESTS=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-o2/iadt_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "213b51a541113faa810e9ed327001e3cf40798e22afba7efdf4b017f8a76ad2c"
+    },
+    {
+      "label": "run-candidate-o2-iadt_test",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-o2/iadt_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "4f4fae66b30deb1779f33a9e634b2fb139b3b70fd908e2c64c2bb5b23974514c"
+    },
+    {
+      "label": "build-candidate-o2-synthesis_test",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/accepted_verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/candidate",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/candidate/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-o2",
+        "REPO=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures",
+        "TESTS=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-o2/synthesis_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "e85fdb6940db01c0b84c1ad849fb9a33ada5ed2d3c46274d107eeb880cf7168d"
+    },
+    {
+      "label": "run-candidate-o2-synthesis_test",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-o2/synthesis_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "e68beba5fc2c6f65f590f3a0179e1887872cf5852fe47b562b1491e53af861de"
+    },
+    {
+      "label": "build-candidate-o2-eval_io_test",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/accepted_verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/candidate",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/candidate/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-o2",
+        "REPO=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures",
+        "TESTS=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-o2/eval_io_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "96dc64af8df1ae5ed371a9af835be935c0c81faa6eda0984af45d288b535dd6d"
+    },
+    {
+      "label": "run-candidate-o2-eval_io_test",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests/eval_io.sh",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-o2/eval_io_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "a7478709b3d6fa5a35c6435b8191e91eb943c08e320b4196027a77542da70b75"
+    },
+    {
+      "label": "build-candidate-o2-source_io_test",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/accepted_verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/candidate",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/candidate/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-o2",
+        "REPO=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures",
+        "TESTS=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-o2/source_io_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "cd884b2f4eeec30d4ed81f4b2dd107b8e363a04226c60ec6ab96cba3eec07a12"
+    },
+    {
+      "label": "run-candidate-o2-source_io_test",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests/source_io.sh",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-o2/source_io_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "ab9f5495573feafadb68b3b741619f0bef57df94c2cb1b36414c92a43cf6af46"
+    },
+    {
+      "label": "build-candidate-o2-identity_io_test",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/accepted_verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/candidate",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/candidate/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-o2",
+        "REPO=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures",
+        "TESTS=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-o2/identity_io_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "06b8ee0ea3bcaa4dbf2a5d38a55292d7f06b9f4f1b9e583ceec40e12aca1e422"
+    },
+    {
+      "label": "run-candidate-o2-identity_io_test",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests/identity_io.sh",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-o2/identity_io_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "34aa3d9588db085e6fc93f0bcb20ed8229543498f1d916558d67ef5a6eccf96f"
+    },
+    {
+      "label": "build-candidate-o2-host_test",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/accepted_verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/candidate",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/candidate/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-o2",
+        "REPO=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures",
+        "TESTS=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-o2/host_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "3055c606be1c466a9e490e8343c585642d59cdb24d4db7d2731364fa51ef7bac"
+    },
+    {
+      "label": "run-candidate-o2-host_test",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-o2/host_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "470e8667d93d4de62d46caf36b8e41423d2c54d401aed928b0dab16273390299"
+    },
+    {
+      "label": "build-candidate-o2-execution_test",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/accepted_verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/candidate",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/candidate/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-o2",
+        "REPO=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures",
+        "TESTS=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-o2/execution_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "1911a19d6204e6bd701c93f60fbe796734820de37edfb296c47e8c1aa04ec5d4"
+    },
+    {
+      "label": "run-candidate-o2-execution_test",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-o2/execution_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "6f6ee1efdb27f08e88dab604929442ce174fbafd6be89208bbf69f7dcadb1e70"
+    },
+    {
+      "label": "build-candidate-o2-identity_test",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/accepted_verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/candidate",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/candidate/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-o2",
+        "REPO=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures",
+        "TESTS=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-o2/identity_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "e258a4b00df074bdf27ddfe155702c13218914dee42d91aa1c58ffaa5a0441c4"
+    },
+    {
+      "label": "run-candidate-o2-identity_test",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-o2/identity_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "e3cace691cbc9183f39ef0dfe5936505aee97bc2950b09daa52d9619ad70ab8e"
+    },
+    {
+      "label": "build-candidate-o2-program_test",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/accepted_verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/candidate",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/candidate/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-o2",
+        "REPO=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures",
+        "TESTS=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-o2/program_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "9ecf837c4b5d32f82883763af492937e1a745302308e515ba485f2c38922d0e2"
+    },
+    {
+      "label": "image-cli-profiles-candidate-o2",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests/image_cli.sh",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-o2/source_io_test",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-o2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-o2/program_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "0e149423b0921badbc9e4cae8148f2cb826c8e6711944dd81d4b6700c9dd3fc4"
+    },
+    {
+      "label": "build-parent-san-core_test",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/accepted_verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/parent",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/parent/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-san",
+        "REPO=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures",
+        "TESTS=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-san/core_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "976d5345b20aa502f64f3477939c8e52fa418889633a82d8a34eb7a01eb8b22d"
+    },
+    {
+      "label": "run-parent-san-core_test",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-san/core_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "ad16b0ada5d3856e14d12b1a282d142cde34521bcabd5a1dce47c4b6914550c2"
+    },
+    {
+      "label": "build-parent-san-iadt_test",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/accepted_verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/parent",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/parent/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-san",
+        "REPO=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures",
+        "TESTS=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-san/iadt_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "6e8e746788fc8ba723913f945a826fde76fa71d9c71a01b02d370cfc8c571607"
+    },
+    {
+      "label": "run-parent-san-iadt_test",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-san/iadt_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "4f4fae66b30deb1779f33a9e634b2fb139b3b70fd908e2c64c2bb5b23974514c"
+    },
+    {
+      "label": "build-parent-san-synthesis_test",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/accepted_verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/parent",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/parent/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-san",
+        "REPO=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures",
+        "TESTS=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-san/synthesis_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "47a2ca9bc4d03e8dc8f5b6cae7311280b8ad8ea20044a73a9eb35777589be297"
+    },
+    {
+      "label": "run-parent-san-synthesis_test",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-san/synthesis_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "e68beba5fc2c6f65f590f3a0179e1887872cf5852fe47b562b1491e53af861de"
+    },
+    {
+      "label": "build-parent-san-eval_io_test",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/accepted_verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/parent",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/parent/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-san",
+        "REPO=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures",
+        "TESTS=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-san/eval_io_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "8be4d05a69a88c31c727364828e39119ddaa765ac31731c266edeee9b421aa11"
+    },
+    {
+      "label": "run-parent-san-eval_io_test",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests/eval_io.sh",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-san/eval_io_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "a7478709b3d6fa5a35c6435b8191e91eb943c08e320b4196027a77542da70b75"
+    },
+    {
+      "label": "build-parent-san-source_io_test",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/accepted_verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/parent",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/parent/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-san",
+        "REPO=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures",
+        "TESTS=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-san/source_io_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "2532dd98533eaa8cb5922f8cc8190ce7ee202d5e8327da02370ca60d06162279"
+    },
+    {
+      "label": "run-parent-san-source_io_test",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests/source_io.sh",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-san/source_io_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "ab9f5495573feafadb68b3b741619f0bef57df94c2cb1b36414c92a43cf6af46"
+    },
+    {
+      "label": "build-parent-san-identity_io_test",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/accepted_verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/parent",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/parent/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-san",
+        "REPO=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures",
+        "TESTS=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-san/identity_io_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "a9f08b4b993721c10e4af06cc0407bf4a604193ea052bd935af2559b94b539e3"
+    },
+    {
+      "label": "run-parent-san-identity_io_test",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests/identity_io.sh",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-san/identity_io_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "34aa3d9588db085e6fc93f0bcb20ed8229543498f1d916558d67ef5a6eccf96f"
+    },
+    {
+      "label": "build-parent-san-host_test",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/accepted_verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/parent",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/parent/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-san",
+        "REPO=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures",
+        "TESTS=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-san/host_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "32481f4ef88854ac44823333abcf41783a249b3acd10f42e3dcf651c757f67e9"
+    },
+    {
+      "label": "run-parent-san-host_test",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-san/host_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "470e8667d93d4de62d46caf36b8e41423d2c54d401aed928b0dab16273390299"
+    },
+    {
+      "label": "build-parent-san-execution_test",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/accepted_verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/parent",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/parent/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-san",
+        "REPO=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures",
+        "TESTS=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-san/execution_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "2ca09d574b152d12d89918c82a1dffab24790a3ecbc2c8078b93f97ed8c444ba"
+    },
+    {
+      "label": "run-parent-san-execution_test",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-san/execution_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "6f6ee1efdb27f08e88dab604929442ce174fbafd6be89208bbf69f7dcadb1e70"
+    },
+    {
+      "label": "build-parent-san-identity_test",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/accepted_verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/parent",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/parent/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-san",
+        "REPO=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures",
+        "TESTS=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-san/identity_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "9a99a445b746b040b068f7aea0001d5a7cd0808ca357fafdb189c01a7adada6c"
+    },
+    {
+      "label": "run-parent-san-identity_test",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-san/identity_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "e3cace691cbc9183f39ef0dfe5936505aee97bc2950b09daa52d9619ad70ab8e"
+    },
+    {
+      "label": "build-parent-san-program_test",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/accepted_verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/parent",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/parent/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-san",
+        "REPO=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures",
+        "TESTS=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-san/program_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "3a054831cec0f98b3ef0cf8dfe8f11cf5678ebcc9bd6cd44d80398316cf3c473"
+    },
+    {
+      "label": "image-cli-profiles-parent-san",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests/image_cli.sh",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-san/source_io_test",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-san/pointer-check",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-parent-san/program_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "c3611c10f833c943b444a0510539db303e6e3db5e82322e8db59c1746b09ae54"
+    },
+    {
+      "label": "build-candidate-san-core_test",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/accepted_verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/candidate",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/candidate/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-san",
+        "REPO=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures",
+        "TESTS=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-san/core_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "f7aaab97b5cb4695096fc2dd614f67b300ef975449a849210431d6d42d3e18df"
+    },
+    {
+      "label": "run-candidate-san-core_test",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-san/core_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "ad16b0ada5d3856e14d12b1a282d142cde34521bcabd5a1dce47c4b6914550c2"
+    },
+    {
+      "label": "build-candidate-san-iadt_test",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/accepted_verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/candidate",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/candidate/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-san",
+        "REPO=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures",
+        "TESTS=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-san/iadt_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "ade801a8d95599e865e5dec462f06796a2e9e4655231a6604df91e3f283bec43"
+    },
+    {
+      "label": "run-candidate-san-iadt_test",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-san/iadt_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "4f4fae66b30deb1779f33a9e634b2fb139b3b70fd908e2c64c2bb5b23974514c"
+    },
+    {
+      "label": "build-candidate-san-synthesis_test",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/accepted_verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/candidate",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/candidate/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-san",
+        "REPO=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures",
+        "TESTS=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-san/synthesis_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "2fae39f7bdd20a688d971758262e005b61867640671eb2d0f0c96dc73c7867e6"
+    },
+    {
+      "label": "run-candidate-san-synthesis_test",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-san/synthesis_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "e68beba5fc2c6f65f590f3a0179e1887872cf5852fe47b562b1491e53af861de"
+    },
+    {
+      "label": "build-candidate-san-eval_io_test",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/accepted_verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/candidate",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/candidate/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-san",
+        "REPO=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures",
+        "TESTS=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-san/eval_io_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "449501a556afa70edf649576abd543e024e04cbe3dd2a64ee7260c3c28337041"
+    },
+    {
+      "label": "run-candidate-san-eval_io_test",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests/eval_io.sh",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-san/eval_io_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "a7478709b3d6fa5a35c6435b8191e91eb943c08e320b4196027a77542da70b75"
+    },
+    {
+      "label": "build-candidate-san-source_io_test",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/accepted_verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/candidate",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/candidate/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-san",
+        "REPO=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures",
+        "TESTS=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-san/source_io_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "fdba06879d05263c95071e9136b7892314db1c43f68d43c2a7ebbf7cceecede2"
+    },
+    {
+      "label": "run-candidate-san-source_io_test",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests/source_io.sh",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-san/source_io_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "ab9f5495573feafadb68b3b741619f0bef57df94c2cb1b36414c92a43cf6af46"
+    },
+    {
+      "label": "build-candidate-san-identity_io_test",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/accepted_verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/candidate",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/candidate/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-san",
+        "REPO=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures",
+        "TESTS=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-san/identity_io_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "41ea8188646b0c1b96946dec9c3e35efd9d866e2827ef99ba3220b3e22d17590"
+    },
+    {
+      "label": "run-candidate-san-identity_io_test",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests/identity_io.sh",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-san/identity_io_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "34aa3d9588db085e6fc93f0bcb20ed8229543498f1d916558d67ef5a6eccf96f"
+    },
+    {
+      "label": "build-candidate-san-host_test",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/accepted_verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/candidate",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/candidate/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-san",
+        "REPO=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures",
+        "TESTS=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-san/host_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "dd40c8d1579f04f397324b7cddca5ef1840759d7543207ad97aa465881da425c"
+    },
+    {
+      "label": "run-candidate-san-host_test",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-san/host_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "470e8667d93d4de62d46caf36b8e41423d2c54d401aed928b0dab16273390299"
+    },
+    {
+      "label": "build-candidate-san-execution_test",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/accepted_verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/candidate",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/candidate/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-san",
+        "REPO=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures",
+        "TESTS=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-san/execution_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "573c3b9d72970f7c7c0f1e86003738314a522bcf23035dc0cdef0d698f9829cb"
+    },
+    {
+      "label": "run-candidate-san-execution_test",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-san/execution_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "6f6ee1efdb27f08e88dab604929442ce174fbafd6be89208bbf69f7dcadb1e70"
+    },
+    {
+      "label": "build-candidate-san-identity_test",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/accepted_verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/candidate",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/candidate/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-san",
+        "REPO=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures",
+        "TESTS=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-san/identity_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "181b3ecf8f2434fb4ee3e8bcab05d94d4627726cfe787e8257d5edef283fcbc6"
+    },
+    {
+      "label": "run-candidate-san-identity_test",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-san/identity_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "e3cace691cbc9183f39ef0dfe5936505aee97bc2950b09daa52d9619ad70ab8e"
+    },
+    {
+      "label": "build-candidate-san-program_test",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/accepted_verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/candidate",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004/candidate/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-san",
+        "REPO=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures",
+        "TESTS=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-san/program_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "c303ef550e4fae3791290379a8d7a83fd245908dd2fe0fe7468e752ea2a5daa3"
+    },
+    {
+      "label": "image-cli-profiles-candidate-san",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests/image_cli.sh",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-san/source_io_test",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-san/pointer-check",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004/build-candidate-san/program_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "46933e3579e36846dc35ef3edfc89dc9935243b501998bf7b857ce31a8d31afe"
+    }
+  ],
+  "failed": 0,
+  "same_flavor_outputs": [
+    {
+      "test": "core_test",
+      "flavor": "o2",
+      "equal": true
+    },
+    {
+      "test": "core_test",
+      "flavor": "san",
+      "equal": true
+    },
+    {
+      "test": "iadt_test",
+      "flavor": "o2",
+      "equal": true
+    },
+    {
+      "test": "iadt_test",
+      "flavor": "san",
+      "equal": true
+    },
+    {
+      "test": "synthesis_test",
+      "flavor": "o2",
+      "equal": true
+    },
+    {
+      "test": "synthesis_test",
+      "flavor": "san",
+      "equal": true
+    },
+    {
+      "test": "eval_io_test",
+      "flavor": "o2",
+      "equal": true
+    },
+    {
+      "test": "eval_io_test",
+      "flavor": "san",
+      "equal": true
+    },
+    {
+      "test": "source_io_test",
+      "flavor": "o2",
+      "equal": true
+    },
+    {
+      "test": "source_io_test",
+      "flavor": "san",
+      "equal": true
+    },
+    {
+      "test": "identity_io_test",
+      "flavor": "o2",
+      "equal": true
+    },
+    {
+      "test": "identity_io_test",
+      "flavor": "san",
+      "equal": true
+    },
+    {
+      "test": "host_test",
+      "flavor": "o2",
+      "equal": true
+    },
+    {
+      "test": "host_test",
+      "flavor": "san",
+      "equal": true
+    },
+    {
+      "test": "execution_test",
+      "flavor": "o2",
+      "equal": true
+    },
+    {
+      "test": "execution_test",
+      "flavor": "san",
+      "equal": true
+    },
+    {
+      "test": "identity_test",
+      "flavor": "o2",
+      "equal": true
+    },
+    {
+      "test": "identity_test",
+      "flavor": "san",
+      "equal": true
+    }
+  ],
+  "all18_outputs_equal": true,
+  "all_source_fixture_tool_binary_pins_exact_after": true,
+  "all_launched_children_reaped": true,
+  "runtime_READY": false,
+  "limits": [
+    "Exact accepted94 committed tests and source; no adapter/assertion/owner or accepted edits.",
+    "Core/IADT/Synthesis/eval-IO/full SourceIO/IdentityIO/host/execution/identity O2 and sanitizer consumers.",
+    "Original image_cli.sh covers compact default/alias/REPL, explicit materialized inert byte checks, negative/partial images and resume readback; generated shell temporary images follow the original cleanup policy.",
+    "Excluded prototype checkpoint modules are not imported into accepted qualification; old seven-checkpoint evidence remains separately attributed.",
+    "Every historical failure remains unwaived; preserved raw byte-pair/cuts and completed-task fuels are separate.",
+    "No actual RSS/time collector, cost grant, runtime publication, accepted promotion or Goal completion."
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "terminal": true,
+  "source128": "4de98c378bce942b016812762c7f93aa03debed98a48cd9eb3ad5ccbd3efec53",
+  "record": {
+    "argv": [
+      "make",
+      "-j1",
+      "-k",
+      "-i",
+      "-f",
+      "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/current_e25_order_stateless_frames_v1_acceptance_v2_20261004/trial/src/Makefile",
+      "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+      "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+      "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/current_e25_order_stateless_frames_v1_full_acceptance_20261004/build-candidate-o2",
+      "SHELL=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_verification/make_shell.py",
+      "check-acceptance"
+    ],
+    "cwd": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/current_e25_order_stateless_frames_v1_acceptance_v2_20261004/trial",
+    "exit": -9,
+    "censored": true,
+    "log_sha256": "d578e22ff2a18070aed026aefd049025927887ebe1894e77b8c0060f02d921ba",
+    "start_UTC": "2026-10-04T11:14:12.941750+00:00",
+    "terminal_UTC": "2026-10-04T11:34:12.975289+00:00"
+  },
+  "recorded_recipes": 376,
+  "failed_recipes": 0,
+  "failed_recipe_records": [],
+  "passed": false,
+  "all_pins_exact_after": true,
+  "all_launched_children_reaped": true,
+  "initial_missing_fixture_preflight_preserved": true,
+  "all_original_failures_retained": true,
+  "limits": [
+    "Full current-candidate check-acceptance with byte-exact existing fixtures; per-recipe exits authoritative, aggregate Make zero alone is not acceptance.",
+    "No fixture/assertion/adapter/owner/runtime edits and no frozen51/cost6/binary/pin changes.",
+    "New failed recipes require original current-parent controls; no automatic baseline waiver or full current-Main claim.",
+    "No timing/RSS collector, exclusive grant, accepted promotion or Goal completion."
+  ]
+}

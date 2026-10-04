@@ -1,0 +1,39 @@
+{
+  "terminal": true,
+  "source120": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907",
+  "record": {
+    "argv": [
+      "make",
+      "-j1",
+      "-k",
+      "-i",
+      "-f",
+      "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_acceptance_20261004/trial/src/Makefile",
+      "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+      "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+      "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_acceptance_20261004/build-candidate-o2",
+      "SHELL=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_verification/make_shell.py",
+      "check-acceptance"
+    ],
+    "cwd": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_acceptance_20261004/trial",
+    "exit": 0,
+    "censored": false,
+    "log_sha256": "a0af7df7fd486aa9522c04f493f950b2b9ba1f7f9a60f6ad868d175f76d09c24",
+    "start_UTC": "2026-10-04T13:38:27.531838+00:00",
+    "terminal_UTC": "2026-10-04T13:55:26.450204+00:00"
+  },
+  "recorded_recipes": 363,
+  "failed_recipes": 0,
+  "failed_recipe_records": [],
+  "passed": true,
+  "all_pins_exact_after": true,
+  "all_launched_children_reaped": true,
+  "old_E25_1200s_incomplete_run_and_all_original_failures_retained": true,
+  "limits": [
+    "Original accepted94 check-acceptance on exact candidate c206; per-recipe exits authoritative, aggregate Make zero alone is not acceptance.",
+    "No fixture/assertion/adapter/owner/runtime edits; existing preparation seeds byte-exact current O2 binaries in mutable private output.",
+    "Disk-backed output/TMPDIR, correctness-j1 only; coordinate drain before an exclusive benchmark slot.",
+    "New failed recipes require unchanged current-parent controls, not an automatic baseline waiver.",
+    "No timing/RSS collector, accepted edit/promotion/Main action or Goal completion."
+  ]
+}
