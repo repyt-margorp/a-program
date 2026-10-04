@@ -1,0 +1,210 @@
+{
+  "date_UTC": "2026-10-04T11:56:16.338668+00:00",
+  "Main_at_review": "72105f444fab3d272d9992062bba0bdb0cea691c",
+  "notice": "/home/repyt/workspace/a-program-workers/performance/src/prototype/coordination/outbox/performance-critical-accepted94-raw-cuts-20261004.txt",
+  "notice_sha256": "ebcc1de400e612431fceb98279281111a053e1fa4881ded76d9b2f09882172f6",
+  "current_code_basis": "Accepted94a20003/runtime120930997b6 -> prototype four-file120c2063542, patchd9eea6a4. Previous Root exact vector/other116/two Makefile review unchanged.",
+  "Root_static_recomputation": {
+    "date_UTC": "2026-10-04T11:53:58.163570+00:00",
+    "scope": "Fresh hash and raw byte/count recomputation; worker runtime records, no Root runtime rerun.",
+    "focused": {
+      "summary_sha256": "4d6c13805ccdab7de3925bef29cf8c26f04769ff4cdf51fe4fdd21701f83e6dc",
+      "input_pins_sha256": "0bb7315172e8c8afacf686222defd08bc5553159ae408a37f3bd14b7bc4fd080",
+      "input_pins_count": 1442,
+      "pin_mismatches": [],
+      "record_count": 88,
+      "records_sha256": "bb2ab2e3926477971ca6483f8100afe765bff79a57ddc0126a3ca8bcaf5d1282",
+      "all_raw_log_hashes_exact_and_worker_commands0_uncensored": true,
+      "source_pair": {
+        "parent": "930997b62db85814718d0d5ac151f392bfae243a447d5d0d5f2adbde66cba5ae",
+        "candidate": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907"
+      },
+      "unit_outputs_fresh_byte_comparisons_exact": 18
+    },
+    "cuts": {
+      "summary_sha256": "1989935ba780bda2ab647745bc02a61ce48a68c1fe096ad3395df039bdc379b5",
+      "input_pins_sha256": "516e727fcc3e2370242bf19d888eb954f89692dad2f3bf7d2525f53fdeb3b66a",
+      "input_pins_count": 1445,
+      "pin_mismatches": [],
+      "record_count": 2296,
+      "records_sha256": "0f40dd17edb528e3ebd2ef6d475ff14d8b4d3549dfe16d43f1d45ad3185c4791",
+      "all_raw_log_hashes_exact_and_worker_commands0_uncensored": true,
+      "source_pair": {
+        "parent": "930997b62db85814718d0d5ac151f392bfae243a447d5d0d5f2adbde66cba5ae",
+        "candidate": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907"
+      },
+      "paired_image_comparisons_recomputed": 164,
+      "paired_failures_recomputed": {
+        "fold_spine_test": 1,
+        "materialized_fields_test": 19
+      },
+      "paired_totals_by_test": {
+        "fold_spine_test": 67,
+        "materialized_fields_test": 97
+      },
+      "inert_image_comparisons_recomputed": 656,
+      "inert_failures_by_writer_and_flavor_recomputed": {
+        "parent/o2": 19,
+        "parent/san": 17
+      },
+      "inert_totals_by_writer_and_flavor": {
+        "parent/o2": 164,
+        "parent/san": 164,
+        "candidate/o2": 164,
+        "candidate/san": 164
+      },
+      "parent_inert_failure_total": 36,
+      "candidate_inert_failure_total": 0,
+      "comparison_report_hashes": {
+        "byte-pairs.json": "187a827d07cd52e1ae7a12c38d771d85169a77193b63df47892b5c1878a99dc9",
+        "inert-byte-rows.json": "082f5b9963d604e53322234e9d93815d2026c587bfc09d0f3cba60b6a114d6d9",
+        "independent-parent-unit-cut-ranges.json": "c5cfbe304ff1b8058f4c667aa30394437003b699b64170b34d78670d153cdd41"
+      },
+      "independent_parent_cut_ranges": {
+        "counts": {
+          "fold_spine_test": [
+            12,
+            16,
+            13,
+            14,
+            12
+          ],
+          "materialized_fields_test": [
+            29,
+            29,
+            7,
+            5,
+            7,
+            11,
+            9
+          ]
+        },
+        "totals": {
+          "fold_spine_test": [
+            11,
+            15,
+            12,
+            13,
+            11
+          ],
+          "materialized_fields_test": [
+            34,
+            35,
+            12,
+            8,
+            10,
+            14,
+            12
+          ]
+        },
+        "origin": "Unchanged accepted-parent units; all candidate same-flavor outputs equal before separate-process splits.",
+        "old_E25_ranges_unchanged_historical": {
+          "fold": [
+            12,
+            16,
+            13,
+            14,
+            12
+          ],
+          "materialized": [
+            20,
+            20,
+            7,
+            5,
+            7,
+            11,
+            9
+          ]
+        }
+      },
+      "every_parent_inert_and_paired_difference_retained_as_failure": true,
+      "command_families_recomputed": {
+        "write": 328,
+        "read": 1312,
+        "inert": 656
+      },
+      "failure_cut_overlap_recomputed": {
+        "paired_unique": 20,
+        "parent_inert_unique": 21,
+        "shared": 14,
+        "paired_only": [
+          [
+            "fold_spine_test",
+            4,
+            10
+          ],
+          [
+            "materialized_fields_test",
+            0,
+            15
+          ],
+          [
+            "materialized_fields_test",
+            0,
+            17
+          ],
+          [
+            "materialized_fields_test",
+            5,
+            8
+          ],
+          [
+            "materialized_fields_test",
+            6,
+            6
+          ],
+          [
+            "materialized_fields_test",
+            6,
+            7
+          ]
+        ],
+        "parent_inert_only": [
+          [
+            "fold_spine_test",
+            4,
+            9
+          ],
+          [
+            "materialized_fields_test",
+            0,
+            14
+          ],
+          [
+            "materialized_fields_test",
+            0,
+            16
+          ],
+          [
+            "materialized_fields_test",
+            0,
+            21
+          ],
+          [
+            "materialized_fields_test",
+            0,
+            22
+          ],
+          [
+            "materialized_fields_test",
+            1,
+            20
+          ],
+          [
+            "materialized_fields_test",
+            5,
+            9
+          ]
+        ]
+      }
+    }
+  },
+  "worker_execution_scope": "Fresh focused88 commands and all-cut2296 commands completed0 uncensored on source-pinned parent/candidate O2/SAN. Root rehashed inputs/logs and compared stored raw images/18 unit outputs; Root did not rerun these executables.",
+  "Root_assessment": "Candidate own inert resaves are byte-exact0/328 in this current unit cohort, while accepted parent has36/328 failures (O2 nineteen, SAN seventeen). Twenty writer pairs differ (Fold1/materialized19), explicitly failed and unwaived. Paired failures and parent inert failures overlap at14 unique cuts, with6 paired-only and7 inert-only; do not equate every writer difference with an observed parent inert failure or generalize historical cause. Semantic/fuel/zero-budget/SAN command success remains distinct from byte failures.",
+  "remaining": "Current compact-default/explicit-materialized CLI and affected Core/IADT/Synthesis/evalIO/SourceIO/IdentityIO/host/execution/identity consumer gates, fresh completed fuels, joint Job Source composition/downstream C/current publication and matched normal-O2 cost configuration. Worker reports next current consumer gates at j1.",
+  "cost": "No measurement grant, collector or actual peak-RSS/elapsed-time evidence; old E25 cost6 remains deferred. Entry/loader/writer overhead remains in eventual net comparison.",
+  "history": "Old E25 full acceptance1200s Make-9/censored/incomplete and strict3/observer/SAN7/V1/V2/byte/setup/censored failures unwaived.",
+  "READY_accepted_promotion_full_Goal_or_issue_completion": false,
+  "owner_model_Goal_timer_lifecycle_change": false,
+  "new_user_approval": false
+}
