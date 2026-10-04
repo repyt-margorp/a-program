@@ -1,0 +1,91 @@
+diff --git a/src/synthesis.c b/src/synthesis.c
+--- a/src/synthesis.c
++++ b/src/synthesis.c
+@@ -115,6 +115,10 @@
+ 	const struct pg_syntax *syntax;
+ 	const struct pg_source_scope *scope;
+ 	size_t item;
++};
++struct motive_frontier {
++	size_t count, capacity;
++	struct motive_scan items[];
+ };
+ struct motive_lambda {
+ 	const struct pg_evidence *outer, *inner;
+@@ -147,8 +151,7 @@
+ 	struct pg_synthesis_job *converted;
+ 	const struct pg_evidence *function;
+ 	struct motive_demand *demands;
+-	struct motive_scan *scan;
+-	size_t scan_count, scan_capacity;
++	struct motive_frontier *scan;
+ 	int scan_started;
+ 	struct motive_result *result;
+ 	struct match_index_path *paths, *contradiction;
+@@ -1507,7 +1510,6 @@
+ 		struct match_branch *branch = &state->branches[i];
+ 		free(branch->scan);
+ 		branch->scan = NULL;
+-		branch->scan_count = branch->scan_capacity = 0;
+ 	}
+ }
+ 
+@@ -1889,15 +1891,18 @@
+ 	const struct pg_syntax *syntax, const struct pg_source_scope *scope)
+ {
+ 	/* Reuse retired traversal slots; only the active frontier must survive. */
+-	if (branch->scan_count == branch->scan_capacity) {
+-		size_t capacity = branch->scan_capacity ? branch->scan_capacity * 2 : 4;
+-		if (capacity < branch->scan_capacity || capacity > SIZE_MAX / sizeof(*branch->scan)) return -1;
+-		struct motive_scan *scan = realloc(branch->scan, capacity * sizeof(*scan));
++	if (!branch->scan || branch->scan->count == branch->scan->capacity) {
++		size_t count = branch->scan ? branch->scan->count : 0;
++		size_t old_capacity = branch->scan ? branch->scan->capacity : 0;
++		size_t capacity = old_capacity ? old_capacity * 2 : 4;
++		if (capacity < old_capacity || capacity > (SIZE_MAX - sizeof(*branch->scan)) / sizeof(*branch->scan->items)) return -1;
++		struct motive_frontier *scan = realloc(branch->scan, sizeof(*scan) + capacity * sizeof(*scan->items));
+ 		if (!scan) return -1;
++		scan->count = count;
++		scan->capacity = capacity;
+ 		branch->scan = scan;
+-		branch->scan_capacity = capacity;
+-	}
+-	branch->scan[branch->scan_count++] = (struct motive_scan){.syntax = syntax, .scope = scope};
++	}
++	branch->scan->items[branch->scan->count++] = (struct motive_scan){.syntax = syntax, .scope = scope};
+ 	return 0;
+ }
+ 
+@@ -1910,13 +1915,12 @@
+ 		if (motive_scan_push(branch, branch->clause->right, branch->scope)) return -1;
+ 		branch->scan_started = 1;
+ 	}
+-	if (!branch->scan_count) {
++	if (!branch->scan || !branch->scan->count) {
+ 		free(branch->scan);
+ 		branch->scan = NULL;
+-		branch->scan_capacity = 0;
+ 		return 0;
+ 	}
+-	struct motive_scan *scan = &branch->scan[branch->scan_count - 1];
++	struct motive_scan *scan = &branch->scan->items[branch->scan->count - 1];
+ 	const struct pg_syntax *syntax = scan->syntax;
+ 	const struct pg_source_scope *scope = scan->scope;
+ 	const struct pg_syntax *block = pg_synthesis_block_syntax(syntax);
+@@ -1930,14 +1934,14 @@
+ 				else pg_synthesis_enqueue(synthesis, job);
+ 				return 1;
+ 			}
+-			--branch->scan_count;
++			--branch->scan->count;
+ 		} else {
+ 			size_t i = scan->item++;
+ 			if (motive_scan_push(branch, block->items[i].expression, visited)) return -1;
+ 		}
+ 		pg_synthesis_enqueue(synthesis, job); return 1;
+ 	}
+-	--branch->scan_count;
++	--branch->scan->count;
+ 	if (syntax->kind == PG_SYNTAX_EXPECT) {
+ 		if (motive_scan_push(branch, syntax->left, scope)) return -1;
+ 	} else if (syntax->kind == PG_SYNTAX_LAMBDA) {

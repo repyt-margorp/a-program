@@ -1,0 +1,37 @@
+{
+  "observations": [
+    {
+      "variant": "parent",
+      "command": [
+        "gdb",
+        "-nx",
+        "-batch",
+        "-ex",
+        "p sizeof(struct match_branch)",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch17/asan/synthesis_test"
+      ],
+      "exit": 0,
+      "report": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e20/parent-branch-layout.log",
+      "report_sha256": "f4b36b54a2cfeb8ba35682103ea7a5ae992917b248a41f4728bf246fa1c5af97",
+      "binary_sha256": "6941160e205118a68ea30793c62cd3fc335cdf598dd8abf6575ef9c364e4f2e3",
+      "output": "$1 = 168\n"
+    },
+    {
+      "variant": "candidate",
+      "command": [
+        "gdb",
+        "-nx",
+        "-batch",
+        "-ex",
+        "p sizeof(struct match_branch)",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch20/asan/synthesis_test"
+      ],
+      "exit": 0,
+      "report": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e20/candidate-branch-layout.log",
+      "report_sha256": "cc935d0beab4a7d185d713be49f1c09aac4531e0de48b2179381ec326b066b89",
+      "binary_sha256": "c3fdf3e383a0b919ff56964dbf548f30ae35b71a3b01a1604b7b69940b2406be",
+      "output": "$1 = 152\n"
+    }
+  ],
+  "scope": "Existing ASAN debug binary layout only; active frontier header16 plus24-byte frames/capacity/heap overhead remain. No peak/time/net-gain measurement."
+}
