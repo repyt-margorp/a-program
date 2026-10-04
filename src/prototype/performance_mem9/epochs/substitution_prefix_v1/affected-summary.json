@@ -1,0 +1,172 @@
+{
+  "terminal": true,
+  "records": [
+    {
+      "label": "build-o2",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem9/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem9/private/substitution_prefix_v1_20261003",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem9/private/substitution_prefix_v1_20261003/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem9/private/substitution_prefix_v1_20261003/build-candidate-o2",
+        "REPO=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003",
+        "TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/tests",
+        "CHECKPOINT_TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/checkpoint_tests/",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem9/private/substitution_prefix_v1_20261003/build-candidate-o2/iadt_test",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem9/private/substitution_prefix_v1_20261003/build-candidate-o2/artifact_normalization_checkpoint_test",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem9/private/substitution_prefix_v1_20261003/build-candidate-o2/pointer-check"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "sanitizer": false,
+      "log_sha256": "cc27f62e4baa072b7e509997359729dcbe9b892d7cdd7685ec9790b4d4272500"
+    },
+    {
+      "label": "iadt_test-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem9/private/substitution_prefix_v1_20261003/build-candidate-o2/iadt_test"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "sanitizer": false,
+      "log_sha256": "4f4fae66b30deb1779f33a9e634b2fb139b3b70fd908e2c64c2bb5b23974514c"
+    },
+    {
+      "label": "artifact_normalization_checkpoint_test-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem9/private/substitution_prefix_v1_20261003/build-candidate-o2/artifact_normalization_checkpoint_test"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "sanitizer": false,
+      "log_sha256": "1cbe81396ea83ec4c5f20dea913a8bf3d82a1a09726071abd3e194a2c1bd7fa6"
+    },
+    {
+      "label": "build-san",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem9/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem9/private/substitution_prefix_v1_20261003",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem9/private/substitution_prefix_v1_20261003/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem9/private/substitution_prefix_v1_20261003/build-candidate-san",
+        "REPO=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003",
+        "TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/tests",
+        "CHECKPOINT_TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/checkpoint_tests/",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem9/private/substitution_prefix_v1_20261003/build-candidate-san/iadt_test",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem9/private/substitution_prefix_v1_20261003/build-candidate-san/artifact_normalization_checkpoint_test"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "sanitizer": false,
+      "log_sha256": "c37eee7f2b5bd916f73e218585a9bf1ec27bc7c0bdcc05be6c36042d61eccafa"
+    },
+    {
+      "label": "iadt_test-san",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem9/private/substitution_prefix_v1_20261003/build-candidate-san/iadt_test"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "sanitizer": true,
+      "log_sha256": "4f4fae66b30deb1779f33a9e634b2fb139b3b70fd908e2c64c2bb5b23974514c"
+    },
+    {
+      "label": "artifact_normalization_checkpoint_test-san",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem9/private/substitution_prefix_v1_20261003/build-candidate-san/artifact_normalization_checkpoint_test"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "sanitizer": true,
+      "log_sha256": "1cbe81396ea83ec4c5f20dea913a8bf3d82a1a09726071abd3e194a2c1bd7fa6"
+    },
+    {
+      "label": "cli-list",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem9/private/substitution_prefix_v1_20261003/build-candidate-o2/pointer-check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/list.p"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "sanitizer": false,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "label": "cli-imported-local-sorted",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem9/private/substitution_prefix_v1_20261003/build-candidate-o2/pointer-check",
+        "--steps",
+        "1000000000",
+        "--legacy-intrinsic-dot",
+        "--imports",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/quick-local-provider.p",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/imported-local-sorted.p"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "sanitizer": false,
+      "log_sha256": "b9d0c64243321a9d2f702bb9ba30af64046f24ed9b86846fe5a7613d0d6b636a"
+    },
+    {
+      "label": "cli-trees4",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem9/private/substitution_prefix_v1_20261003/build-candidate-o2/pointer-check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees4.p"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "sanitizer": false,
+      "log_sha256": "775df37afe1464024ea41c3aae5bde666ffedcc4771dfb894f46f27fd64157c2"
+    },
+    {
+      "label": "public-partitions",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/image_audit/partition_fuel.sh",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem9/private/substitution_prefix_v1_20261003/build-candidate-o2/pointer-check",
+        "/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/examples/09_list_induction.p",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem9/private/substitution_prefix_v1_20261003/partitions",
+        "ordinary"
+      ],
+      "exit": 1,
+      "expected_exit": 1,
+      "sanitizer": false,
+      "log_sha256": "3145581ad261eac78c843f5fa3a20fcd2b78e2044b193cc60db8f05ab4292d1f"
+    }
+  ],
+  "new_failures": 0,
+  "original_strict_recipe_failures": 1,
+  "original_strict_reload_failures": 3,
+  "public52_images_equal": true,
+  "full_verdict_fuel_TSV_equal": true,
+  "pins": {
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem9/qualify_affected.py": "92685b9f99d8e176c78e5cb7a0fd5c8c32223853435c608875efe6805d3d5027",
+    "/tmp/ap-performance-mem3-fold-cost-request-20261003/configuration-proposed.json": "4dab6b887e69aa60e2ab8f429f5ae503473414e25cdecf62c0fe79d3c98cf510",
+    "/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/tests/iadt.c": "e61ae7871eeed188e8e69ee3bda18b7435b52b75d9760e910b0ae0d6cc583ab9",
+    "/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/checkpoint_tests/normalization_checkpoint_test.c": "5cfdb6e6eac11e8806470e62acce8f76098e7208b14ed3bbaee969a30199c07d",
+    "/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/examples/09_list_induction.p": "f2d58b2c2161c086f62022943ca63e9acdca3c2dd7c6fd1979cc4c7ff7c15b37",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/image_audit/partition_fuel.sh": "65bbfdce6a56d73b44e3f46083ed2bedad3d69454380d19d51f1196e6619e2bf",
+    "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/list.p": "f2d58b2c2161c086f62022943ca63e9acdca3c2dd7c6fd1979cc4c7ff7c15b37",
+    "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/quick-local-provider.p": "c22eafc8fd288a29abce7b5ececf654c4aa826281e0dc4194eea453e464c2e77",
+    "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/imported-local-sorted.p": "bd38d6e04d23402d5a1fc9f2955d90f05b911635680bbc509f1c59ed9431cd27",
+    "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees4.p": "02fa88c8503b0b5337f5a09be561ab70b000fd7e02747bb531c23ee538bbfb70"
+  },
+  "completed_charged_steps": {
+    "list": 1915,
+    "imported-local-sorted": 761848,
+    "trees4": 2318248
+  },
+  "fresh_full_acceptance_or_other_six_checkpoints_claim": false,
+  "actual_speed_wall_RSS_gain": false,
+  "all_probe_children_stopped": true
+}

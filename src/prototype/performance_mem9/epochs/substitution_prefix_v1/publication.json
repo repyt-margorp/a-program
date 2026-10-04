@@ -1,0 +1,8 @@
+{
+  "branch": "parallel/performance-20261003",
+  "parent_commit": "27a35a1344639687a2b89ba05886d5634c3d090d",
+  "commit_message": "prototype: combine substitution validation and identity scan",
+  "publication": "Delegated exact task-branch publication only, after Root review.",
+  "Main_integration_or_accepted_promotion": "Root only; not requested by this freeze.",
+  "full_goal_complete": false
+}

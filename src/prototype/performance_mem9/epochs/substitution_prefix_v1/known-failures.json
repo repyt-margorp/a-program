@@ -1,0 +1,15 @@
+{
+  "parent_known_failures": "/tmp/ap-performance-mem5-materialized-fields-current-e12-20261003/known-failures.json",
+  "parent_known_failures_sha256": "943cbb31d3a682bd6a444e3010075d6e57e42a926d69f45a7c84b0a34a7b7ad9",
+  "original_observer_failures": 2,
+  "original_SAN_failures": 7,
+  "strict_reload_failures": 3,
+  "MEM6_raw_pair_and_parent_byte_failures": "Preserved separately; held epoch excluded.",
+  "MEM7_unchanged_codec_failures": 4,
+  "MEM7_runtime": "Review-only epoch excluded.",
+  "padding_beta_copy_setup_and_rejected_runtime_records": "Preserved in separate immutable manifests.",
+  "new_failure_or_test_outcome_waiver": false,
+  "public_partition_raw_exit": 1,
+  "public_partition_log": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem9/private/substitution_prefix_v1_20261003/affected/public-partitions.log",
+  "public_partition_log_sha256": "3145581ad261eac78c843f5fa3a20fcd2b78e2044b193cc60db8f05ab4292d1f"
+}
