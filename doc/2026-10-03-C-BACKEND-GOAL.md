@@ -115,6 +115,19 @@ names, separate directories and reviewed integration epochs.
 
 ### Objective (Code)
 
+Fresh C36 [actual-clause plan](2026-10-04-C-BACKEND-ACC-CLAUSE-PLAN.md): admitted
+Acc branch terms now generate executable SizedList/Partition Match, ordered SEQ,
+both child callable-IH applications, pivot constructor and append calls. Captured
+A/le/current/down stay explicit. Target339/interface15 lines emit63 lines of C;
+manual C33 helper/runtime/outer entry remains separately labeled. WorkerE8 O2
+and full emitter-runtime/composed-client SAN25 expected rows each match:341 Core
+observations, allocation/depth/rollback, actual source result and pivot-omitting
+source mutation (different emitted C/result), inert/deterministic and helper/
+motive refusal4/no-partial controls.152 input/runtime128 pins exact; original
+context.depth build2 retained/corrected. Separate exact13 handoff ready; task/
+current-producer/Main review pending. Main backend/public ABI and native Acc
+refusal unchanged; no full automatic helper/runtime/generalized QuickSort claim.
+
 Fresh C35 [Acc Fold plan](2026-10-04-C-BACKEND-ACC-FOLD-PLAN.md): actual admitted
 QuickSort occurrence fields/motives/captures produce native Fold/IH plumbing:
 original down obtains child Acc, child Fold yields a callable, then apply receives
@@ -626,7 +639,8 @@ Current issue status (2026-10-04 local; detailed pins stay in linked epoch plans
 | #61 ordinary array calls to source List functions, C32 | C31 `cc3cba34` + five target owners +97/-12 and ten example/test files; [array-call plan](2026-10-04-C-BACKEND-ARRAY-CALLS-PLAN.md). Optional native_array_calls_v1/existing native ABI1 wraps actual exports with temporary-arena conversion/copy-out/cleanup. | Worker E8 new139/query63/source-sort46 each O2/client-source SAN, linker/I-O19/faults5 pass. Three families/four products/raw/five payloads/List121/slice4356/sort341/Core510/source3+6/inert/statuses1-6;84 new/68 prior C/H/314 pins/runtime128 exact. Initial setup failures retained. | Separate exact19 handoff; task/current-producer/Main pending. C31 archive unchanged. | Borrowed immutable lifetime/nonoverlap/default depth256/allocation/Nat32/capacity contracts;13 checked/trusted refusal pairs; limited SAN, output SIZE_MAX overflow unexecuted. No zero-copy slices/native indexed-callable Acc/QuickSort/full #61/cost/adoption. | Seal for Root publication/current-producer review; human09:16:56Z priority supersedes further List conveniences with actual Acc QuickSort mockup by21:16:56Z. |
 | #61 human-priority actual Acc QuickSort C mockup, C33 | New hand-authored closed-Nat executable candidate [mockup.c](../src/prototype/c_backend/acc_quicksort_mockup/mockup.c) SHA762f264c plus declarative header/tests; actual LT/Acc/down/index/partition/capture correspondence, no alternate sorter or generated claim. | WorkerE8 fresh actual source admission/reference3, O2/full candidate-client SAN9 each0;341 existing-Core fingerprint/length/range observations and all down/partition/resource branches. Native closed-list controls checked/trusted still4. Initial setup failures retained; joint qualification pending. | Exact11 sealed/archive a8bd408c/manifest503f67d3; ready notice0f5339a7 sent10:02:27UTC before due21:16:56Z. Task/Main pending after sealed C32; no accepted promotion. | Manual Nat/LT only; automatic expression/motive/capture lowering and arbitrary type/comparator closure conversion remain gaps. Scoped arena/depth256/node65536/Nat32/borrowed lifetime; unreachable zero-down foreign metadata refuses. No full #61/cost/adoption/Goal closure. | Root review the submitted executable CODE; preserve archive and defer List conveniences. |
 | #61 actual indexed/callable declaration extraction, C34 | C31 cc3cba34 plus new private indexed_views/ code/interfaces/helpers; [plan](2026-10-04-C-BACKEND-INDEXED-VIEWS-PLAN.md). Existing admitted descriptors yield seven C declarations, exact parameter/index/field/result images and Acc.down signature; target code296 lines, no main backend/ABI change. | WorkerE8 O2/full helper-runtime/client SAN12 expected rows each match; original runtime128 exact/inert counts/no machine work/lexical factory/source-index/missing LT/Bool-Nat mismatch/wrong C relation controls. Initial failures retained; no Root qualification inferred. | Separate exact15 handoff; task/current-producer/Main pending. Sealed C32/C33 unchanged. | Header only; borrowed code/context/data lifetime, symbolic index consistency and callback interpretation remain preconditions. No emitted sorting/Fold/IH/motive/capture body, generalized instance/checker/erasure/full #61/cost/adoption claim. | Root review declarations; next bounded step inspect actual Fold/IH/capture body views, retain automatic native refusal and manual C33 distinction. |
-| #61 actual Acc Fold callable-IH adapter, C35 | New private acc_fold/ [plan](2026-10-04-C-BACKEND-ACC-FOLD-PLAN.md): target202/interface13 lines derive af_fold/af_force_down/af_apply from actual admitted QuickSort clause/field/IH/capture associations. Original child Acc versus callable Fold remains explicit; no main backend/ABI change. | WorkerE8 O2/full helper-runtime-client SAN11 expected rows each match; empty/singleton actual source0,1,1, both IH calls/capture staging/depth/motive and wrong C IH refusal;151 inputs/runtime128 exact. Initial failures retained; no Root qualification inferred. | Separate exact13 handoff; task/current-producer/Main pending. C32/C33/C34 sealed bytes unchanged. | Automatic plumbing only; clause expressions supplied/manual, unit sizes0/1 only/larger refusal4. Borrowed/index/interpretation/closure lifetime preconditions; depth covers nested clause construction, no callback side-effect rollback. No generated full sorting/accepted/cost/full #61 completion. | Root review adapter; next lower actual captured clause/partition/IH expression bodies, preserving manual/generated distinction. |
+| #61 actual Acc Fold callable-IH adapter, C35 | New private acc_fold/ [plan](2026-10-04-C-BACKEND-ACC-FOLD-PLAN.md): target202/interface13 lines derive af_fold/af_force_down/af_apply from actual admitted QuickSort clause/field/IH/capture associations. Original child Acc versus callable Fold remains explicit; no main backend/ABI change. | WorkerE8 O2/full helper-runtime-client SAN11 expected rows each match; empty/singleton actual source0,1,1, both IH calls/capture staging/depth/motive and wrong C IH refusal;151 inputs/runtime128 exact. Initial failures retained; no Root qualification inferred. | Separate exact13 handoff; task/current-producer/Main pending. C32/C33/C34 sealed bytes unchanged. | Automatic plumbing only; clause expressions supplied/manual, unit sizes0/1 only/larger refusal4. Borrowed/index/interpretation/closure lifetime preconditions; depth covers nested clause construction, no callback side-effect rollback. No generated full sorting/accepted/cost/full #61 completion. | Root review sealed adapter; separate C36 emits actual clause expressions using C33 manual helper/runtime composition. |
+| #61 actual Acc clause expression lowering, C36 | New private acc_clause/ [plan](2026-10-04-C-BACKEND-ACC-CLAUSE-PLAN.md): target339/interface15 lines inspect actual branch terms and emit63-line executable Match/SEQ/partition/both-IH/pivot/append body; manual support32 lines includes immutable C33 helpers. | WorkerE8 O2/full emitter-runtime/composed-client SAN25 expected rows each match;341 existing-Core observations, actual source and admitted pivot-omitting mutation, inert/deterministic/refusal4/no-partial/resource controls;152 inputs/runtime128 exact. Initial build2 retained. No Root qualification inferred. | Separate exact13 handoff ready; task/current-producer/Main pending after C32-C35; immutable earlier archives exact. | Clause generated; accessibility/partition/append/comparison/measure/outer entry and closed Nat32 representation remain manual. Audited helper mapping, depth256/node65536/Nat32/borrowed lifetime limits; unsupported effect/Identity/dynamic/motives/layouts explicit. No full generalized/accepted/cost/#61/Goal completion. | Root review source-driven executable clause; next bounded gap inspect actual helper body lowering/captures, without List conveniences or source authority changes. |
 | #61 remaining public contracts (historical #49) | General/boxed callbacks, effects, higher Identity, recursive captures and shared nominal exchange remain explicit limits; C16 advances only fixed borrowed unary/binary scalar inputs. | Local/joint gates verify supported cases and refusals, not general completion. | Historical tasks/prototype Main published; no publication of general missing contracts. | Need bounded justified representation/demand contracts. | Preserve refusals; route shared needs through Merge. |
 
 Evidence: historical [C5](2026-10-03-C-BACKEND-EPOCH5-HANDOFF.md),
@@ -779,6 +793,16 @@ pinned/current producer images and emitted C/headers match byte-for-byte.
 Evidence and exact publication files are in the [epoch handoff](2026-10-03-C-BACKEND-EPOCH1-HANDOFF.md).
 
 ### Assessment
+
+C36 agent decision: lower the actual captured clause expressions, preserving
+typed source field order and dependent Match's original-down/IH reabstraction.
+Use the immutable manual C33 runtime/helpers explicitly; generated body recursion
+calls its own gs_apply, not the manual sorter. An admitted pivot-omitting mutation
+proves terms/arguments affect generated execution; it is a test, not an alternate
+proposed algorithm. This candidate still does not emit helper bodies/outer source
+expressions, define public indexed ABI or grant generalized erasure/ownership.
+Retain the existing native refusal and defer more List conveniences. C35 full-Nat
+pointer component and C36 closed Nat32 composition remain separately classified.
 
 C35 agent decision: use actual admitted Acc clause allocation and IH classifiers
 to generate native traversal/sequence plumbing. Preserve source current/index/
@@ -1461,8 +1485,13 @@ this target work while Main continues SE1, superseding the earlier AP6 hold.
 - [x] C35: derive actual Acc Fold/callable-IH native plumbing, preserving original
   down/child Fold/result application and captures; focused O2/full helper-client
   SAN/source/inert/refusal/resource controls pass, exact13 handoff prepared.
-- [ ] Automatically lower actual captured clause/partition/IH expression bodies;
-  C35's supplied/manual bodies are not generalized native QuickSort completion.
+- [x] Lower actual captured clause expressions and IH applications in C36;
+  C35's historical supplied/manual bodies remain a separate component result.
+- [x] C36: generate actual captured clause expressions and both child IH calls;
+  composed manual helpers execute actual source/Core/resource/mutation controls,
+  focused O2/full emitter-runtime/client SAN pass, exact13 handoff ready.
+- [ ] Automatically lower remaining actual partition/append/accessibility helper
+  bodies and outer expressions; C36 manual composition is not full native Acc.
 - [ ] Maintain the single issue table at material events and within six active
   hours; use brief pointer/hash notices and keep Core workflow in Assessment.
 - [ ] Coordinate further bounded target ABI/lowering increments under the latest
