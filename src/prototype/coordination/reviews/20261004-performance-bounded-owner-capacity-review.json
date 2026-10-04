@@ -1,0 +1,127 @@
+{
+  "date_UTC": "2026-10-04T15:06:52.678882+00:00",
+  "notice_SHA": "9d27937d42bbcd6e89bf3294cd74cbad896d5234c30c75fcee7b5aafef6c8092",
+  "raw_manifest_SHA": "dd424bd7c0e45711611ffcabe3f2426b651c191b90ecbadf81a87de3e1ff6776",
+  "raw_listed_files_verified": 25,
+  "raw_files_including_manifest": 26,
+  "analysis_manifest_SHA": "fbce02a1aa8d5e35b6476109d629effc0e8f5a378541ebbfbf9c329f13af8a86",
+  "analysis_files_including_manifest": 3,
+  "actual_input_pins_verified": 261,
+  "initial_failed_observer_manifest_unchanged": true,
+  "initial_failed_observer_listed_files_verified": 7,
+  "recorded_seven_debugger_or_build_commands_zero": true,
+  "six_bounded_pending_states_recomputed": {
+    "trees4-cut100K": {
+      "parent": {
+        "machine_capacity_bytes": 2768896,
+        "machine_used_bytes": 2698112,
+        "total_arena_capacity_bytes": 4276224,
+        "total_index_capacity_bytes": 139776,
+        "known_node_layout_bytes": 411984,
+        "known_environment_nodes": 12702,
+        "known_argument_nodes": 230,
+        "active_frames": 94,
+        "spare_frames": 0,
+        "capacity_minus_known_nodes_bytes": 2356912,
+        "opaque_and_external_omissions": {},
+        "root_and_byte_limits_reached": false
+      },
+      "candidate": {
+        "machine_capacity_bytes": 1458176,
+        "machine_used_bytes": 1380768,
+        "total_arena_capacity_bytes": 2965504,
+        "total_index_capacity_bytes": 139776,
+        "known_node_layout_bytes": 411984,
+        "known_environment_nodes": 12702,
+        "known_argument_nodes": 230,
+        "active_frames": 94,
+        "spare_frames": 23,
+        "capacity_minus_known_nodes_bytes": 1046192,
+        "opaque_and_external_omissions": {},
+        "root_and_byte_limits_reached": false
+      }
+    },
+    "trees4-cut1M": {
+      "parent": {
+        "machine_capacity_bytes": 18202624,
+        "machine_used_bytes": 18109248,
+        "total_arena_capacity_bytes": 22003712,
+        "total_index_capacity_bytes": 403968,
+        "known_node_layout_bytes": 2786200,
+        "known_environment_nodes": 86963,
+        "known_argument_nodes": 141,
+        "active_frames": 52,
+        "spare_frames": 0,
+        "capacity_minus_known_nodes_bytes": 15416424,
+        "opaque_and_external_omissions": {},
+        "root_and_byte_limits_reached": false
+      },
+      "candidate": {
+        "machine_capacity_bytes": 9256960,
+        "machine_used_bytes": 9207264,
+        "total_arena_capacity_bytes": 13058048,
+        "total_index_capacity_bytes": 403968,
+        "known_node_layout_bytes": 2786200,
+        "known_environment_nodes": 86963,
+        "known_argument_nodes": 141,
+        "active_frames": 52,
+        "spare_frames": 9,
+        "capacity_minus_known_nodes_bytes": 6470760,
+        "opaque_and_external_omissions": {},
+        "root_and_byte_limits_reached": false
+      }
+    },
+    "trees16-cut5M": {
+      "parent": {
+        "machine_capacity_bytes": 50577408,
+        "machine_used_bytes": 50378240,
+        "total_arena_capacity_bytes": 58720256,
+        "total_index_capacity_bytes": 1082368,
+        "known_node_layout_bytes": 7648152,
+        "known_environment_nodes": 238815,
+        "known_argument_nodes": 253,
+        "active_frames": 96,
+        "spare_frames": 0,
+        "capacity_minus_known_nodes_bytes": 42929256,
+        "opaque_and_external_omissions": {},
+        "root_and_byte_limits_reached": false
+      },
+      "candidate": {
+        "machine_capacity_bytes": 25509888,
+        "machine_used_bytes": 25434048,
+        "total_arena_capacity_bytes": 33652736,
+        "total_index_capacity_bytes": 1082368,
+        "known_node_layout_bytes": 7648152,
+        "known_environment_nodes": 238815,
+        "known_argument_nodes": 253,
+        "active_frames": 96,
+        "spare_frames": 18,
+        "capacity_minus_known_nodes_bytes": 17861736,
+        "opaque_and_external_omissions": {},
+        "root_and_byte_limits_reached": false
+      }
+    }
+  },
+  "source120_pair": {
+    "parent": "930997b62db85814718d0d5ac151f392bfae243a447d5d0d5f2adbde66cba5ae",
+    "candidate": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907"
+  },
+  "all_other_arenas_actual_index_counts_and_known_nodes_equal": true,
+  "observer_provenance": {
+    "original_observer_sha256": "a294b7e7a0039ed539c5682f6f480305fcb266433216152dc754e6e373e26b33",
+    "original_capacity_sha256": "4bee635689b227e020720b9c479a65b3d55bfe3cf63c805e58ef16df50411d5f",
+    "debugger_payload_command": "python CapacitySnapshot.payloads = lambda self, program: {'indexed_counts': {row['group']: row['count'] for row in self.indexes.values()}, 'limits': 'Rich historical payload extents not estimated; accepted graph has no supports and Job tail allocation differs. Actual arena and index totals are recorded separately.'}",
+    "arena_index_capacity_root_walk_caps_and_checks_unchanged": true,
+    "removed_estimates": "Historical Core-support field and per-query/Job allocation formula; actual indexed counts are recorded without layout inference.",
+    "no_runtime_assertion_owner_or_codec_edit": true,
+    "initial_missing_supports_failure_preserved": "1e4bcdbfd8f36c9e1e224d90e176cbcef9673b9f63ddf91db064dd714d687663"
+  },
+  "historical_labels": "Observer source128 key carries actual120 digest; old c414/80b scope text remains in the raw observer and is explicitly superseded by this source pair. No transfer of old scope is inferred.",
+  "scope": "Normal O2 plus DWARF, debugger capacity/known-root samples at fixed charged cuts. Root freshly checked records/inputs and recomputed reported capacities/counts, with no replay. These are not completed-task RSS/elapsed/peak/dead bytes or proof that unknown roots can be reclaimed.",
+  "cost_state": "Owner reports handles46271/38113 terminal/closed and children reaped, zero collector/sample; ordinary checkpoint available. Availability evidence, not a measurement grant or all-three acknowledgment. Request2 already released.",
+  "Root_runtime_replay": false,
+  "runtime_or_accepted_changes": false,
+  "cost_grant": false,
+  "RSS_elapsed_samples": 0,
+  "historical_failures_waived": false
+}

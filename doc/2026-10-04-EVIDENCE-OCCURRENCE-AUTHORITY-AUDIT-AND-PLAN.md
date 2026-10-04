@@ -1,7 +1,7 @@
 # Evidence and Typed Occurrence Authority Audit
 
 Date: 2026-10-04
-Status: substantive static Markdown audit delivered and reviewed; prototype implementation and dynamic qualification remain open.
+Status: static Markdown audit delivered and reviewed; native-owner prototype deletes Evidence allocations/index/alternative iteration, but Synthesis failures and owner-local migration leave implementation qualification open.
 Code baseline: Main `c205d507a8568bfdda355e247a78b4e67464f294`.
 Relevant local edits: `src/evidence.c` (+16/-3), `src/evidence.h` (+5/-0)
 at initial inspection; these are unowned work and must be preserved.
@@ -15,7 +15,7 @@ unfinished SE implementation or the running performance promotion.
 
 | ID | Problem | Owner | Status |
 | --- | --- | --- | --- |
-| EOA1 | Determine whether Evidence duplicates Term/typed construction and eliminate unjustified authority or storage | Existing Job/Evidence worker; Merge integrates | Static findings reviewed; refactor pending |
+| EOA1 | Determine whether Evidence duplicates Term/typed construction and eliminate unjustified authority or storage | Existing Job/Evidence worker; Merge integrates | Static findings complete; prototype deletion progressing, semantic qualification open |
 
 ## EOA1. One Construction, No Duplicate Proof Tree
 
@@ -75,6 +75,17 @@ even for zero-premise Lambda/APP. The report traces field/edge dispositions
 and concrete invalid scope, Identity, IADT, substitution and conversion cases.
 LP64 header64/alternate16 bytes is a static layout calculation, not peak RSS.
 
+2026-10-04, [Root native-owner progress review](../src/prototype/coordination/reviews/20261004-native-owner-graph-progress-review.json)
+at metadata `c5cb986b` independently verifies committed `fc52755b` parent120
+and five retained trial histories/source reconstructions. Static inspection
+confirms concrete Evidence struct/proof index/alternative iteration deletion;
+opaque APIs borrow Occurrence/Scope/map addresses with separate admission.
+Focused native sharing/copied/foreign control recorded0. Full Synthesis
+trial3/4 recorded134 and trial5 `33210311` recorded139; these failed records
+remain unwaived. The transitional construction selector and generic readers
+remain. This is static review of retained owner records, not Root test execution,
+READY, accepted adoption or current Performance composition.
+
 ### Assessment
 
 Inquiry-desk proposal, not a completed worker finding: audit the Evidence layer
@@ -115,6 +126,13 @@ matched peak/time remain in the existing SE work list. No net memory/time gain
 is inferred from static sizes. Original strict3 and typed-owner v2 Synthesis134
 remain; SAN/public are unrun for that trial.
 
+2026-10-04, progress disposition: the static finding remains complete, and
+concrete prototype deletion now advances its proposed implementation. Genuine
+Synthesis failures must be corrected and checked; native sharing alone does
+not qualify the refactor. Owner-local reader/selector migration and Source I/O,
+public/inert/fuel/frontier/current composition remain in the single existing
+SE work list. No measured peak/time gain or new accepted decision follows.
+
 ### Plan
 
 - [x] Record the human concern and initial committed/local structural baseline.
@@ -145,6 +163,7 @@ remain; SAN/public are unrun for that trial.
 | 2026-10-04 12:58 UTC | EOA1 | User request recorded; initial structure inspected, no new tests run | Route to the existing Job/Evidence worker and obtain acknowledgment |
 | 2026-10-04 13:29 UTC | EOA1 | Original Job/Evidence worker actually consumed the request, recorded the human paraphrase in both active Subjective sections, and made this audit primary at the safe boundary; [exact receipt](../src/prototype/coordination/reviews/20261004-job-authority-audit-actual-receipt.json) | First substantive field/edge table and concrete Lambda/App/Context counterexamples around 14:00 UTC, a Root soft checkpoint, not a human deadline |
 | 2026-10-04 13:51 UTC | EOA1 | Substantive report45109a85/all34 pins/53 dispositions reviewed; static audit checkpoint complete, actual refactor unimplemented | Continue coherent structural checked-owner prototype path in the existing SE list; retire format debt explicitly, retain semantic checks |
+| 2026-10-04, `c5cb986b` | EOA1 | [Native-owner deletion reviewed](../src/prototype/coordination/reviews/20261004-native-owner-graph-progress-review.json): Evidence struct/index/alternative iteration removed in prototype; native control recorded0, Synthesis134/134/139 retained; no READY/adoption | Continue semantic correction and owner-local reader/selector migration in the existing SE work list, then Source/public/inert/fuel/frontier qualification |
 
 The preceding typed-owner v2 runtime126 `d192f8ce` is a separate prototype
 trial: owner O2 focused checks report pass, full Synthesis abort134 retains

@@ -30,14 +30,14 @@
   "Goal_service": "Root remains blocked unchanged; no reset/resume/new owner/model",
   "timer": "Original six-hour timer unchanged;13:44 review completed, next2026-10-04T19:44:22.084Z",
   "runtime_promoted": "Reviewed Job/dependency closure94a plus approved four-file c206 Performance frame deletion/required readback order fc52755b; unrelated dirty implementation/tests and prototype trials excluded.",
-  "latest_review": "20261004-native-owner-graph-progress-review.json",
-  "latest_review_date_UTC": "2026-10-04T14:59:33.312342+00:00",
+  "latest_review": "20261004-performance-bounded-owner-capacity-review.json",
+  "latest_review_date_UTC": "2026-10-04T15:10:05.318757+00:00",
   "latest_availability_review": "20261004-promotion-concurrent-owner-progress.json",
   "latest_C_review": "20261004-c39-ready-static-review.json",
   "performance_promotion": "Complete selected approved promotion fc52755b pushed/remote exact, liveMain Core/IADT/CLI0, protected9/index unchanged; actual cost and full criteria pending.",
   "accepted_Performance_commit": "fc52755b345a555e49a79df40549e9cb23d54088",
   "latest_Job_review": "20261004-job-accepted-frontier-phase2-review.json",
-  "cost_schedule": "Request accepted94-frame-order-20261004-2 expired and released at 14:29:24 UTC without all three actual safe acknowledgments. Performance confirmed zero samples/collector/workload. No current grant or hold. Request-1 and request-2 ACKs are historical; obtain no-hold availability at ordinary C/Job checkpoints before a future precise bounded grant.",
+  "cost_schedule": "Request2 expired/released; no hold/grant/sample. Actual Job notice9e6ff202 proposes15:20-15:30UTC after current serial work terminal. Performance notice9d27937d reports terminal children/available; C feasibility and fresh all-three terminal acknowledgments still required. Exact36/all295 preflight is fresh. Proposed window is information only; no automatic grant or old ACK reuse.",
   "latest_Job_audit_receipt": "20261004-job-authority-audit-actual-receipt.json",
   "latest_Performance_endpoints": "20261004-performance-accepted-endpoints-static-review.json",
   "latest_Job_audit": "20261004-evidence-occurrence-authority-audit-review.json",
@@ -46,5 +46,7 @@
   "latest_C_dependency": "20261004-c39-identity-boundary-route.json",
   "latest_Performance_acceptance_scope": "20261004-performance-prefix-scope-correction-review.json",
   "latest_cost_release": "src/prototype/coordination/inbox/accepted94-frame-cost-drain-2-expired-release-20261004.json",
-  "latest_Job_progress": "20261004-native-owner-graph-progress-review.json"
+  "latest_Job_progress": "20261004-native-owner-graph-progress-review.json",
+  "latest_Performance_attribution": "20261004-performance-bounded-owner-capacity-review.json",
+  "latest_cost_availability": "20261004-accepted94-cost-availability-review.json"
 }

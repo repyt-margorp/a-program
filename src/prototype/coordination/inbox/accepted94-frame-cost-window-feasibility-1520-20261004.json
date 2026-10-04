@@ -1,0 +1,12 @@
+{
+  "date_UTC": "2026-10-04T15:10:05.318757+00:00",
+  "type": "Feasibility information only for actual owner-proposed window; no hold or measurement grant",
+  "proposed_window_UTC": {
+    "start": "2026-10-04T15:20:00Z",
+    "hard_end": "2026-10-04T15:30:00Z"
+  },
+  "basis": "Original Job actual notice9e6ff202 proposes15:20-15:30 after its current serial work reaches terminal; Performance notice9d27937d reports its owned children terminal and availability. C feasibility/actual terminal state is not yet known.",
+  "request": "At an ordinary safe checkpoint report whether this window is feasible and known owned heavy handle/process state. Continue original work until a precise grant or a safe-drain agreement; no current hold. A fresh terminal/reaped acknowledgment just before the window will still be required from all original C/Job/Performance owners. If not feasible, report a concrete next availability; do not interrupt unsafe work.",
+  "scope": "Existing exact36 normal O2 jobs/config262c46ac/source120930997->c206/all295 pins; per-run180/max600. No debug/native/build/extra collector or jobs. Root can execute the existing pinned collector on Performance behalf only after all actual acknowledgments and an explicit executor/start/latest-start/hard-deadline grant.",
+  "expiry": "The proposed window ends15:30UTC without automatic permission. Old request1/2 acknowledgments cannot grant this window. No owner/Goal/session/model action is requested."
+}

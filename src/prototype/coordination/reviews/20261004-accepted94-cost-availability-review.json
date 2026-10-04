@@ -1,0 +1,52 @@
+{
+  "date_UTC": "2026-10-04T15:10:05.318757+00:00",
+  "Job_actual_notice_SHA": "9e6ff20252e165878adf0792a93db6dab4590def098cda70e8dd68e0cd4807fc",
+  "Job_reported_prior_handles_terminal": [
+    "57958",
+    "38178",
+    "25437",
+    "21623",
+    "43893",
+    "37704",
+    "53672",
+    "42494",
+    "70784",
+    "45495"
+  ],
+  "Job_window": "15:20-15:30UTC feasible subject to current serial build/control terminal and fresh acknowledgment",
+  "Job_next_heavy_work": "Serial j1 native-owner Synthesis/Source build and semantic controls; continues until grant",
+  "Performance_actual_notice_SHA": "9d27937d42bbcd6e89bf3294cd74cbad896d5234c30c75fcee7b5aafef6c8092",
+  "Performance_reported_terminal_handles": [
+    "46271",
+    "38113"
+  ],
+  "Performance_samples": 0,
+  "C_feasibility_or_actual_ACK": "Not yet received",
+  "current_grant": false,
+  "current_hold": false,
+  "fresh_all295_pins": {
+    "date_UTC": "2026-10-04T15:10:05.318757+00:00",
+    "configuration_SHA": "262c46ac3f50313a164dab72ff88a40d684c1fe3c75954ce1362c9a1c0bffce9",
+    "input_pins_exact": 295,
+    "planned_jobs": 36,
+    "cases": [
+      "imported-local-sorted",
+      "list",
+      "trees16",
+      "trees4",
+      "trees400",
+      "trees64"
+    ],
+    "variants": [
+      "baseline",
+      "critical-frames-and-order"
+    ],
+    "limits": {
+      "per_run_seconds": 180,
+      "maximum_seconds": 600
+    },
+    "no_build_or_collector_launched": true
+  },
+  "next": "src/prototype/coordination/inbox/accepted94-frame-cost-window-feasibility-1520-20261004.json",
+  "old_ACKs_reused": false
+}

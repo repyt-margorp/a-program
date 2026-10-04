@@ -18,14 +18,27 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | --- | --- | --- | --- |
 | 1 | Inquiry desk -> `merge`: reporting vs coordination/integration | All lanes | Desk answers the user; only Merge integrates after verified handoff |
 | 2 | `c-backend`: downstream C design | #61 (supersedes #44/#49); shared policy #47 | C33 faithful manual executable delivered before deadline; C39 actual Nat recurrence and C36-C38 generated composition reviewed statically on oldE8. Identity transport bodies/current qualification/comparison/measure/outer remain; C32 sealed/parked |
-| 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Primary current stateless-head allocation deletion/acceptance and matched actual peak RSS/time; pending codec disposition/exclusive drain, peripheral MEM10/spine/empty arrays parked |
+| 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Approved current frame deletion accepted; original363 plus adopted4 verified separately. Actual matched peakRSS/time pending safe all-owner window; peripheral MEM10/spine/empty arrays parked |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
-| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | E25 already-active review finished/prototype integrated; primary deterministic retained Source/checked-owner relocation and genuine frontier; E26 terminal safe boundary/E27 parked; strict3/full SE/AP remain open |
+| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | Native-owner Evidence allocation/index/alternative deletion advancing; focused control0, Synthesis134/134/139 retained. Transitional selector/readers/Source/frontier/current qualification open; E25-E27 peripheral work parked |
 | 6 | `verification-audit`: independent read-mostly suite/debt inventory | #59 / PR #60, #51 | Bounded static inventory/pilot complete; measured cost deferred, full #59 remains open |
 | 7 | `test-suite`: implement coverage-preserving test reductions | #59 / PR #60 | Bounded Goal complete; exact7 taskbc16df9 pushed/remote verified, Root raw/assembly review complete, prototype Main36a27be integrated |
 | 8 | `issue-audit`: evidence-backed GitHub disposition | All open Issues/PRs | Bounded Goal complete; verified dispositions, task8bb5018/Mainb461ace; #61 retains C residuals |
 
 ### Current Delivery Status
+
+2026-10-04, [Performance bounded capacity review](../src/prototype/coordination/reviews/20261004-performance-bounded-owner-capacity-review.json):
+26 files including manifest, analysis3 and all261 actual pins verify; six charged
+states and arena/index/known-root counts recompute. Tree16/5M pending machine
+capacity is50,577,408->25,509,888 bytes, with known environments/arguments/active
+frames equal. Candidate17,861,736 bytes remain unclassified; no dead/reclaimable,
+completed-task RSS/peak/time or borrowing claim follows. Initial failed observer
+is retained; retry removes obsolete payload estimates, keeping actual counts.
+[Actual availability](../src/prototype/coordination/reviews/20261004-accepted94-cost-availability-review.json):
+Job proposes15:20-15:30UTC after current work becomes terminal; Performance reports
+terminal children/available. C feasibility and fresh all-three safe acknowledgments
+are still needed. Exact36/all295 pins freshly verify. The proposed window is
+information only; no hold, grant, old-ACK reuse or sample launch.
 
 2026-10-04, [native-owner deletion progress](../src/prototype/coordination/reviews/20261004-native-owner-graph-progress-review.json):
 Root verifies the committed fc52755b parent and all five retained trial histories,
@@ -2276,6 +2289,14 @@ forthcoming; this is not approval to weaken checking or introduce a new engine.
 
 ### Objective (Code)
 
+2026-10-04, bounded attribution/availability review at metadata `c5cb986b`:
+Performance notice9d27937d/raw25+manifest/analysis2+manifest/all261 pins exact;
+six pending-state capacities/counts independently recomputed on930997->c206.
+Job actual notice9e6ff202 reports prior terminal handles and proposes15:20-15:30
+subject to a fresh terminal checkpoint. Exact36 config/all295 pins verify again.
+No Root runtime replay or completed-task RSS/time sample. [Attribution review](../src/prototype/coordination/reviews/20261004-performance-bounded-owner-capacity-review.json),
+[availability review](../src/prototype/coordination/reviews/20261004-accepted94-cost-availability-review.json).
+
 2026-10-04, Root review at accepted metadata revision `9a52383c`:
 notice `4732642b`, scope manifest `ca684cfb`, strict result `a297d08f` and
 log `0c199b79` verify the original 363 recipes plus separately executed adopted
@@ -2532,6 +2553,13 @@ Four cross-instrumentation raw image hashes differ; all 140 cross-build reads
 pass. No cross-instrumentation byte equality or wall/RSS speedup is claimed.
 
 ### Assessment
+
+2026-10-04, Root accepts the bounded capacity/count observation with its limits;
+unclassified capacity is not reclaim permission or a peak/time result. Use the
+actual Job-proposed window to ask feasibility without a hold. Before execution,
+require C feasibility and all three fresh terminal acknowledgments, then issue
+one exact bounded grant; otherwise preserve the unmeasured state and arrange a
+later actual checkpoint. Do not repeat blind drain requests or broad tests.
 
 2026-10-04, Root coordination decision within existing delegated scope:
 adopt the precise combined coverage and preserve the separate invocation
