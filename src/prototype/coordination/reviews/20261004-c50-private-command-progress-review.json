@@ -1,0 +1,278 @@
+{
+  "date_UTC": "2026-10-04T22:36:28.519577+00:00",
+  "Main_parent": "b563796e6a6f6058df5c4c5593e4f407229b5389",
+  "notice_SHA": "7b34cb1d9b58aa5cbe8b4a26e2e959884f2aefb462d9bc7332c30087ac668000",
+  "classification": "C50 private progress static review; not frozen handoff/READY/current replay/task-source integration",
+  "owner_command_records": {
+    "initial-build": {
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "src/prototype/c_backend/acc_command/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/tree",
+        "BUILD=/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/O2",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/O2/c-acc-image"
+      ],
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/tmp",
+      "start": "2026-10-04T22:15:42.204338+00:00",
+      "exit": 2,
+      "finish": "2026-10-04T22:15:52.520203+00:00"
+    },
+    "corrected-build": {
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "src/prototype/c_backend/acc_command/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/tree",
+        "BUILD=/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/O2",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/O2/c-acc-image"
+      ],
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/tmp",
+      "start": "2026-10-04T22:18:25.397200+00:00",
+      "exit": 0,
+      "finish": "2026-10-04T22:18:35.870529+00:00"
+    },
+    "first-source": {
+      "argv": [
+        "python3",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/acc_command/compose.py",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/actual-materialized.a",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/first-source",
+        "--driver",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/O2/c-acc-image"
+      ],
+      "binary_sha256": "d59cff39ea4331086f05dd326fa5c7bb055c6b9eb04a15311b4c5114835d2008",
+      "image_sha256": "7c1a4f35108dea9a91c4ffac90062b0c1d6bb1c145e116ff269942775e704aa4",
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/tmp",
+      "start": "2026-10-04T22:19:34.690847+00:00",
+      "exit": 4,
+      "finish": "2026-10-04T22:19:34.765104+00:00"
+    },
+    "diagnostic-build": {
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "src/prototype/c_backend/acc_command/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/tree",
+        "BUILD=/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/O2",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/O2/c-acc-image"
+      ],
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/tmp",
+      "start": "2026-10-04T22:21:36.750765+00:00",
+      "exit": 0,
+      "finish": "2026-10-04T22:21:47.132589+00:00"
+    },
+    "diagnostic-emit": {
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/O2/c-acc-image",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/actual-materialized.a",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/diagnostic-stage",
+        "succ_access",
+        "5000000"
+      ],
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/tmp",
+      "start": "2026-10-04T22:22:04.858983+00:00",
+      "exit": 4,
+      "finish": "2026-10-04T22:22:04.903791+00:00"
+    },
+    "named-build": {
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "src/prototype/c_backend/acc_command/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/tree",
+        "BUILD=/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/O2",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/O2/c-acc-image"
+      ],
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/tmp",
+      "start": "2026-10-04T22:22:54.992719+00:00",
+      "exit": 0,
+      "finish": "2026-10-04T22:23:05.349846+00:00"
+    },
+    "named-source": {
+      "argv": [
+        "python3",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/acc_command/compose.py",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/actual-materialized.a",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/named-source",
+        "--driver",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/O2/c-acc-image"
+      ],
+      "binary_sha256": "b810bd8b51fe9e6c062e2289bcc840800e9098a3bfa3ca4e8c422e2ef99f6e90",
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/tmp",
+      "start": "2026-10-04T22:23:05.350885+00:00",
+      "exit": 0,
+      "finish": "2026-10-04T22:23:05.427643+00:00"
+    }
+  },
+  "exact_old_failure_input_copies": [
+    {
+      "path": "src/prototype/c_backend/acc_command/build.mk",
+      "sha256": "f1fa5207540961350432591b0f8ddb6999ec78fde592c745f84dc02ecc2766b5",
+      "copy": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/initial-inputs/build.mk"
+    },
+    {
+      "path": "src/prototype/c_backend/acc_command/main.c",
+      "sha256": "f45b82e9afd7f5e49811bbaef8c0e24c6794e1eed4e667722f9e3e9959e17cff",
+      "copy": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/initial-inputs/main.c"
+    },
+    {
+      "path": "src/prototype/c_backend/acc_command/main.c",
+      "copy": "src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/first-failure-inputs/main.c",
+      "sha256": "6fccc343d5c5c2068433e0a348cbbf6fd81171be7efd74e8a70616821cebc379"
+    },
+    {
+      "path": "src/prototype/c_backend/acc_command/build.mk",
+      "copy": "src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/first-failure-inputs/build.mk",
+      "sha256": "9569924baf9dc064f7b52e1904971d525fee4ea4b9e7f2abf67e201952d1ffb4"
+    },
+    {
+      "path": "src/prototype/c_backend/acc_command/compose.py",
+      "copy": "src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/first-failure-inputs/compose.py",
+      "sha256": "24afecc67e781dc7a052cc8874be680b1a5358baae4a7df0d90adf660e757442"
+    },
+    {
+      "path": "src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/O2/c-acc-image",
+      "copy": "src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/first-failure-inputs/c-acc-image",
+      "sha256": "d59cff39ea4331086f05dd326fa5c7bb055c6b9eb04a15311b4c5114835d2008"
+    },
+    {
+      "path": "src/prototype/c_backend/acc_command/main.c",
+      "copy": "src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/diagnostic-inputs/main.c",
+      "sha256": "e63fd7598d8c3ab6e82061912ff1d4d884cec9c38c66ad28d4ab1dc7b511e4a3"
+    },
+    {
+      "path": "src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/O2/c-acc-image",
+      "copy": "src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/diagnostic-inputs/c-acc-image",
+      "sha256": "ab41db5d688d752410f7facc62a2c0ea6f883e05f7703250c94ecdb7d97ea973"
+    }
+  ],
+  "all_original_C32_C49_archives_and_manifests_exact": {
+    "32": "db6a663c11197d92a28d13c8344da02aaccdd59c32864bfba106391a7f7e05ae",
+    "33": "a8bd408cc099885ab26780a901017fb3a9087294ce5e8b768b84ea6c2b7a6499",
+    "34": "26138ad62d6e819a722b3264c6d050d6d906a208190985158a68c86055d6ad77",
+    "35": "6bfebc166faca426c59b63d6df98a27cce0e51dad59fcc93aabd48802f74ba6c",
+    "36": "935cbfa3c56f20af251770180172e795eb14e866d5569318eae515e0e047acbd",
+    "37": "a82d8be6c7d1615ded0c217a6facf291c828c2ecea5325e7ee598de231664416",
+    "38": "bb0c2ccc7c53cf1656e20ffa3b265db45bf97e0ce01c938c9af6fd22122efc4f",
+    "39": "d3c5b078c059146f496725d6d28270fa161c2641fda5f19062c763823e54f4c8",
+    "40": "dac488b659728bc636e95dec277637417000bb7a70f4728ac804f15623ef2553",
+    "41": "d0b6dde2693b65fab2d96293c7bc1d3ab682b8c14355bc1a431284d62bfcd3e1",
+    "42": "59cd56f2811089efcbc46e61995ceca2e0edb063d3d65c68d4da8b06e4f2e5d4",
+    "43": "fd346700ec4523a5889b99b92c632641d9ea890255dd741ddabf6345890ad513",
+    "44": "274a0966e0e1fd0f338d68f929a8f2dcbd4be3b01511faee10f0ab6673309061",
+    "45": "8fb1ddbe1ab8c8a2528710f603cb5c1823cd6afc072f21c31eba99979f762f94",
+    "46": "7c750b7fe3a01057f1314568487771d248babb9e9d7985efacaf77207fb55f77",
+    "47": "eb8c5e87a9bafcbab9bb6aca2fec8ecdfa6e5e0487fcfb3d1042af908625293d",
+    "48": "c3502eaad5602fd6895dd7dda79b87cfd25fa235931fa3cf1eafdb574b8d5cfe",
+    "49": "38e52c076a24a592aaf87c85550d3630d1bb0251bab1b22cfbf239652fd78ea5"
+  },
+  "named_source_product": {
+    "artifact_sha256": "7c1a4f35108dea9a91c4ffac90062b0c1d6bb1c145e116ff269942775e704aa4",
+    "commands": [
+      {
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/O2/c-acc-image",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/actual-materialized.a",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/.acc-command-wdfqao3p/bodies",
+          "succ_access",
+          "5000000"
+        ],
+        "exit": 0
+      }
+    ],
+    "driver_sha256": "b810bd8b51fe9e6c062e2289bcc840800e9098a3bfa3ca4e8c422e2ef99f6e90",
+    "generated_inputs": {
+      "accessibility.inc": "ccdd139cc3e9414a398fb12bb7073a652d91d47f9cb37f84c3319d86310f55b9",
+      "actions.inc": "1688e9e3618e8c89edef8e5286180df715b67aaec7fa932e0b4525704c129180",
+      "append.inc": "ffd37ec2ed3ff967b588757b430b3a83042b4bfd737414141a0d6dffffefa6ac",
+      "clause.inc": "cd1a7d70441222995b12ca2354ae6aeda80eaa2f99cd296cfeb5ef451405804c",
+      "comparison.inc": "6b63a59d024eec5a46f7c436ed300ecab72283e7a5e10fc565e23ffef2ba69c4",
+      "measure.inc": "60d51b65f7cedf55ea25d5e44251695ffb7adc98b35445bf63e1547237755803",
+      "partition.inc": "b8238b022d1613d4cd8dffd4692f68d0e6668bf8206f3324588765bc25c2de31",
+      "transport.inc": "888dbff17e481d65fb071612fce4f05b24853843623a804db76c6f918e3ec0de"
+    },
+    "limits": [
+      "manual role/action/storage/array interpretation; complete checked Scope unproved",
+      "Nat32/depth256/node65536/borrowed immutable lifetime/nonoverlap/transactional output",
+      "ordinary native Acc refusal remains; no producer/schema/checker/erasure/ABI extension"
+    ],
+    "outputs": {
+      "component.c": "53f01aa8932efcd57f9395183d77402fd6779cb29f49a04dc2260a5dfb87089d",
+      "component.h": "246364a170ff3443c5e89a15e033ecaf3e230ea657ee8a670b0e4582cf78c044",
+      "provenance.json": "79ac358c50b19ca9213dae1cb905f1372f1f8e4cdf50d4d0d5e65739bba947a5"
+    },
+    "product": "source",
+    "scope": "fixed actual Acc mockup from admitted saved image; not general native lowering",
+    "steps_per_selector": 5000000,
+    "successor": "succ_access"
+  },
+  "all_named_source_code_header_provenance_frozen_C49_exact": true,
+  "seven_body_hashes_and_frame_table_match_frozen_C49": true,
+  "private_readonly_snapshot_pins": {
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/initial-build.json": "ec740abf080e21b8fec9640a17f575fb0039d540ce392ecbdcd8730016d0759c",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/initial-build.out": "95c78dd57ea01d2b68135ef21f6214b33aac77314f3afc3f4cf8076daeafeab5",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/initial-build.err": "0a0b73d1d6e63186e479ab34fe9c624846f7c37d6f6d0796e40f2c9a9b768eb6",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/corrected-build.json": "ad0be1e8e006834c52cc3f572de295ebfbece2382b81ce69b4661d91d47b07d0",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/corrected-build.out": "d9b5a1391a3f9cb45f0dc3ce2d599a42a49ae47bbf716574af7af26ad912b40c",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/corrected-build.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/first-source.json": "9a361b8b7de831f91e08618b2d66196024e7b7f01c0f2ca998b0b056a4d64aae",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/first-source.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/first-source.err": "f9c2ad3fbefc8deefeb999ae98638c52950a934eefe1909687271182cd0e7105",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/diagnostic-build.json": "91e6003b4ed8743774531dcdc1558416d0af5d1511da203a95f3993c52f77537",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/diagnostic-build.out": "d9b5a1391a3f9cb45f0dc3ce2d599a42a49ae47bbf716574af7af26ad912b40c",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/diagnostic-build.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/diagnostic-emit.json": "e7e631e8e93821af8e8c5100328966e0c2a7e9b7c59aef51025c1aa0cd8bfc62",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/diagnostic-emit.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/diagnostic-emit.err": "1c8ba17074096c196a97494a55e9e6fe231c24048a85e9844c45ce29df005ce0",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/named-build.json": "1e0e9d6304087bfe4c3f7a98759c1abed21cb7c69c2b13ae2ca8c9e172a19298",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/named-build.out": "d9b5a1391a3f9cb45f0dc3ce2d599a42a49ae47bbf716574af7af26ad912b40c",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/named-build.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/named-source.json": "92da8dcbe61f39e92dce1223211ec7da403f84bd287bdbcad89a0ff36aae1050",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/named-source.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/named-source.err": "324cf13f59e04049266395011e4fd722b67ed7b66169631b66e494fa9580f3cb",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/initial-inputs.json": "ab88c3407827b7d678e142eafeb4c0a79a50eadc006055892d983a8eafa2d1e7",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/initial-inputs/build.mk": "f1fa5207540961350432591b0f8ddb6999ec78fde592c745f84dc02ecc2766b5",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/initial-inputs/main.c": "f45b82e9afd7f5e49811bbaef8c0e24c6794e1eed4e667722f9e3e9959e17cff",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/first-failure-inputs.json": "807dffe03047aff74c74a0e99830e2f4ad2de886d6190ff20c172a363538f633",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/first-failure-inputs/main.c": "6fccc343d5c5c2068433e0a348cbbf6fd81171be7efd74e8a70616821cebc379",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/first-failure-inputs/build.mk": "9569924baf9dc064f7b52e1904971d525fee4ea4b9e7f2abf67e201952d1ffb4",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/first-failure-inputs/compose.py": "24afecc67e781dc7a052cc8874be680b1a5358baae4a7df0d90adf660e757442",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/first-failure-inputs/c-acc-image": "d59cff39ea4331086f05dd326fa5c7bb055c6b9eb04a15311b4c5114835d2008",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/diagnostic-inputs.json": "9472ba85c7e2885db3225abff6837f218b96adfa34a1cdab9933cc1592785e01",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/diagnostic-inputs/main.c": "e63fd7598d8c3ab6e82061912ff1d4d884cec9c38c66ad28d4ab1dc7b511e4a3",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/diagnostic-inputs/c-acc-image": "ab41db5d688d752410f7facc62a2c0ea6f883e05f7703250c94ecdb7d97ea973",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/O2/c-acc-image": "b810bd8b51fe9e6c062e2289bcc840800e9098a3bfa3ca4e8c422e2ef99f6e90",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/actual-materialized.a": "7c1a4f35108dea9a91c4ffac90062b0c1d6bb1c145e116ff269942775e704aa4",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/named-source/component.c": "53f01aa8932efcd57f9395183d77402fd6779cb29f49a04dc2260a5dfb87089d",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/named-source/component.h": "246364a170ff3443c5e89a15e033ecaf3e230ea657ee8a670b0e4582cf78c044",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/named-source/provenance.json": "79ac358c50b19ca9213dae1cb905f1372f1f8e4cdf50d4d0d5e65739bba947a5",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/named-source/product.json": "38e0cb2e5ae28936875e99616425e7175d872eca7015af40e0db0b0b642b862b",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/acc_command/main.c": "8d55e5b02e973a4b1f15ca1dfe877a552b894c2dec235c7dce053d24a26d643c",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/acc_command/build.mk": "4bb03da4b5bd05e806bd70ae93f02eb54d6a1c89e861579fb9f3e1470461f855",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/acc_command/compose.py": "24afecc67e781dc7a052cc8874be680b1a5358baae4a7df0d90adf660e757442",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/coordination/outbox/c-backend-c50-command-action-20261004.txt": "7b34cb1d9b58aa5cbe8b4a26e2e959884f2aefb462d9bc7332c30087ac668000"
+  },
+  "private_snapshot_external": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c50-private-command-progress",
+  "source_review": "C driver loads saved image once, ordinary name-selection/revalidation with explicit per-selector budget; seven existing body emitters plus frame emitter run after selection with eval/WHNF/substitution/typed-query advance forbidden and source owner counts asserted stable. Separate scratch graph; owned disk anonymous streams. Python fresh products use unchanged fixed pack guards, staging cleanup, input hash check, Linux no-replace publication including existing empty dirs/symlinks, without overwriting fallback. All outputs frozen C49 exact; generated bodies are fresh, historical files no longer command inputs. Fixed qualified actual Acc mockup, not general native lowering/LinkerScript reinterpretation.",
+  "preserved_failures": "Initial make2/linker1 missing existing Fold TU; first/diagnostic source4 omitted required target-entry names in caller. Retained old inputs/binaries/stdout/stderr. Existing Fold dependency/name correction only; no producer/source-body/expected-type delta. Failed output absent/diagnostic stage empty at review.",
+  "remaining": "Exact frozen handoff and independently current source/object/archive O2/full-source SAN clients/Core/resources plus pending/unsupported/build/I-O/prior-output/cleanup controls. No independent command replay; live snapshot is progress only, not proven final build input freeze.",
+  "limits": "Manual role/action/storage/array/complete checked Scope/general native61; ordinary native4/input3 inherited C46; borrowed lifetime/nonoverlap/Nat32/depth256/node65536/finite SAN/overflow-unexercised/net cost remain.",
+  "accepted_adoption": false,
+  "Root_replay": false,
+  "READY": false,
+  "Goal_or_owner_actions": false,
+  "cost_samples": 0
+}

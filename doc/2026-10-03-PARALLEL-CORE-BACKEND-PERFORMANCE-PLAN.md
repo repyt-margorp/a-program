@@ -1,7 +1,7 @@
 # Parallel Development: Inquiry Desk, Merge and Workers
 
 Date: 2026-10-03
-Status: C49 exact15/taske076bc32/current Root O2/full affected SAN53 each qualified; prototype Main delivery recorded. Native trial8 broad2 only inventory omissions; corrected syntax and affected owner SAN pass, full corrected broad/foreign/joint/strict/net/READY open. Original Goals/timer unchanged.
+Status: C49 exact15/taske076bc32/Mainb563796e O2/full affected SAN53 each delivered; C50 private fresh-body single-command source reproduces C49, full product/affected/failure qualifications pending. Native corrected broad/foreign/joint/strict/net/READY open. Original Goals/timer unchanged.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `fd45c42`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -17,7 +17,7 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | ID | Problem / owner | Related | Status |
 | --- | --- | --- | --- |
 | 1 | Inquiry desk -> `merge`: reporting vs coordination/integration | All lanes | Desk answers the user; only Merge integrates after verified handoff |
-| 2 | `c-backend`: downstream C design | #61 (supersedes #44/#49); shared policy #47 | C49 exact15/taske076bc32 afterC48; Root O2/full emitter-inspector-module-client SAN53 each,898-line actual Acc and34 binder-derived frame slots qualified/prototype integrated; manual role/action/full Scope/general native/cost open |
+| 2 | `c-backend`: downstream C design | #61 (supersedes #44/#49); shared policy #47 | C49 exact15/current O2/full SAN53 each integrated; C50 private fresh single-image-load/source command reproduces C49, full product/control freeze pending; manual roles/action/Scope/general native/cost open |
 | 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Approved current frame deletion accepted; original363 plus adopted4 verified separately. Actual matched peakRSS/time pending safe all-owner window; peripheral MEM10/spine/empty arrays parked |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
 | 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | Trial8 broad2 only inventory5 omissions; exact restored inputs/corrected syntax1580/affected owner SAN0/Source O2 inert byte26 controls verified; full corrected broad/foreign/joint/strict/net/READY open in sole SE list |
@@ -26,6 +26,22 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | 8 | `issue-audit`: evidence-backed GitHub disposition | All open Issues/PRs | Bounded Goal complete; verified dispositions, task8bb5018/Mainb461ace; #61 retains C residuals |
 
 ### Current Delivery Status
+
+2026-10-04, [C50 private command review](../src/prototype/coordination/reviews/20261004-c50-private-command-progress-review.json):
+seven owner records/eight retained failure inputs, driver `b810bd8b`, image and
+all18 prior archives/manifests match. Named strict O2 driver/source command0
+reproduces C49 source/header/provenance and seven body hashes/frame table.
+One image load feeds ordinary admitted selection, then existing emitters with
+source advancement forbidden. Fixed pack guards use fresh bodies, owned disk
+streams/staging and Linux no-replace directory publication. Original Fold TU
+linker1/make2 and caller omitted-name source4 remain; failed output absent.
+This is private progress, with no independent command replay or frozen READY.
+Original owner still qualifies source/object/archive clients/Core/resources,
+O2/full-source SAN and pending/unsupported/build/I-O/prior-output/cleanup.
+Manual roles/action/storage/full checked Scope/general native61/cost remain;
+no producer/schema/checker/erasure/ABI extension or accepted-source adoption.
+C49 pending-parent historical snapshots remain preserved. Metadata review only;
+C50 implementation stays private until a distinct qualified handoff.
 
 2026-10-04, [C49 current frame review](../src/prototype/coordination/reviews/20261004-c49-current-frame-review.json)
 supersedes private reader-only/pending wording. Exact15 task `e076bc32` follows
