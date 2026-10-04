@@ -1,0 +1,101 @@
+{
+  "review_UTC": "2026-10-04T04:10:07.119049+00:00",
+  "notice_sha256": "c77c559ced7d871514509ce51644559ebc902b1be3a81735fb2a85ca4d087f68",
+  "worker_frozen_epoch": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/epochs/current_materialized_order_v1_comparison",
+  "frozen3": {
+    "analysis.md": "66ef0d437dd8a5f9827bd25c6bffdfd14940fe950c292307a87ea0c013885678",
+    "comparison.json": "356c34ef7fb38db18f880d35812dacc6805b31b64c106cee4692ca5a69cfc351",
+    "manifest.sha256": "0ad3e58d6962d88c9428e4afa4578651ff6efbdb9d87bbbed1bf884af48d1ab9"
+  },
+  "reference_pins": {
+    "/home/repyt/workspace/a-program/src/prototype/performance_followup/mem10-current-cuts-capacity-root-review.json": "a0fcf592d835609bfbc80a0d30d4a693a161b35169b32af303ae960d5a98566f",
+    "/home/repyt/workspace/a-program/src/prototype/coordination/inbox/job-evidence-mem10-current-materialized-bytes-20261004.json": "31107ad241bbcaf887b8dbefd855330e1fdf53eadb14b61d0b46a6ee1e2ce1b8",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_materialized_bytes_v2_20261004/byte-rows.json": "27679cff8707df16d47f0a65d7b0a5d7d8969f2cf1612952b9946a06c778db83",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_materialized_bytes_v2_20261004/verification.sha256": "01d7a96e0715e814c42a7bd848e5dce6e52bbed3bb8d8657d8ab702b95ad9032",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_materialized_order_v1_20261004/summary.json": "2df0c97399787f13e814e0d4b16a6cc05033a7152a7f0fc7b4d86e524f9ab5b5",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_materialized_order_v1_20261004/private.sha256": "280e7d0cd912c254dc1e8f1aec573354f80ecf42f818bca93536028f64b620f3",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/epochs/current_materialized_order_v1_diagnosis/manifest.sha256": "ae73214b8723212d28b0eeabe6f0f3bd07c83f4c36443e89265b0e28d65a0556",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/epochs/fresh_argument_pairs_flags_v2_current_gates_held/manifest.sha256": "e11c3f2a9ec1a3611d79d44924fc26896df3ba4411dc0c40436d54b5829c3c6c"
+  },
+  "all_actual_reference_pins_exact": true,
+  "all32_original_writer_resaver_paths_complete_from_original16_rows": {
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_materialized_bytes_v2_20261004/case-1-cut-13-parent-0.image": "48465b1c76dc7282c9e1fcb21b954f9721dc4ff11c07edfc8f8417fd979f3d8f",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_materialized_bytes_v2_20261004/case-1-cut-13-parent-0.resaved": "48465b1c76dc7282c9e1fcb21b954f9721dc4ff11c07edfc8f8417fd979f3d8f",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_materialized_bytes_v2_20261004/case-1-cut-13-parent-1.image": "48465b1c76dc7282c9e1fcb21b954f9721dc4ff11c07edfc8f8417fd979f3d8f",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_materialized_bytes_v2_20261004/case-1-cut-13-parent-1.resaved": "479911c461da91b836d0542591422ad21ee8682126fcacb0eea29ee45a635ef8",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_materialized_bytes_v2_20261004/case-1-cut-13-parent-2.image": "479911c461da91b836d0542591422ad21ee8682126fcacb0eea29ee45a635ef8",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_materialized_bytes_v2_20261004/case-1-cut-13-parent-2.resaved": "48465b1c76dc7282c9e1fcb21b954f9721dc4ff11c07edfc8f8417fd979f3d8f",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_materialized_bytes_v2_20261004/case-1-cut-13-parent-3.image": "48465b1c76dc7282c9e1fcb21b954f9721dc4ff11c07edfc8f8417fd979f3d8f",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_materialized_bytes_v2_20261004/case-1-cut-13-parent-3.resaved": "48465b1c76dc7282c9e1fcb21b954f9721dc4ff11c07edfc8f8417fd979f3d8f",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_materialized_bytes_v2_20261004/case-1-cut-13-flags-0.image": "479911c461da91b836d0542591422ad21ee8682126fcacb0eea29ee45a635ef8",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_materialized_bytes_v2_20261004/case-1-cut-13-flags-0.resaved": "479911c461da91b836d0542591422ad21ee8682126fcacb0eea29ee45a635ef8",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_materialized_bytes_v2_20261004/case-1-cut-13-flags-1.image": "1866ffe1e4b0b04132c58a61c2065e1c497185a969f23805199e2d2ac4606664",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_materialized_bytes_v2_20261004/case-1-cut-13-flags-1.resaved": "48465b1c76dc7282c9e1fcb21b954f9721dc4ff11c07edfc8f8417fd979f3d8f",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_materialized_bytes_v2_20261004/case-1-cut-13-flags-2.image": "1866ffe1e4b0b04132c58a61c2065e1c497185a969f23805199e2d2ac4606664",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_materialized_bytes_v2_20261004/case-1-cut-13-flags-2.resaved": "1866ffe1e4b0b04132c58a61c2065e1c497185a969f23805199e2d2ac4606664",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_materialized_bytes_v2_20261004/case-1-cut-13-flags-3.image": "48465b1c76dc7282c9e1fcb21b954f9721dc4ff11c07edfc8f8417fd979f3d8f",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_materialized_bytes_v2_20261004/case-1-cut-13-flags-3.resaved": "48465b1c76dc7282c9e1fcb21b954f9721dc4ff11c07edfc8f8417fd979f3d8f",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_materialized_bytes_v2_20261004/case-5-cut-9-parent-0.image": "c4ba922427644b3c46d316b71f0676ad2b6d692a0f7c2d0f7ebae610c9329a19",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_materialized_bytes_v2_20261004/case-5-cut-9-parent-0.resaved": "c4ba922427644b3c46d316b71f0676ad2b6d692a0f7c2d0f7ebae610c9329a19",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_materialized_bytes_v2_20261004/case-5-cut-9-parent-1.image": "19da8528c64d8e329cb9e4b77dbe2753e3d502478f7d936b37157fd8ffec74d6",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_materialized_bytes_v2_20261004/case-5-cut-9-parent-1.resaved": "c4ba922427644b3c46d316b71f0676ad2b6d692a0f7c2d0f7ebae610c9329a19",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_materialized_bytes_v2_20261004/case-5-cut-9-parent-2.image": "19da8528c64d8e329cb9e4b77dbe2753e3d502478f7d936b37157fd8ffec74d6",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_materialized_bytes_v2_20261004/case-5-cut-9-parent-2.resaved": "c4ba922427644b3c46d316b71f0676ad2b6d692a0f7c2d0f7ebae610c9329a19",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_materialized_bytes_v2_20261004/case-5-cut-9-parent-3.image": "19da8528c64d8e329cb9e4b77dbe2753e3d502478f7d936b37157fd8ffec74d6",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_materialized_bytes_v2_20261004/case-5-cut-9-parent-3.resaved": "c4ba922427644b3c46d316b71f0676ad2b6d692a0f7c2d0f7ebae610c9329a19",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_materialized_bytes_v2_20261004/case-5-cut-9-flags-0.image": "19da8528c64d8e329cb9e4b77dbe2753e3d502478f7d936b37157fd8ffec74d6",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_materialized_bytes_v2_20261004/case-5-cut-9-flags-0.resaved": "19da8528c64d8e329cb9e4b77dbe2753e3d502478f7d936b37157fd8ffec74d6",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_materialized_bytes_v2_20261004/case-5-cut-9-flags-1.image": "c4ba922427644b3c46d316b71f0676ad2b6d692a0f7c2d0f7ebae610c9329a19",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_materialized_bytes_v2_20261004/case-5-cut-9-flags-1.resaved": "19da8528c64d8e329cb9e4b77dbe2753e3d502478f7d936b37157fd8ffec74d6",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_materialized_bytes_v2_20261004/case-5-cut-9-flags-2.image": "19da8528c64d8e329cb9e4b77dbe2753e3d502478f7d936b37157fd8ffec74d6",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_materialized_bytes_v2_20261004/case-5-cut-9-flags-2.resaved": "19da8528c64d8e329cb9e4b77dbe2753e3d502478f7d936b37157fd8ffec74d6",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_materialized_bytes_v2_20261004/case-5-cut-9-flags-3.image": "19da8528c64d8e329cb9e4b77dbe2753e3d502478f7d936b37157fd8ffec74d6",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_materialized_bytes_v2_20261004/case-5-cut-9-flags-3.resaved": "c4ba922427644b3c46d316b71f0676ad2b6d692a0f7c2d0f7ebae610c9329a19"
+  },
+  "five_variant_groups_recomputed": {
+    "48465b1c76dc7282c9e1fcb21b954f9721dc4ff11c07edfc8f8417fd979f3d8f": {
+      "bytes": 1772,
+      "observed_match_labels": [
+        "case-1-variant-0-repeat-1"
+      ],
+      "verified_cause_receipt_sha256": "302da38dcb37e05ba6713e960b827e5cac5bcce204d68ad012129794e8a3fbf4"
+    },
+    "479911c461da91b836d0542591422ad21ee8682126fcacb0eea29ee45a635ef8": {
+      "bytes": 1772,
+      "observed_match_labels": [
+        "case-1-variant-0-repeat-0",
+        "case-1-variant-2-repeat-1"
+      ],
+      "verified_cause_receipt_sha256": "302da38dcb37e05ba6713e960b827e5cac5bcce204d68ad012129794e8a3fbf4"
+    },
+    "1866ffe1e4b0b04132c58a61c2065e1c497185a969f23805199e2d2ac4606664": {
+      "bytes": 1772,
+      "observed_match_labels": [
+        "case-1-variant-2-repeat-0"
+      ],
+      "verified_cause_receipt_sha256": "302da38dcb37e05ba6713e960b827e5cac5bcce204d68ad012129794e8a3fbf4"
+    },
+    "c4ba922427644b3c46d316b71f0676ad2b6d692a0f7c2d0f7ebae610c9329a19": {
+      "bytes": 1522,
+      "observed_match_labels": [
+        "case-5-variant-0-repeat-1",
+        "case-5-variant-1-repeat-0",
+        "case-5-variant-1-repeat-1"
+      ],
+      "verified_cause_receipt_sha256": "302da38dcb37e05ba6713e960b827e5cac5bcce204d68ad012129794e8a3fbf4"
+    },
+    "19da8528c64d8e329cb9e4b77dbe2753e3d502478f7d936b37157fd8ffec74d6": {
+      "bytes": 1522,
+      "observed_match_labels": [
+        "case-5-variant-0-repeat-0"
+      ],
+      "verified_cause_receipt_sha256": "302da38dcb37e05ba6713e960b827e5cac5bcce204d68ad012129794e8a3fbf4"
+    }
+  },
+  "all32_paths_hashes_and_bytes_match_existing_eight_current_baseline_observations": true,
+  "diagnosis41_unchanged_and_Root_cause_receipt_exact": true,
+  "Root_runtime_GDB_build_or_cost_rerun": false,
+  "assessment": "Accept bounded artifact-only comparison: all32 original current parent/flags materialized writer/resaver outputs, including third flags case1 variant1866ffe1, exactly match the five distinct outputs already emitted and independently traced on unchanged current baseline. This connects this finite O2 sample to the bounded baseline entry/configuration/footer ordering cause. It does not prove every historical failure, change any codec/image/authority, waive original assertions or qualify flags runtime.",
+  "holds": "All previous historical/current O2/SAN/strict/setup and diagnostic5/8 byte failures remain unwaived; original codec-owner disposition and broader acceptance/later C/actual RSS-time separate.",
+  "runtime_READY_task_publication_cost_grant_promotion_or_Goal_completion": false
+}

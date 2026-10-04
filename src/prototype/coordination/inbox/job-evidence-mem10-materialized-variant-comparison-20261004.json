@@ -1,0 +1,16 @@
+{
+  "date_UTC": "2026-10-04T04:10:07.119049+00:00",
+  "source": "Root artifact-only independent review within existing scope; worker evidence is not new human approval.",
+  "recipient": "Original Job codec owner; durable addendum only, no turn/resume/model change/ack.",
+  "Root_review_path": "src/prototype/performance_followup/mem10-materialized-variant-comparison-root-review.json",
+  "Root_review_sha256": "fbb050b2de609286378d904ff07691204301ff4069573a8f6759a6303d6b82f7",
+  "worker_notice_sha256": "c77c559ced7d871514509ce51644559ebc902b1be3a81735fb2a85ca4d087f68",
+  "frozen3_manifest_sha256": "0ad3e58d6962d88c9428e4afa4578651ff6efbdb9d87bbbed1bf884af48d1ab9",
+  "all32_exact_current_outputs_match_five_traced_baseline_variants": true,
+  "previous_cause_route_path": "src/prototype/coordination/inbox/job-evidence-mem10-materialized-byte-cause-20261004.json",
+  "previous_cause_route_sha256": "655b01c8f9d96c8d4a63f5c764c2f1cdb6be2eee9c352ea35fd3f516dc198864",
+  "assessment": "Accept bounded artifact-only comparison: all32 original current parent/flags materialized writer/resaver outputs, including third flags case1 variant1866ffe1, exactly match the five distinct outputs already emitted and independently traced on unchanged current baseline. This connects this finite O2 sample to the bounded baseline entry/configuration/footer ordering cause. It does not prove every historical failure, change any codec/image/authority, waive original assertions or qualify flags runtime.",
+  "holds": "All previous historical/current O2/SAN/strict/setup and diagnostic5/8 byte failures remain unwaived; original codec-owner disposition and broader acceptance/later C/actual RSS-time separate.",
+  "no_runtime_fix_or_byte_waiver_or_cost_grant_or_Goal_completion": true,
+  "no_consumption_claimed": true
+}
