@@ -1,7 +1,7 @@
 # Performance Goal: Current Speed and Memory Work
 
 Date: 2026-10-03
-Status: active; new approved stateless-frame/required ordinal dependency freshly qualified for accepted promotion; commit/push and current matched RSS/time pending. Historical gains remain producer-specific.
+Status: active; new approved stateless-frame/required ordinal dependency accepted fc52755b, pushed/remote exact; current matched RSS/time pending. Historical gains remain producer-specific.
 This is the active successor to the frozen
 [Performance Goal at0539051](2026-10-03-PERFORMANCE-GOAL.md). Its published bytes
 and historical handoffs remain immutable. The single current issue-status table
@@ -90,7 +90,7 @@ completed fuels equal. Public profiles and52 partition images/full40 TSV match;
 strict3 and old writer paired20 remain failed. Candidate own328 inert images
 match. The initial public957 rationale was a profile-mismatched comparison and
 is explicitly withdrawn with a fresh same-profile correction; valid raw two-file
-15/29 ordering failures are distinct. Commit/push and actual net RSS/time remain.
+15/29 ordering failures are distinct. Accepted fc52755b is pushed/remote exact; live local-edit Core/IADT/CLI0 and protected9 unchanged. Actual net RSS/time remains.
 
 ### Assessment
 

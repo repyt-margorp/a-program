@@ -16,6 +16,14 @@ Related: [coordination](2026-10-03-PARALLEL-CORE-BACKEND-PERFORMANCE-PLAN.md),
 
 ### Subjective (User)
 
+2026-10-04 12:58 UTC, English translation of the latest human request via
+inquiry desk `019ebfae`: Evidence appears to rebuild the same tree as Term,
+which seems pointless. Have a worker investigate whether it can be reduced or
+integrated into typed Occurrence, and summarize the findings in Markdown.
+This is a concern to verify, not an established duplication finding. The focused
+audit and its work list are in the
+[Evidence/Occurrence audit](2026-10-04-EVIDENCE-OCCURRENCE-AUTHORITY-AUDIT-AND-PLAN.md).
+
 2026-10-04 09:42 UTC, English translation of explicit user authorization via
 inquiry desk `019ebfae`: "Job may now enter accepted code. Migrate it; replace
 the old broadly expanded Job with the current prototype version." This approves

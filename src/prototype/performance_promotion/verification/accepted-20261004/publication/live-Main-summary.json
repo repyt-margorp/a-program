@@ -1,0 +1,6 @@
+{
+  "date_UTC": "2026-10-04T13:10:15.088363+00:00",
+  "accepted_commit": "fc52755b345a555e49a79df40549e9cb23d54088",
+  "local_edit_interaction_only": "Main evidence.c/h,IADT.c/h,Core/IADT test local edits retained outside acceptance; fresh build/Core/IADT/imageCLI tests0, not promotion of these edits.",
+  "all4_groups0": true
+}

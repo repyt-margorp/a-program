@@ -1,6 +1,6 @@
 # Verified Performance Promotion
 
-Date: 2026-10-03. Status: historical epoch `7631e5a` complete; new approved stateless-frame deletion promotion in progress on 2026-10-04.
+Date: 2026-10-03. Status: historical epoch `7631e5a` complete; new approved stateless-frame deletion promotion complete on 2026-10-04.
 Related: [central schedule](2026-10-03-PARALLEL-CORE-BACKEND-PERFORMANCE-PLAN.md),
 Issues #56/#51. This is a separate promotion epoch and its sole work list.
 
@@ -148,6 +148,13 @@ semantic/fuel/zero-step/SAN commands0, candidate328 inert0; paired20/164 remain
 failed. No full check-acceptance or current matched time/RSS claim. See the
 [Root promotion review](../src/prototype/performance_promotion/verification/accepted-20261004/review.json).
 
+Accepted promotion `fc52755b345a555e49a79df40549e9cb23d54088` is pushed and
+remote-exact. Fresh live Main build/Core/IADT/image CLI0 additionally checks
+interaction with the six unowned implementation/test edits; all nine protected
+hashes and the empty Main index are unchanged. Desk's user notes are preserved.
+This completes the selected promotion; full acceptance/raw-byte/frontier and
+matched actual RSS/time remain separate. [Publication/preservation](../src/prototype/performance_promotion/verification/accepted-20261004/publication/publication.json).
+
 ### Assessment
 
 Root implementation decision within explicit approval: select the four-file
@@ -186,6 +193,6 @@ optimization/checkpoint/Surface/C trial or Main dirty implementation is selected
   the minimal accepted diff with necessary tests.
 - [x] Run accepted regressions, fresh affected sanitizer/fuel/resume/profile
   checks and verify protected local edits are unchanged.
-- [ ] Commit/push intentional accepted promotion; report exact scope, verification
+- [x] Commit/push intentional accepted promotion; report exact scope, verification
   and limitations to the inquiry desk. Actual RSS/time remains a distinct
   matched exclusive experiment, with retained censored rows and no universal gain.

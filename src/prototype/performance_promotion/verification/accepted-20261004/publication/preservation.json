@@ -1,0 +1,22 @@
+{
+  "date_UTC": "2026-10-04T13:08:36.006741+00:00",
+  "parent": "c205d507a8568bfdda355e247a78b4e67464f294",
+  "promotion_commit": "fc52755b345a555e49a79df40549e9cb23d54088",
+  "all9_protected_unchanged": {
+    "doc/2026-09-18-IADT-SURFACE-AND-ISSUE-29-30-PRIORITY-PLAN.md": "f5efef567ba2099e99e47f24822ec2a4b1625128e23d15fb6be677e5bbdb9958",
+    "src/evidence.c": "76c2b65a4a902705199b0c477f93fd17c396f46d5831946b2ebe25c1a0c0e5ee",
+    "src/evidence.h": "a83530344d78e142a129a6ca2726eaace6a72f22c6a787b9ab5137378379719b",
+    "src/iadt.c": "0707d477ce6f764a879fae7faec2794caad8bbd643e0f0fcef6dab601152723b",
+    "src/iadt.h": "11b5d3579ec43a7390c9921858f2d8ed1ae45d07bfc3a6c3d8555927ef2179d0",
+    "tests/core.c": "eb92f3814907bf7b4bf5af7842986309185bd9ed4d8ea26c0314a29635457715",
+    "tests/iadt.c": "652c5a215131c9687205b30a05b18189362d177035efad5f6c4c5b3e4afaf739",
+    "tests/acceptance/generic-quick-sorted-derived-lt.p": "04f765868a23867be98d780eac40de62439b44b3cf3c77f2a234946adcd1621f",
+    "tests/fixtures/sorted-proof-provider-derived-lt.p": "17cf6d520e69f644a5e675a1474e64361359dd4cc1e96a4a40d1fdea66f954c7"
+  },
+  "desk_document_before_hashes": {
+    "doc/2026-10-03-PARALLEL-CORE-BACKEND-PERFORMANCE-PLAN.md": "d2780aba836251f22ebf22dee95d36ef319a22f1f717c2dd4545f6de6d229347",
+    "doc/2026-10-03-PERFORMANCE-GOAL-CURRENT.md": "cd419448aa01a37abd97b88132e3269a10604ab1a6b4b32921f62390e6f79a64"
+  },
+  "all_added_desk_lines_preserved_in_target": true,
+  "Main_index_empty_after": true
+}

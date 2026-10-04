@@ -1,0 +1,57 @@
+[
+  {
+    "label": "build",
+    "argv": [
+      "make",
+      "-j1",
+      "-f",
+      "/home/repyt/workspace/a-program/src/Makefile",
+      "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/performance-live-Main-check/build",
+      "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+      "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/performance-live-Main-check/build/core_test",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/performance-live-Main-check/build/iadt_test",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/performance-live-Main-check/build/source_io_test",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/performance-live-Main-check/build/program_test",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/performance-live-Main-check/build/pointer-check"
+    ],
+    "started_UTC": "2026-10-04T13:09:09.891930+00:00",
+    "exit": 0,
+    "finished_UTC": "2026-10-04T13:10:00.205189+00:00",
+    "log_sha256": "26c8c2b1c2983eb39a7a57dc21f66e9fcc904db69ec183c6f66a0c453a8917d7"
+  },
+  {
+    "label": "Core",
+    "argv": [
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/performance-live-Main-check/build/core_test"
+    ],
+    "started_UTC": "2026-10-04T13:10:00.205460+00:00",
+    "exit": 0,
+    "finished_UTC": "2026-10-04T13:10:00.339891+00:00",
+    "log_sha256": "ad283669859811868f71729bfdf498d0240ee8e02e65ac3afc12e493c0d02191"
+  },
+  {
+    "label": "IADT",
+    "argv": [
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/performance-live-Main-check/build/iadt_test"
+    ],
+    "started_UTC": "2026-10-04T13:10:00.340115+00:00",
+    "exit": 0,
+    "finished_UTC": "2026-10-04T13:10:00.489396+00:00",
+    "log_sha256": "4f4fae66b30deb1779f33a9e634b2fb139b3b70fd908e2c64c2bb5b23974514c"
+  },
+  {
+    "label": "image-CLI",
+    "argv": [
+      "bash",
+      "/home/repyt/workspace/a-program/tests/image_cli.sh",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/performance-live-Main-check/build/source_io_test",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/performance-live-Main-check/build/pointer-check",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/performance-live-Main-check/build/program_test"
+    ],
+    "started_UTC": "2026-10-04T13:10:00.489827+00:00",
+    "exit": 0,
+    "finished_UTC": "2026-10-04T13:10:15.087934+00:00",
+    "log_sha256": "32cc6163e24eaad0f1b3c093b7ab6e59dd51f9b62d2ef68520a16ba3315dcda9"
+  }
+]
