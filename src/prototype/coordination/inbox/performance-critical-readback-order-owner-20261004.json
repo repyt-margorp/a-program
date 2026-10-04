@@ -1,0 +1,11 @@
+{
+  "date_UTC": "2026-10-04T09:39:29.459117+00:00",
+  "provenance": "Job owner proposal and Root inspected code, agent implementation/coordination decision within existing human critical-path scope; not new human architectural approval.",
+  "Job_safe_boundary_notice_sha256": "617fc9c52f4e6a0070bb642e215cda67e6f5d82c1e293212264e7c9e4b65f4c9",
+  "Root_observation": "On common E25 sourcea87cba42, eval.c:257 hashes closure term/environment addresses; eval_io.c:216-221 enumerates auxiliary reusable readback entries through pointer-hashed buckets after the current root. These bytes match old c414/frame80b. Existing readback_entry contains closure/result/left/right/pending/cursor but no stable transport ordinal. This is an inspected ordering mechanism, not proof all current discrepancies share this cause.",
+  "decision": "Route the concrete readback-order repair to original Performance owner, coordinated with its dominant frame deletion and original Job frontier work. Test the minimal stable existing-entry ordinal reconstructed from wire order (Job proposal) or a demonstrably smaller equivalent within current codec; do not delete reusable entries/pending edges, discard failures, add competing codec/authority/graph/index or rewrite saved bytes after the fact. Prototype implementation choice requires causal and lifetime evidence before adoption.",
+  "required_core_result": "Historical loaded variants each inert resave exactly; new paired writers stable; same reusable-result identities/frontier/fuel/ordinary continuation and escaped-pointer lifetime. Include overflow/rejection controls and actual sizeof/aligned/retained ordinal/sort scratch overhead in net accounting. Preserve root DFS/current wire format and all original failure records.",
+  "common_current_source_route": "joint-critical-codec-current-pins-20261004.json (E25a87cba42)",
+  "Job_next": "Ordinary Source owner frontier reconnection/canonical typed premises using same producer; no eval/readback takeover. E26 broad now owner-reported terminal0/children reaped; E26/E27 parked.",
+  "cost": "Old7448f3f4 proposal remains frozen superseded/ungranted. New qualified current pair/config required for actual matched peak RSS/time; no collector launched by this route."
+}

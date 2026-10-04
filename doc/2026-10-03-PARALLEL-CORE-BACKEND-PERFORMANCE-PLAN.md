@@ -32,12 +32,13 @@ All three owners actually acknowledged: C actual Acc QuickSort executable C
 mockup due21:16:56UTC; Job deterministic retained Source/checked-result codec
 and genuine frontier; Performance dominant head-frame allocation deletion,
 critical acceptance and matched peak RSS/time. C32/E26/E27/peripheral work is
-sealed or parked at safe boundaries. [Priority and replies](../src/prototype/coordination/reviews/critical-path-priority-review-20261004.json).
+sealed or parked at safe boundaries; Job reports E26 terminal0/children reaped. [Priority and replies](../src/prototype/coordination/reviews/critical-path-priority-review-20261004.json).
 The already active E25 review is complete: prototype taske2569fb0/Mainca6551db
 pushed, current affected O2/SAN/public image/fuel and downstream C31 gates pass;
 original strict3 remains. [E25 review](../src/prototype/solver_inputs/joint_verification/e25-main-integration-review.json).
 Cost request source pair is separately pinned c414->80b, not current E25;
-exclusive grant awaits the running Job E26 safe terminal. All full Goal/issue
+old proposal is superseded for current measurement; a qualified E25 pair/config
+and exclusive drain are required next. All full Goal/issue
 criteria, byte disposition and actual cost remain open; next scheduled13:44UTC.
 
 2026-10-04T08:55:10.379896+00:00, C31 superseding delivery: exact18 taskcc3cba34/prototype
@@ -651,8 +652,8 @@ reporting subsystem. Its audit cover is pinned to `37de1e8`, not current Main.
 | Order / owner | Issue or PR | Next deliverable and dependency |
 | --- | --- | --- |
 | 0 / desk -> Merge | Workflow | All three original implementation owners actually acknowledged major-problem priority. Goal objective intact/blocked service label unchanged; event-driven work active. C actual Acc mockup deadline21:16:56UTC; Job Source codec/frontier; Performance dominant deletion/matched RSS-time. Original owners/Job HEAD-index/timer retained; next scheduled13:44:22UTC |
-| 1 / Job, Root reviews independently | SE/AP, #51 | Implement deterministic discovery/relocation of retained Source inputs/checked reusable owners and genuine frontier reconnection; coordinate eval_io ordering with Performance. E25 active review finished/task e2569fb0/Mainca6551db/current affected24+7 pass; full strict3/frontier/codec/SE/AP remain. E26 running command safe terminal then park/E27 unqualified parked; original HEAD/index/ref retained |
-| 1 / performance + Root shared-owner review | #56 / #51 | Complete dominant stateless-head deletion acceptance and matched peak RSS/elapsed-time; own needed eval_io auxiliary readback ordering, one joint current sourcea87cba42. Cost14/36jobs/all297/config7448f3f4 freshly verified on separate c414->80b pair; exclusive grant pending Job E26 safe terminal. All paired/inert/strict failures retained, peripheral micro-epochs parked |
+| 1 / Job, Root reviews independently | SE/AP, #51 | Implement deterministic discovery/relocation of retained Source inputs/checked reusable owners and genuine frontier reconnection; coordinate eval_io ordering with Performance. E25 active review finished/task e2569fb0/Mainca6551db/current affected24+7 pass; full strict3/frontier/codec/SE/AP remain. E26 owner-reported broad terminal0/no heavy children; E26/E27 parked; original HEAD/index/ref retained |
+| 1 / performance + Root shared-owner review | #56 / #51 | Complete dominant stateless-head deletion acceptance and matched peak RSS/elapsed-time; own needed eval_io auxiliary readback ordering, one joint current sourcea87cba42. Old cost14/36jobs/all297/config7448f3f4 stays exact/separate c414->80b and superseded for next current measurement; fresh qualified E25 pair/config and exclusive drain required. All paired/inert/strict failures retained, peripheral micro-epochs parked |
 | Complete bounded / test-suite; Root publishes | #59 / PR #60 | Verified pilot removes22 duplicate calls with all distinct outcomes preserved; Root raw/assembly review complete. Exact7 taskbc16df9/Main36a27be prototype integrated; broader inventory/cost/accepted adoption remain open |
 | Complete bounded / issue-audit | All open Issues/PRs | Verified comments/dispositions,44/49 superseded by61; nine issues open. Owner stopped; Root resumes coordination, no repeat audit |
 | Complete bounded / verification-audit | #59 / PR #60; #51 | Static inventory/pilot delivered and worker complete; four-job measured cost remains deferred, full #59 open. Do not restart the completed owner automatically |
@@ -2275,6 +2276,14 @@ Four cross-instrumentation raw image hashes differ; all 140 cross-build reads
 pass. No cross-instrumentation byte equality or wall/RSS speedup is claimed.
 
 ### Assessment
+
+2026-10-04, Root accepts the owner's superseding current-producer cost decision
+(SHA3ec54619): keep old c414->80b proposal frozen/ungranted, port the dominant
+eval.c/h deletion to current code. Shared current causal frontier/codec probes
+use qualified E25 sourcea87cba42 already routed; preserve E24 intermediate,
+avoid separate peripheral epochs, and prepare one newly qualified matched O2
+pair/config before exclusive measurement. This is agent coordination, not a
+new human policy. All byte failures and current-causation uncertainty remain.
 
 2026-10-04, Root attribution evidence accepted without runtime publication:
 Tree16/5M sampled arena capacity-1179648 and Tree400 external requests-4134682/

@@ -19,7 +19,13 @@
     "parked": "E25-E27 after E26 running broad command safe terminal.",
     "protection": "Once-only latest necessary human priority delivered at verified empty composer. No human draft overwritten; original HEAD/index/ref untouched.",
     "ack_notice": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/coordination/outbox/priority-main-frontier-20261004.txt",
-    "ack_sha256": "96930f8182c8bb2344da5bd89cd4bb9ac03874c8397b9cd94ed36b54afa19db9"
+    "ack_sha256": "96930f8182c8bb2344da5bd89cd4bb9ac03874c8397b9cd94ed36b54afa19db9",
+    "safe_boundary_notice": {
+      "path": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/coordination/outbox/critical-codec-safe-boundary-20261004.txt",
+      "sha256": "617fc9c52f4e6a0070bb642e215cda67e6f5d82c1e293212264e7c9e4b65f4c9",
+      "raw_body": "[worker-notification job-evidence/critical-codec-safe-boundary]\nE26 already-running serial broad command is now terminal exit0. Original source156 b64982896e982747e18d041bd49060be464ffca7b30fa02c0258e3b4540ec270 and overlay471 pins verified after; raw report e9252cb0b057bec2c3bf3cb8e9bd9472ad955299cea81bb3cae087009c892785. No supplemental/C/census/freezing command started. E25/E26/E27 remain parked; no own heavy children live.\nConsumed joint-critical-codec-current-pins-20261004.json: common producer current E25+E24+MEM9 source128 a87cba42d8c3b2e3ed19392c941a2e1cede00fd01c26a707f354a44d54fca31b, Main ca6551db. Source/eval observations remain pinned independently; no historical qualification transferred.\nAdditional bounded causal evidence consumed: materialized case1/cut13 and5/cut9 in Root report302da38d account for every changed field via detached readback cache bucket order. Thus those apparent Source differences require Performance-owned eval_io.c ordering repair; I will not add a competing Source sorter or touch eval/readback. Please route this dependency to Performance alongside its current frame deletion.\nConcrete minimal disposition for owner assessment: preserve reusable entries and pending links; decouple their transport enumeration from address-hash bucket order using an ordinal on the existing readback entry, reconstructing it from the existing wire sequence on inert load. No new graph/index/authority or byte rewriting. Account actual layout/overhead and overflow; prove loaded historical variants each resave exactly, plus new paired writers/continuation/escaped-pointer controls. This is an agent proposal, not an implemented or approved architecture.\nJob critical implementation continues on ordinary Source owner frontier reconnection and canonical typed premises using this same common producer. No automatic trust or status import; strict3 unchanged. No timing grant or READY/Goal completion claim.\n",
+      "scope": "Owner report, terminal log/current causation not independently requalified here; no E26/E27 prototype integration from this review."
+    }
   },
   "Performance": {
     "ack_notice": "/home/repyt/workspace/a-program-workers/performance/src/prototype/coordination/outbox/performance-critical-path-priority-switch-20261004.txt",
@@ -42,5 +48,21 @@
   "joint_current_pins_route": {
     "path": "src/prototype/coordination/inbox/joint-critical-codec-current-pins-20261004.json",
     "sha256": "33f311f9c9e76d7095154bef06617612968ca7a614cb5fbb77fed6ad2eb404f9"
+  },
+  "later_current_producer_alignment": {
+    "notice_sha256": "3ec54619febf484b1af936563b7903aac8c05ac0ef38a65f714f82691585a1d3",
+    "old_proposal_superseded_as_next_current_cost": true,
+    "old14_297_pins_still_frozen_ungranted": true,
+    "E24_port_private_current_E25_joint_source_requested": true,
+    "next_source_pair_requires_fresh_qualification_and_cost_config": true,
+    "route_path": "src/prototype/coordination/inbox/performance-critical-current-E25-alignment-20261004.json",
+    "route_sha256": "cd6585c6a8a29df1fd38be2c76eab70b19dd781c69aa081304bbdd6d3e0e1651"
+  },
+  "joint_readback_dependency": {
+    "route_path": "src/prototype/coordination/inbox/performance-critical-readback-order-owner-20261004.json",
+    "sha256": "448360e1b8dae4af644820b5ecf94830bfb358315cb28917a64048473129e6f5",
+    "existing_Performance_owner": true,
+    "stable_ordinal_minimal_prototype_proposal_not_verified_fix": true,
+    "original_Job_no_competing_codec_or_eval_changes": true
   }
 }
