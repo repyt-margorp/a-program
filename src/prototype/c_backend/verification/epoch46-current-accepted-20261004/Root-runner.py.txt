@@ -1,0 +1,76 @@
+import collections
+import ctypes
+import datetime
+import hashlib
+import json
+import os
+import pathlib
+import signal
+import subprocess
+import time
+
+
+storage = pathlib.Path(__file__).resolve().parent
+root = storage / 'c46-current-accepted-fc'
+commands = json.loads((root / 'Root-commands-proposed.json').read_text())
+assert datetime.datetime.now(datetime.timezone.utc) >= datetime.datetime(2026, 10, 4, 20, 30, tzinfo=datetime.timezone.utc)
+assert ctypes.CDLL(None).prctl(36, 1, 0, 0, 0) == 0
+sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
+before = {str(p.relative_to(root / 'tree')): sha(p) for p in (root / 'tree').rglob('*') if p.is_file()}
+pointer = storage / 'c40-current-accepted-fc/build-O2/pointer-check'
+pointer_sha = sha(pointer)
+results = []
+started = datetime.datetime.now(datetime.timezone.utc).isoformat()
+record = {'started_UTC': started, 'classification': 'Ordinary independent current C46 correctness, no comparative cost or owner lifecycle action',
+	'complete': False, 'commands': results, 'runtime_manifest_SHA': sha(root / 'runtime-source.sha256'),
+	'qualified_pointer_SHA': pointer_sha}
+destination = root / 'Root-results.json'
+destination.write_text(json.dumps(record, indent=2) + '\n')
+for command in commands:
+	label = command['label']
+	row = dict(command, started_UTC=datetime.datetime.now(datetime.timezone.utc).isoformat(), censored=False)
+	environment = dict(os.environ, **command['environment'])
+	with (root / (label + '.out')).open('wb') as stdout, (root / (label + '.err')).open('wb') as stderr:
+		child = subprocess.Popen(command['argv'], cwd=root / 'tree', env=environment, stdout=stdout, stderr=stderr, start_new_session=True)
+		try:
+			row['exit'] = child.wait(timeout=240)
+		except subprocess.TimeoutExpired:
+			row['censored'] = True
+			os.killpg(child.pid, signal.SIGTERM)
+			time.sleep(0.15)
+			try:
+				os.killpg(child.pid, signal.SIGKILL)
+			except ProcessLookupError:
+				pass
+			row['exit'] = child.wait()
+	row.update(finished_UTC=datetime.datetime.now(datetime.timezone.utc).isoformat(),
+		stdout_SHA=sha(root / (label + '.out')), stderr_SHA=sha(root / (label + '.err')))
+	results.append(row)
+	destination.write_text(json.dumps(record, indent=2) + '\n')
+	print(json.dumps({'label': label, 'exit': row['exit'], 'censored': row['censored']}), flush=True)
+	if row['exit'] != row['expected_exit'] or row['censored']:
+		raise SystemExit('Retained current qualification failure: ' + label)
+gates = {}
+for phase in ['O2', 'SAN']:
+	for name, expected in [('static-transitive', {'0': 48, '3': 2, '4': 8}), ('recursive', {'0': 74, '3': 2, '4': 38}), ('nested', {'0': 31, '3': 1, '4': 8})]:
+		path = root / (phase + '-' + name + '-gate/status.tsv')
+		rows = [line.split('\t') for line in path.read_text().splitlines()]
+		assert all(want == actual for label, want, actual in rows)
+		counts = dict(collections.Counter(actual for label, want, actual in rows))
+		assert counts == expected
+		gates[phase + '-' + name] = {'rows': len(rows), 'outcomes': counts, 'status_SHA': sha(path)}
+assert sha(pointer) == pointer_sha
+after = {str(p.relative_to(root / 'tree')): sha(p) for p in (root / 'tree').rglob('*') if p.is_file()}
+assert before == after
+while True:
+	try:
+		pid, status = os.waitpid(-1, os.WNOHANG)
+		assert pid != 0, 'unexpected live adopted correctness child'
+	except ChildProcessError:
+		break
+record.update(complete=True, finished_UTC=datetime.datetime.now(datetime.timezone.utc).isoformat(),
+	all_original_tree_inputs_unchanged=True, qualified_pointer_unchanged=True, all_commands_terminal_reaped=True,
+	gate_results=gates, actual_materialized_image_SHA=sha(root / 'actual-materialized.a'),
+	actual_native_checked_trusted_O2_SAN=4, accepted_code_changes=False, comparative_cost_samples=0)
+destination.write_text(json.dumps(record, indent=2) + '\n')
+print(json.dumps({'complete': True, 'commands': len(results), 'gates': gates}), flush=True)

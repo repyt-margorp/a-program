@@ -1,0 +1,12 @@
+{
+  "original_broad_trial3": "3d5a27968cf7edd4043fb835e6ef00dd8aa361efb3a0ae3b313dde9bb82af91f",
+  "original_exit": 2,
+  "failure": "host147 expected an allocated retained empty-Context receipt, deleted runtime store.",
+  "migrations": [
+    "Host empty Context and selected formation: logical input still one and actual premise/reconstruction unchanged, retained array0; identity aliases reuse exact native owner.",
+    "Derivation read inertness counts actual native admissions instead of removed typings[1].proofs.",
+    "Explicit map projection/identity images/constructor formations reuse actual native tuple; same Scope and map facts retained; existing wrong-scope/classifier negatives and ordinary reconstruction unchanged.",
+    "No-op identity conversion FunctionGraph source uses actual checked native owner; repeated lookup/no-admission/specialization checks unchanged."
+  ],
+  "status": "Fresh full broad and affected SAN required; no inferred pass or waiver"
+}

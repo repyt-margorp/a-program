@@ -1,0 +1,11 @@
+aplink 1
+artifact /home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/actual-materialized.a
+abi c_native_v1
+target host-c11
+product source
+lowering native_array_calls_v1
+fallback reject
+enum32 bool_type Bool
+nat32 nat_type Nat
+data_of empty List
+export sort sort

@@ -1,0 +1,13 @@
+{
+  "date_UTC": "2026-10-04T20:48:03.049144+00:00",
+  "epoch": "C46",
+  "frozen_manifest_SHA": "2b4751cf6d44dda5594adbfdda2ce6b892e7c801ff905d3edf7d63133823c4e5",
+  "exact_task_commit": "497f2a460582b55209b93b8576de3e4328e3c714",
+  "task_remote_exact": true,
+  "current_root_review": "src/prototype/coordination/reviews/20261004-c46-current-capture-query-review.json",
+  "root_outcomes": "13 commands exact/uncensored; O2/SAN212 each;75 C/H exact, actual materialized native checked/trusted4/no product. Bounded readonly capture delta reviewed; prototype Main publication proof follows.",
+  "C47": "Private inspection0/corrected O2-SAN50 expected rows statically observed; initial map-client build1 retained. Frozen READY/current review remains separate; descriptive Context IDs are not checked Scope certificates.",
+  "accepted_adoption": false,
+  "Goal_or_owner_actions": false,
+  "cost_samples": 0
+}

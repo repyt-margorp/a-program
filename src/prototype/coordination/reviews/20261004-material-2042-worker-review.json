@@ -1,0 +1,105 @@
+{
+  "date_UTC": "2026-10-04T20:41:48.363592+00:00",
+  "read_only": true,
+  "no_owner_resume_duplicate_or_input": true,
+  "panes": {
+    "C": {
+      "pane": "%0",
+      "exit": 0,
+      "snapshot_SHA": "7a5eda9bbb60b3f794b274eb7567bc19ae9bfffd9e58b76036a93b3f73c073bf",
+      "tail": [
+        "",
+        "\u2022 Working (32m 41s \u2022 esc to interrupt)",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/c-backend \u00b7 Verify Surface index.lock handoff        Pursuing goal (1d 13h 48m)    \u26a0 1 warning \u00b7 f2 to view"
+      ]
+    },
+    "Performance": {
+      "pane": "%1",
+      "exit": 0,
+      "snapshot_SHA": "34556eb3c77033482dc90236134669dc687be048843e98bdcd391ba028940825",
+      "tail": [
+        "",
+        "  Worked for 6m 39s \u2022 01:53",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-prog\u2026 Goal stalled (/goal resume)    \u26a0 1 warning \u00b7 f2 to view"
+      ]
+    },
+    "Job": {
+      "pane": "%4",
+      "exit": 0,
+      "snapshot_SHA": "d4bee0a6a8386a6f39804c5016eb3d676d8a3c838d11071172db600630ca8bac",
+      "tail": [
+        "",
+        "\u25e6 Working (6h 44m 32s \u2022 esc to interrupt)",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-progra\u2026 Pursuing goal (1d 6h 59m)    \u26a0 1 warning \u00b7 f2 to view"
+      ]
+    },
+    "Static": {
+      "pane": "%10",
+      "exit": 0,
+      "snapshot_SHA": "c171c1c2631ac54bd2dba21ce78b3e4037bf761d6d42c20cf14ead86e8f85fb0",
+      "tail": [
+        "",
+        "  Worked for 1m 15s \u2022 17:54",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/verification-audit \u00b7 Hand off static inventory              Goal achieved (50m)    \u26a0 1 warning \u00b7 f2 to view"
+      ]
+    },
+    "Sort": {
+      "pane": "%11",
+      "exit": 0,
+      "snapshot_SHA": "afa71c1e238de91661f224ebe655f6538fd4d8cbb92cd6037a2d890b73e5ea9a",
+      "tail": [
+        "",
+        "  Worked for 6m 44s \u2022 19:14",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/sort-library \u00b7 Start authorized sort worker                 Goal achieved (24m)    \u26a0 1 warning \u00b7 f2 to view"
+      ]
+    },
+    "Test": {
+      "pane": "%12",
+      "exit": 0,
+      "snapshot_SHA": "bb2a980cb52eefdfcafba6b9aa53e89c402c08e024bf01010d40d62417a7ee1b",
+      "tail": [
+        "",
+        "  Worked for 38m 29s \u2022 22:34",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/test-suite \u00b7 Simplify and deduplicate tests                 Goal achieved (37m)    \u26a0 1 warning \u00b7 f2 to view"
+      ]
+    },
+    "Issue": {
+      "pane": "%14",
+      "exit": 0,
+      "snapshot_SHA": "c19bf743ddab52e861d9f6c00b9c96bf3fa1a67946a70a5bb54dd6993c7f8829",
+      "tail": [
+        "",
+        "  Worked for 26s \u2022 22:31",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/issue-audit \u00b7 Record audit ownership receipt                Goal achieved (23m)    \u26a0 1 warning \u00b7 f2 to view"
+      ]
+    }
+  }
+}

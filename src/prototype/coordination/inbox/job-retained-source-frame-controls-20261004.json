@@ -1,0 +1,36 @@
+{
+  "date_UTC": "2026-10-04T20:48:03.049144+00:00",
+  "request_notice_SHA": "7a23b28fdee8acaa4b8d75bf3016bec5009086064e6a07b2f697094d58678a5b",
+  "classification": "Existing retained Source/frame-spine controls and raw failures routed through Merge; no new runtime or Performance resume",
+  "control_source_pins_fresh": {
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests/source_io.c": "de602b91d591096dd8214e1ae217681866cfc3890eae501643f7a04516bf268a",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests/source_io.sh": "1b45c00d7c010e4229fbe9913ed781a7084052e7044ecb7faf2f6bf90d6c4dae",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/frame-fixtures/frame_retirement_test.c": "340831c01ab47b49401535d0e53ad1817ca88b61c9fd9ac4ae303d1bc9ae7e73",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/frame-fixtures/stateless_head_cleanup_test.c": "4ac7f0173e81d7355e785abc80818b800873b9124ad2395cca1d575555ad368f",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/frame-fixtures/callback_failure_cleanup_test.c": "93da2cfae80ddecd43deb62d1f242fad710ae5fcc0b9ea19aba41ed491b57cff",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/frame-fixtures/fold_spine_test.c": "ebd1f8f179718d5b37e58f4ce5939502adb43a47a54851d8c5dd88adbd3551ae",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/frame-fixtures/materialized_fields_test.c": "6af422d3568bd8ad26e1644ad04e313704bd54b3451ab03f13f35687fa381d3e",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/frame-fixtures/machine_resave_probe.c": "9160f3e9b58d7d9213b8920cf156610c0344954ce5ae8c67a203eb30703dc028",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/frame-fixtures/readback_transport_bounds_test.c": "c8201af489097a9da98cacbd0100f2366207fefba59a67368f3a321620dbe7df"
+  },
+  "raw_report_pins_fresh": {
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_cuts_20261004/byte-pairs.json": "187a827d07cd52e1ae7a12c38d771d85169a77193b63df47892b5c1878a99dc9",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_cuts_20261004/inert-byte-rows.json": "082f5b9963d604e53322234e9d93815d2026c587bfc09d0f3cba60b6a114d6d9",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_cuts_20261004/records.json": "0f40dd17edb528e3ebd2ef6d475ff14d8b4d3549dfe16d43f1d45ad3185c4791",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_cuts_20261004/summary.json": "1989935ba780bda2ab647745bc02a61ce48a68c1fe096ad3395df039bdc379b5",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_cuts_20261004/independent-parent-unit-cut-ranges.json": "c5cfbe304ff1b8058f4c667aa30394437003b699b64170b34d78670d153cdd41"
+  },
+  "driver": "/home/repyt/workspace/a-program/src/prototype/performance_critical_frame/epochs/accepted94_order_stateless_frames_v1/qualify_accepted_frame_cuts.py",
+  "driver_SHA": "c9316eaa283e178ef4c5260acf95982a434bea6a483a944fa2cdfc8d9aca1e30",
+  "current_review": "src/prototype/coordination/reviews/20261004-performance-accepted94-raw-cuts-review.json",
+  "historical_source_pair": {
+    "parent": "930997b62db85814718d0d5ac151f392bfae243a447d5d0d5f2adbde66cba5ae",
+    "candidate": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907"
+  },
+  "scope": "67 Fold and97 materialized cuts; unchanged fresh-process cross-writer/readers O2/SAN,2296 commands.20 paired raw image differences/36 parent inert failures retained; candidate0/328 own inert differences. These are original accepted-frame controls, not native54/frontier4 verification or a current fc parent bug. Source consumer recipe/tests included; requested native foreign-cut correspondence remains to be qualified on exact native code.",
+  "Job_boundary": "Broad4 materialized ordinary output failure requires exact committed fc parent control and retained images/logs before cause or assertion migration. Keep existing checking/factories; no blanket semantic waiver. Eval/readback remains existing owner scope.",
+  "new_runtime": false,
+  "Performance_resume": false,
+  "accepted_adoption": false,
+  "cost_samples": 0
+}

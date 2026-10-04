@@ -1,7 +1,7 @@
 # Parallel Development: Inquiry Desk, Merge and Workers
 
 Date: 2026-10-03
-Status: C45 prototype Main3fd490fc/task62145905 current O2/SAN42 verified and published. C46 private O2/SAN capture gates/builds pass; actual native Acc refusal4, frozen qualification pending. Job native52 Source/lifetime/resave controls pass, Core134 remains. Scheduled19:44 review complete; no aligned cost grant/samples. Original Goals/timer unchanged.
+Status: C46 exact9 task497f2a46/current Root O2-SAN212 per phase verified and prototype Main recorded. Native54/local frontier2 scoped passes; broad4 materialized output inequality blocks full qualification. Common20:22-20:30 expired without Job agreement, zero cost samples. Original Goals/timer unchanged.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `fd45c42`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -17,15 +17,50 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | ID | Problem / owner | Related | Status |
 | --- | --- | --- | --- |
 | 1 | Inquiry desk -> `merge`: reporting vs coordination/integration | All lanes | Desk answers the user; only Merge integrates after verified handoff |
-| 2 | `c-backend`: downstream C design | #61 (supersedes #44/#49); shared policy #47 | C45 exact13/task62145905/Main3fd490fc readable708-line actual Acc/current Root O2/SAN42 published. C46 private capture-query O2/SAN gates/builds0, actual native refusal4; frozen/current Root qualification pending. C32 parked |
+| 2 | `c-backend`: downstream C design | #61 (supersedes #44/#49); shared policy #47 | C46 exact9/task497f2a46/current Root O2-SAN212 per phase and75 matching C/H verified, prototype Main recorded; actual native Acc refusal4. C45 standalone readable708-line Acc usable; private C47 transport progress, general Scope/action/native61 open |
 | 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Approved current frame deletion accepted; original363 plus adopted4 verified separately. Actual matched peakRSS/time pending safe all-owner window; peripheral MEM10/spine/empty arrays parked |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
-| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | Native49 Source/resave0; same-runtime51 copied Context control134 retained. Native52 unchanged negative control and Source/resave0 on runtimea2460a65; Core134 request receipt identity. Current O2/SAN/full/public/strict/frontier/joint/net cost/READY open in sole SE list |
+| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | Native54 Core O2/six SAN0 and frontier2 seven local O2-SAN suites0; broad4 exact657 exit2 includes materialized finite-permutation output inequality at both chunks1/64. Parent-matched diagnosis/full/public/strict/frontier/joint/net/READY open in sole SE list |
 | 6 | `verification-audit`: independent read-mostly suite/debt inventory | #59 / PR #60, #51 | Bounded static inventory/pilot complete; measured cost deferred, full #59 remains open |
 | 7 | `test-suite`: implement coverage-preserving test reductions | #59 / PR #60 | Bounded Goal complete; exact7 taskbc16df9 pushed/remote verified, Root raw/assembly review complete, prototype Main36a27be integrated |
 | 8 | `issue-audit`: evidence-backed GitHub disposition | All open Issues/PRs | Bounded Goal complete; verified dispositions, task8bb5018/Mainb461ace; #61 retains C residuals |
 
 ### Current Delivery Status
+
+2026-10-04, [C46 current capture review](../src/prototype/coordination/reviews/20261004-c46-current-capture-query-review.json)
+supersedes frozen/current-pending wording: exact9/task497f2a46 pushed/remote exact,
+Root13 serial commands20:32:49-20:35:13UTC terminal/reaped/uncensored on current
+runtime120c206. O2/SAN each212 expected rows,75 emitted C/H exact across owner
+and Root phases. Actual materialized native checked/trusted still refuse4 with
+no product; general native61 remains open. Whole backend/helpers/source/raw
+clients SAN differs from emitted object/archive O2 plus client-only SAN. Old
+C45 build2/NOT_RUN and C46 setup/receipt/assembly failures remain retained.
+Prototype Main integration is bounded readonly capture work, no accepted change.
+Private [C47 progress](../src/prototype/coordination/reviews/20261004-c47-private-transport-progress-review.json)
+is statically observed O2/SAN50 expected rows; frozen/current handoff and source
+Scope/action correspondence remain separate.
+
+[Native54](../src/prototype/coordination/reviews/20261004-native54-owner-progress-review.json)
+full Core O2/six SAN0 and [frontier2 local gates](../src/prototype/coordination/reviews/20261004-native-frontier2-local-progress-review.json)
+seven O2/SAN suites0 advance exact runtimes only. Later [broad4 semantic failure](../src/prototype/coordination/reviews/20261004-native-frontier4-semantic-failure-review.json)
+pins657/code1265405b09e/rawce292da5: full O2 acceptance exit2, derivation header
+count134 and independent materialized finite-permutation output unequal at both
+chunks1/64. This concrete candidate semantic failure remains unwaived; exact
+committed fc parent control and cause are pending. Earlier local passes do not
+qualify broad/public/strict3/partial-query/Sorted/joint/net/READY. [Retained Source/frame controls](../src/prototype/coordination/inbox/job-retained-source-frame-controls-20261004.json)
+are routed to original Job without restarting blocked Performance or another owner.
+
+[Common-window result](../src/prototype/coordination/inbox/accepted94-common-2022-2030-ungranted-result-20261004.json):
+C agreed; Job actually received20:27:50 with full acceptance running and could
+not agree. No shared prospective interval formed before20:30; no grant/collector/
+samples/automatic extension. The blocker was active Job exclusivity, not eight
+versus ten minutes. Later broad4 terminal is not retrospective agreement or a
+new interval. Guard containment and matched-pair auditor are prepared for actual
+shorter agreed overlap;600 seconds remains upper bound, full36 incomplete until
+all qualify. Existing actual-boundary request remains, no blind replacement.
+Fresh20:41 readonly seven panes retain C/Job active, Performance BLOCKED, four
+bounded owners achieved/stopped; Surface historically closed. Scheduled19:44
+issue review/next01:44 timer remain unchanged, no lifecycle or issue closure.
 
 2026-10-04, [short-window execution plan](../src/prototype/coordination/reviews/20261004-accepted94-short-window-execution-plan.json)
 supersedes only the prior eight-minute-versus-ten rejection rationale:600 seconds

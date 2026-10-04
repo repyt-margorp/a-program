@@ -1,0 +1,447 @@
+{
+  "started_UTC": "2026-10-04T20:32:49.673530+00:00",
+  "classification": "Ordinary independent current C46 correctness, no comparative cost or owner lifecycle action",
+  "complete": true,
+  "commands": [
+    {
+      "label": "materialize-current",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/pointer-check",
+        "--load",
+        "--steps",
+        "5000000",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/actual-materialized.a",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch43-acc-actions-20261004/actions.a"
+      ],
+      "environment": {
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/tmp"
+      },
+      "expected_exit": 0,
+      "started_UTC": "2026-10-04T20:32:49.673653+00:00",
+      "censored": false,
+      "exit": 0,
+      "finished_UTC": "2026-10-04T20:32:49.737811+00:00",
+      "stdout_SHA": "6541ebb087716647904d8e0a7ff7e7ad5f47289841534ee6db18dc8c84c6eedf",
+      "stderr_SHA": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "O2-build",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/tree/src/prototype/c_backend/capture_query/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/tree",
+        "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/build-O2",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/build-O2/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/build-O2/c_capture_query_fault_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/build-O2/c_recursive_capture_inert_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/build-O2/c_nested_capture_inert_test"
+      ],
+      "environment": {
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/tmp",
+        "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+        "AR": "/usr/bin/ar",
+        "C_BACKEND_CFLAGS": "-std=c11 -Wall -Wextra -Werror -O2",
+        "C_CAPTURE_POINTER": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/pointer-check",
+        "C_CAPTURE_COMMANDS": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/O2-pointer-argv.nul"
+      },
+      "expected_exit": 0,
+      "started_UTC": "2026-10-04T20:32:49.738150+00:00",
+      "censored": false,
+      "exit": 0,
+      "finished_UTC": "2026-10-04T20:33:29.640198+00:00",
+      "stdout_SHA": "c9e9307f2ac85d2b37a076b6a30560167ff600f554b7dfa579d49c3038968bbb",
+      "stderr_SHA": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "O2-static-transitive",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/tree/src/prototype/c_backend/capture_query/check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/build-O2/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/build-O2/c_capture_query_fault_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/O2-static-transitive-gate"
+      ],
+      "environment": {
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/tmp",
+        "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+        "AR": "/usr/bin/ar",
+        "C_BACKEND_CFLAGS": "-std=c11 -Wall -Wextra -Werror -O2",
+        "C_CAPTURE_POINTER": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/pointer-check",
+        "C_CAPTURE_COMMANDS": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/O2-pointer-argv.nul"
+      },
+      "expected_exit": 0,
+      "expected_rows": 58,
+      "started_UTC": "2026-10-04T20:33:29.640610+00:00",
+      "censored": false,
+      "exit": 0,
+      "finished_UTC": "2026-10-04T20:33:30.306382+00:00",
+      "stdout_SHA": "b93f93ca99dfad7093115d1899b20d0933407db23a8901fdfa960625ec14a9d8",
+      "stderr_SHA": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "O2-recursive",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/tree/src/prototype/c_backend/recursive_capture/check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/build-O2/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/tree/src/prototype/c_backend/capture_query/materialized_compiler.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/build-O2/c_recursive_capture_inert_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/O2-recursive-gate"
+      ],
+      "environment": {
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/tmp",
+        "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+        "AR": "/usr/bin/ar",
+        "C_BACKEND_CFLAGS": "-std=c11 -Wall -Wextra -Werror -O2",
+        "C_CAPTURE_POINTER": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/pointer-check",
+        "C_CAPTURE_COMMANDS": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/O2-pointer-argv.nul"
+      },
+      "expected_exit": 0,
+      "expected_rows": 114,
+      "started_UTC": "2026-10-04T20:33:30.306791+00:00",
+      "censored": false,
+      "exit": 0,
+      "finished_UTC": "2026-10-04T20:33:35.230452+00:00",
+      "stdout_SHA": "113ce1c07e41ccbfb96ce35983302101e67880888e93872b91fbc838696a1877",
+      "stderr_SHA": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "O2-nested",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/tree/src/prototype/c_backend/nested_capture/check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/build-O2/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/tree/src/prototype/c_backend/capture_query/materialized_compiler.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/build-O2/c_nested_capture_inert_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/O2-nested-gate"
+      ],
+      "environment": {
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/tmp",
+        "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+        "AR": "/usr/bin/ar",
+        "C_BACKEND_CFLAGS": "-std=c11 -Wall -Wextra -Werror -O2",
+        "C_CAPTURE_POINTER": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/pointer-check",
+        "C_CAPTURE_COMMANDS": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/O2-pointer-argv.nul"
+      },
+      "expected_exit": 0,
+      "expected_rows": 40,
+      "started_UTC": "2026-10-04T20:33:35.230728+00:00",
+      "censored": false,
+      "exit": 0,
+      "finished_UTC": "2026-10-04T20:33:36.447014+00:00",
+      "stdout_SHA": "a2bd917b89cb8568ff10991c64089d2c170614fdb23ac3a7e22c133eb1712513",
+      "stderr_SHA": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "O2-actual-native-checked",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/build-O2/a-to-c",
+        "--steps",
+        "5000000",
+        "--image-limit",
+        "none",
+        "--link",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/actual-materialized.aplink",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/O2-actual-native-checked"
+      ],
+      "environment": {
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/tmp",
+        "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+        "AR": "/usr/bin/ar",
+        "C_BACKEND_CFLAGS": "-std=c11 -Wall -Wextra -Werror -O2",
+        "C_CAPTURE_POINTER": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/pointer-check",
+        "C_CAPTURE_COMMANDS": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/O2-pointer-argv.nul"
+      },
+      "expected_exit": 4,
+      "started_UTC": "2026-10-04T20:33:36.447471+00:00",
+      "censored": false,
+      "exit": 4,
+      "finished_UTC": "2026-10-04T20:33:36.511849+00:00",
+      "stdout_SHA": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_SHA": "1a73d1b6acf25a13ac2cb7764e4f24915bae400b1ed5a3e29babde8cccbef114"
+    },
+    {
+      "label": "O2-actual-native-trusted",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/build-O2/a-to-c",
+        "--trust-image",
+        "--steps",
+        "0",
+        "--image-limit",
+        "none",
+        "--link",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/actual-materialized.aplink",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/O2-actual-native-trusted"
+      ],
+      "environment": {
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/tmp",
+        "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+        "AR": "/usr/bin/ar",
+        "C_BACKEND_CFLAGS": "-std=c11 -Wall -Wextra -Werror -O2",
+        "C_CAPTURE_POINTER": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/pointer-check",
+        "C_CAPTURE_COMMANDS": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/O2-pointer-argv.nul"
+      },
+      "expected_exit": 4,
+      "started_UTC": "2026-10-04T20:33:36.512176+00:00",
+      "censored": false,
+      "exit": 4,
+      "finished_UTC": "2026-10-04T20:33:36.528318+00:00",
+      "stdout_SHA": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_SHA": "e85ea15a63757bd06f37e613f51712b94c113b658d09f5f4fcce7f8c93cffb80"
+    },
+    {
+      "label": "SAN-build",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/tree/src/prototype/c_backend/capture_query/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/tree",
+        "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/build-SAN",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/build-SAN/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/build-SAN/c_capture_query_fault_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/build-SAN/c_recursive_capture_inert_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/build-SAN/c_nested_capture_inert_test"
+      ],
+      "environment": {
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/tmp",
+        "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+        "AR": "/usr/bin/ar",
+        "C_BACKEND_CFLAGS": "-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "C_CAPTURE_POINTER": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/pointer-check",
+        "C_CAPTURE_COMMANDS": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/SAN-pointer-argv.nul",
+        "ASAN_OPTIONS": "detect_leaks=1:halt_on_error=1",
+        "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+      },
+      "expected_exit": 0,
+      "started_UTC": "2026-10-04T20:33:36.528576+00:00",
+      "censored": false,
+      "exit": 0,
+      "finished_UTC": "2026-10-04T20:34:57.764487+00:00",
+      "stdout_SHA": "ad0cdf4000b7f01a866a766464abef4ef6cefc993dd8173a73382be24522a0fe",
+      "stderr_SHA": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "SAN-static-transitive",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/tree/src/prototype/c_backend/capture_query/check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/build-SAN/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/build-SAN/c_capture_query_fault_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/SAN-static-transitive-gate"
+      ],
+      "environment": {
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/tmp",
+        "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+        "AR": "/usr/bin/ar",
+        "C_BACKEND_CFLAGS": "-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "C_CAPTURE_POINTER": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/pointer-check",
+        "C_CAPTURE_COMMANDS": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/SAN-pointer-argv.nul",
+        "ASAN_OPTIONS": "detect_leaks=1:halt_on_error=1",
+        "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+      },
+      "expected_exit": 0,
+      "expected_rows": 58,
+      "started_UTC": "2026-10-04T20:34:57.765486+00:00",
+      "censored": false,
+      "exit": 0,
+      "finished_UTC": "2026-10-04T20:34:59.583454+00:00",
+      "stdout_SHA": "b93f93ca99dfad7093115d1899b20d0933407db23a8901fdfa960625ec14a9d8",
+      "stderr_SHA": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "SAN-recursive",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/tree/src/prototype/c_backend/recursive_capture/check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/build-SAN/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/tree/src/prototype/c_backend/capture_query/materialized_compiler.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/build-SAN/c_recursive_capture_inert_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/SAN-recursive-gate"
+      ],
+      "environment": {
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/tmp",
+        "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+        "AR": "/usr/bin/ar",
+        "C_BACKEND_CFLAGS": "-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "C_CAPTURE_POINTER": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/pointer-check",
+        "C_CAPTURE_COMMANDS": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/SAN-pointer-argv.nul",
+        "ASAN_OPTIONS": "detect_leaks=1:halt_on_error=1",
+        "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+      },
+      "expected_exit": 0,
+      "expected_rows": 114,
+      "started_UTC": "2026-10-04T20:34:59.583801+00:00",
+      "censored": false,
+      "exit": 0,
+      "finished_UTC": "2026-10-04T20:35:10.970648+00:00",
+      "stdout_SHA": "113ce1c07e41ccbfb96ce35983302101e67880888e93872b91fbc838696a1877",
+      "stderr_SHA": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "SAN-nested",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/tree/src/prototype/c_backend/nested_capture/check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/build-SAN/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/tree/src/prototype/c_backend/capture_query/materialized_compiler.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/build-SAN/c_nested_capture_inert_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/SAN-nested-gate"
+      ],
+      "environment": {
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/tmp",
+        "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+        "AR": "/usr/bin/ar",
+        "C_BACKEND_CFLAGS": "-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "C_CAPTURE_POINTER": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/pointer-check",
+        "C_CAPTURE_COMMANDS": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/SAN-pointer-argv.nul",
+        "ASAN_OPTIONS": "detect_leaks=1:halt_on_error=1",
+        "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+      },
+      "expected_exit": 0,
+      "expected_rows": 40,
+      "started_UTC": "2026-10-04T20:35:10.971139+00:00",
+      "censored": false,
+      "exit": 0,
+      "finished_UTC": "2026-10-04T20:35:13.440222+00:00",
+      "stdout_SHA": "a2bd917b89cb8568ff10991c64089d2c170614fdb23ac3a7e22c133eb1712513",
+      "stderr_SHA": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "SAN-actual-native-checked",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/build-SAN/a-to-c",
+        "--steps",
+        "5000000",
+        "--image-limit",
+        "none",
+        "--link",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/actual-materialized.aplink",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/SAN-actual-native-checked"
+      ],
+      "environment": {
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/tmp",
+        "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+        "AR": "/usr/bin/ar",
+        "C_BACKEND_CFLAGS": "-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "C_CAPTURE_POINTER": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/pointer-check",
+        "C_CAPTURE_COMMANDS": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/SAN-pointer-argv.nul",
+        "ASAN_OPTIONS": "detect_leaks=1:halt_on_error=1",
+        "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+      },
+      "expected_exit": 4,
+      "started_UTC": "2026-10-04T20:35:13.440726+00:00",
+      "censored": false,
+      "exit": 4,
+      "finished_UTC": "2026-10-04T20:35:13.705746+00:00",
+      "stdout_SHA": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_SHA": "1a73d1b6acf25a13ac2cb7764e4f24915bae400b1ed5a3e29babde8cccbef114"
+    },
+    {
+      "label": "SAN-actual-native-trusted",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/build-SAN/a-to-c",
+        "--trust-image",
+        "--steps",
+        "0",
+        "--image-limit",
+        "none",
+        "--link",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/actual-materialized.aplink",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/SAN-actual-native-trusted"
+      ],
+      "environment": {
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/tmp",
+        "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+        "AR": "/usr/bin/ar",
+        "C_BACKEND_CFLAGS": "-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "C_CAPTURE_POINTER": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/pointer-check",
+        "C_CAPTURE_COMMANDS": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-current-accepted-fc/SAN-pointer-argv.nul",
+        "ASAN_OPTIONS": "detect_leaks=1:halt_on_error=1",
+        "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+      },
+      "expected_exit": 4,
+      "started_UTC": "2026-10-04T20:35:13.706293+00:00",
+      "censored": false,
+      "exit": 4,
+      "finished_UTC": "2026-10-04T20:35:13.738776+00:00",
+      "stdout_SHA": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_SHA": "e85ea15a63757bd06f37e613f51712b94c113b658d09f5f4fcce7f8c93cffb80"
+    }
+  ],
+  "runtime_manifest_SHA": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907",
+  "qualified_pointer_SHA": "761a0ac0b5dbdd17f169df8c345b73334608b7ceeca6bbf5f3e352aecca3a91d",
+  "finished_UTC": "2026-10-04T20:35:13.757490+00:00",
+  "all_original_tree_inputs_unchanged": true,
+  "qualified_pointer_unchanged": true,
+  "all_commands_terminal_reaped": true,
+  "gate_results": {
+    "O2-static-transitive": {
+      "rows": 58,
+      "outcomes": {
+        "0": 48,
+        "3": 2,
+        "4": 8
+      },
+      "status_SHA": "226fd087a62a3b8670f42ecea29da08dcb762481d58424a45f1f488a13a1a911"
+    },
+    "O2-recursive": {
+      "rows": 114,
+      "outcomes": {
+        "0": 74,
+        "3": 2,
+        "4": 38
+      },
+      "status_SHA": "677622f014a5635c145bab6c11346f18633bfb3af15459e16e275c433459a669"
+    },
+    "O2-nested": {
+      "rows": 40,
+      "outcomes": {
+        "0": 31,
+        "3": 1,
+        "4": 8
+      },
+      "status_SHA": "6b11e5989763e665b394f2e896b347c3b10089377eaf604fc698ea00074fa7a8"
+    },
+    "SAN-static-transitive": {
+      "rows": 58,
+      "outcomes": {
+        "0": 48,
+        "3": 2,
+        "4": 8
+      },
+      "status_SHA": "226fd087a62a3b8670f42ecea29da08dcb762481d58424a45f1f488a13a1a911"
+    },
+    "SAN-recursive": {
+      "rows": 114,
+      "outcomes": {
+        "0": 74,
+        "3": 2,
+        "4": 38
+      },
+      "status_SHA": "677622f014a5635c145bab6c11346f18633bfb3af15459e16e275c433459a669"
+    },
+    "SAN-nested": {
+      "rows": 40,
+      "outcomes": {
+        "0": 31,
+        "3": 1,
+        "4": 8
+      },
+      "status_SHA": "6b11e5989763e665b394f2e896b347c3b10089377eaf604fc698ea00074fa7a8"
+    }
+  },
+  "actual_materialized_image_SHA": "7c1a4f35108dea9a91c4ffac90062b0c1d6bb1c145e116ff269942775e704aa4",
+  "actual_native_checked_trusted_O2_SAN": 4,
+  "accepted_code_changes": false,
+  "comparative_cost_samples": 0
+}

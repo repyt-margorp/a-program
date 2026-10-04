@@ -1,0 +1,21 @@
+{
+  "date_UTC": "2026-10-04T20:48:03.049144+00:00",
+  "proposal": "accepted94-common-20261004T2022",
+  "interval_UTC": [
+    "2026-10-04T20:22:00Z",
+    "2026-10-04T20:30:00Z"
+  ],
+  "proposal_SHA": "bfbbe5c9e7d57ec651d66936845e0e74d10a5790fc27fa91f0fc45b85b184cb0",
+  "C_actual_agreement_notice_SHA": "36e9230c1b65ce777f668763fe377c0f8374449755c1bbb7910a58ff00953ffe",
+  "Job_actual_unavailable_notice_SHA": "ab07c8a6f9c68fe283a74f0f09ec70d4536e481361ac39c4d12eb63156fb2b81",
+  "Assessment": "C agreed and remained light; Job actually consumed proposal20:27:50 with full O2 acceptance active and could not agree. No actual two-owner overlap formed before expiry. Failure is active Job exclusivity, not eight versus ten minutes. Later broad4 terminal notice is not retrospective agreement or a new personal interval. No grant/collector/hold/sample or automatic extension.600 seconds remains collector upper bound, valid shorter intervals and matched completed subset are supported. Await genuinely agreed prospective next boundary rather than blind replacement cancellations.",
+  "guard_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/execute-accepted94-guarded-slot.py",
+  "guard_SHA": "009b6c48e03e3293a7b1215dfd5c5c18a334ae01e92c53f3764a2765ccef2ccc",
+  "pair_auditor_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/audit-accepted94-matched-pairs.py",
+  "pair_auditor_SHA": "c21253639f1ed5e4f8339883d820abc52e874b7e293eae53c51ab7f936ad2a01",
+  "preparation_only": "Syntax and pure interval/subset audits; no fabricated execution evidence. Pinned workload36/config262c46ac/helper9c50c62d unchanged; actual grant requires fresh295 pins/owner agreement/blocked-idle Performance/no foreign heavy/preflight/continuous monitor/absolute deadline/owned cleanup-release.",
+  "all36_complete": false,
+  "granted": false,
+  "samples": 0,
+  "Goal_or_owner_actions": false
+}

@@ -1,0 +1,37 @@
+import collections,datetime,hashlib,json,pathlib
+s=pathlib.Path(__file__).resolve().parent
+q=s/'c46-current-accepted-fc'
+e=pathlib.Path('/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004')
+sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+r=json.loads((q/'Root-results.json').read_text())
+assert r['complete'] and r['all_original_tree_inputs_unchanged'] and r['qualified_pointer_unchanged'] and r['all_commands_terminal_reaped']
+assert len(r['commands'])==13
+for row in r['commands']:
+ assert row['exit']==row['expected_exit'] and not row['censored']
+ assert sha(q/(row['label']+'.out'))==row['stdout_SHA']
+ assert sha(q/(row['label']+'.err'))==row['stderr_SHA']
+products={};commands={};gates={};all_raw={}
+for phase in ['O2','SAN']:
+ for gate,owner in [('static-transitive','static-transitive-'+phase+'-final' if phase=='O2' else 'static-transitive-SAN'),('recursive','recursive-'+phase),('nested','nested-'+phase)]:
+  directory=q/(phase+'-'+gate+'-gate');original=e/owner
+  assert (directory/'status.tsv').read_bytes()==(original/'status.tsv').read_bytes()
+  files={str(p.relative_to(directory)):sha(p) for p in directory.rglob('*') if p.is_file()}
+  all_raw.update({phase+'-'+gate+'-gate/'+n:d for n,d in files.items()})
+  emitted={n:d for n,d in files.items() if pathlib.PurePosixPath(n).suffix in ['.c','.h']}
+  for n,d in emitted.items():assert sha(original/n)==d,(phase,gate,n)
+  products[phase+'-'+gate]=emitted
+  cmds={n:d for n,d in files.items() if n.endswith('.command') or n=='argv.nul'}
+  assert cmds
+  commands[phase+'-'+gate]=cmds
+  gates[phase+'-'+gate]=r['gate_results'][phase+'-'+gate]
+assert sum(len(products['O2-'+gate]) for gate in ['static-transitive','recursive','nested'])==75
+for gate in ['static-transitive','recursive','nested']:assert products['O2-'+gate]==products['SAN-'+gate]
+for row in r['commands']:
+ if 'actual-native-' in row['label']:
+  assert row['exit']==4
+  assert all(not pathlib.Path(row['argv'][-1]+suffix).exists() for suffix in ['.c','.h','.o','.a'])
+  assert 'unsupported native expression, argument or capture representation' in (q/(row['label']+'.err')).read_text()
+assert r['actual_materialized_image_SHA']=='7c1a4f35108dea9a91c4ffac90062b0c1d6bb1c145e116ff269942775e704aa4'
+record={'date_UTC':datetime.datetime.now(datetime.timezone.utc).isoformat(),'Main_parent':'48adb6e3a1030074094b0023cbfe411812940352','classification':'Fresh independent current accepted-runtime C46 correctness, not comparative measurement','Root_results_SHA':sha(q/'Root-results.json'),'complete':True,'commands':13,'all13_original_argv_env_exit_logs_exact':True,'all_expected_status_rows_owner_exact':True,'per_phase_expected_rows':212,'matching_C_H_between_Root_O2_SAN_and_frozen_owner':75,'products':products,'retained_command_pins':commands,'external_all_gate_raw_files':len(all_raw),'external_all_gate_raw_pins':all_raw,'actual_native_materialized_checked_trusted_O2_SAN':4,'no_native_product':True,'Root_execution':r,'SAN_scope':'Whole backend/helpers/generated source/raw clients; emitted object/archive O2 with client-only SAN, not whole emitted-product SAN. Qualified pointer remains reused O2.','preserved_failures':'C45 build2/native NOT_RUN historical. C46 initial setup2, receipt-only1, trusted expectation1 with per-run exit unpersisted, first read-only metadata/assembly mistakes remain in owner raw. Corrected expected native materialized4 and inputs-only pending3 are separate.','accepted_promotion':False,'general_native_Acc':False,'Goal_or_owner_actions':False,'cost_samples':0}
+(s/'c46-current-results-audit.json').write_text(json.dumps(record,indent=2)+'\n')
+print(json.dumps({k:v for k,v in record.items() if k not in ['Root_execution','products','retained_command_pins','external_all_gate_raw_pins']},indent=2))

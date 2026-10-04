@@ -1,0 +1,80 @@
+{
+  "Goal_complete": false,
+  "Main_integration": "pending Merge only",
+  "accepted_promotion": false,
+  "archive": "src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/epoch46-submitted-snapshot.tar",
+  "archive_sha256": "7c750b7fe3a01057f1314568487771d248babb9e9d7985efacaf77207fb55f77",
+  "branch": "parallel/c-backend-20261003",
+  "commit_message": "prototype: use readonly syntax query for native captures",
+  "delegated_parent": "6214590570681e7eae2b84baa03c588822d2e389",
+  "epoch": 46,
+  "expected_gate_rows_per_phase": 212,
+  "files": [
+    {
+      "mode": "0o664",
+      "path": "src/prototype/c_backend/lower/scalar.c",
+      "sha256": "78a4d85a652839c1575aa587cf32c47610b9588589109c45e8405befc0d28ff3"
+    },
+    {
+      "mode": "0o664",
+      "path": "src/prototype/c_backend/capture_query/fault_test.c",
+      "sha256": "02d3e400e4fb4c30e9852b64f2eadeac91065333ee8161f4c393e9afff648f3a"
+    },
+    {
+      "mode": "0o664",
+      "path": "src/prototype/c_backend/capture_query/build.mk",
+      "sha256": "db8f8b30619aa047b0afe1a19f655efd9482b63cbc207fd5312b5906c2020c71"
+    },
+    {
+      "mode": "0o775",
+      "path": "src/prototype/c_backend/capture_query/materialized_compiler.sh",
+      "sha256": "0e36d8cdd49c9b98b9b8f6f21af797d43583d9f974a02535966832eee627ee21"
+    },
+    {
+      "mode": "0o664",
+      "path": "src/prototype/c_backend/capture_query/check.sh",
+      "sha256": "8f30578b4f78880842340e02fdc6f6d27f93744fc3048945d19041f095e70994"
+    },
+    {
+      "mode": "0o664",
+      "path": "src/prototype/c_backend/capture_query/README.md",
+      "sha256": "72f1d2ca3fed731d8c51c24322643d93b1c447bdf34c2ff8647126ac4b445ce8"
+    },
+    {
+      "mode": "0o664",
+      "path": "doc/2026-10-03-C-BACKEND-GOAL.md",
+      "sha256": "b2297dc2c3584f0bc83cd468a10739294db7e49188c5ae6d7887d97239f6a280"
+    },
+    {
+      "mode": "0o664",
+      "path": "doc/2026-10-04-C-BACKEND-CAPTURE-QUERY-PLAN.md",
+      "sha256": "51add49f099940b7c661c618419c5980a224d23bb9d0f8712f793ecd7b8f382a"
+    },
+    {
+      "mode": "0o664",
+      "path": "doc/2026-10-04-C-BACKEND-EPOCH46-HANDOFF.md",
+      "sha256": "1922b9c49ab33f02cdef36fff9d3586688cda93363fdec12549f03eb7ae446f2"
+    }
+  ],
+  "files_count": 9,
+  "frozen_UTC": "2026-10-04T20:06:45.022294+00:00",
+  "generalized_native_Acc": false,
+  "handoff_sha256": "1922b9c49ab33f02cdef36fff9d3586688cda93363fdec12549f03eb7ae446f2",
+  "independent_current_review": "pending",
+  "input_count": 280,
+  "inputs_sha256": "2124981c73eaf98b0b1ad5ae1b924208c48015ccb15f650c9b3300a3f6ae3db0",
+  "lane": "C",
+  "manifest": "src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/epoch46-files.sha256",
+  "manifest_sha256": "2b4751cf6d44dda5594adbfdda2ce6b892e7c801ff905d3edf7d63133823c4e5",
+  "matching_C_H": 75,
+  "raw_file_count": 2016,
+  "raw_manifest": "src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/epoch46-runs.sha256",
+  "raw_manifest_sha256": "b7d17bfe95415677e41ef79cc0b8d035f87d330da2ab0263faa4fe090b9c41f7",
+  "scope": "downstream readonly native capture query; faithful actual Acc C45 unchanged",
+  "shared_index_sha256": "848aae6bed8ddf19f70473244f94f8ca144b4bbe3ca7a427b2f44e2a5e842325",
+  "source_deltas_sha256": "67bd7499b23261589f21d38af125db5a2f5db8075b91c8fff4e4c67c76f6a594",
+  "style_sha256": "08ccb73386d48c8ae543c15e254143f1f70453c86a83902c1771e217313df54a",
+  "task_publication": "pending delegated Merge",
+  "verification_sha256": "2ca176be2254751af5b42ef1a5aafa9339f96a4c8febaa5a60e9aaec4eb0fd6b",
+  "worker_HEAD": "cc3cba3495b81628e0a68ec8b45aee4f5447d188"
+}

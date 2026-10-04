@@ -1,0 +1,49 @@
+{
+  "date_UTC": "2026-10-04T20:44:43.353854+00:00",
+  "classification": "Fresh independent static audit of owner broad4 execution; no Root native runtime or parent comparison",
+  "notice_SHA": "cb052ea4cdade2a1b8707a32acc882d4e27a6420c21351f7d4424812b5cccafe",
+  "input657_manifest_SHA": "1487d388abd0cefa71cd3fac2ef4f8b88ffb198bc88f136a097cd0be3c56bd2c",
+  "all657_immutable_inputs_exact": true,
+  "composed_code126_SHA": "5405b09eb0999b1e83b8a2698e02fc0352ffad5a422f0c3fda7fa666ab890cc9",
+  "all126_code_files_exact": true,
+  "owner_terminal_record": {
+    "parent": "fc52755b345a555e49a79df40549e9cb23d54088",
+    "inputs657": "1487d388abd0cefa71cd3fac2ef4f8b88ffb198bc88f136a097cd0be3c56bd2c",
+    "code126": "5405b09eb0999b1e83b8a2698e02fc0352ffad5a422f0c3fda7fa666ab890cc9",
+    "argv": [
+      "make",
+      "-k",
+      "-f",
+      "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/history/trial4-inputs/src/Makefile",
+      "BUILD=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-trial4-o2",
+      "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+      "-j1",
+      "check-acceptance"
+    ],
+    "status": "terminal",
+    "scope": "Full actual acceptance recipe; keep-going exposes independent failed/missing groups, no inferred pass",
+    "cost_comparison": false,
+    "returncode": 2,
+    "log_sha256": "ce292da5d275816dcf85ca7cada9fa3b0d7e240d9f48e7f43728aed2cd4e315f"
+  },
+  "terminal_record_SHA": "1a7a7408db6d78126b88358a138f1bfe8f54f80dbef48a4744480da1c4cb4eb5",
+  "raw_log_SHA": "ce292da5d275816dcf85ca7cada9fa3b0d7e240d9f48e7f43728aed2cd4e315f",
+  "raw_failure_lines": [
+    "derivation_io_test: /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/history/trial4-inputs/tests/derivation_io.c:543: read_proofs: Assertion `roots[27]->count == 2 && roots[28]->count == 5' failed.",
+    "make: *** [/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/history/trial4-inputs/src/Makefile:180: check] Error 134",
+    "export results: /tmp/tmp.sGR9IfpX5m/materialized.a main output equal=0 chunk=1 steps=415894",
+    "export results: /tmp/tmp.sGR9IfpX5m/materialized.a main output equal=0 chunk=64 steps=415894",
+    "make: *** [/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/history/trial4-inputs/src/Makefile:168: check-finite-permutation-views] Error 1"
+  ],
+  "derivation_control": "Old projection/explicit-map header count2/5 assertion at derivation_io.c543 fails134; native actual endpoint/image input migration requires explicit separate review, no automatic waiver.",
+  "semantic_boundary": "Independent materialized finite-permutation main output equal=0 at chunks1/64, steps415894; ordinary source/independent-image comparisons equal=1. This is a concrete candidate semantic failure, not just stored-receipt identity. Parent-matched diagnosis remains pending, no accepted-parent regression or cause inferred.",
+  "earlier_local_gates": "Native54 Core O2/six affected SAN0 and separate frontier2 seven O2/SAN suites with Lambda cuts/binding controls remain separately pinned. Their passes do not qualify broad4.",
+  "preserved_history": "Broad3 exit2 host retained empty-Context receipt; explicit host/derivation/alias migrations recorded separately. Native51 copied Context134/native52 corrected guards/native53 handler signature134 retained.",
+  "Assessment": "Continue existing Job-owned typed Source materialization/ordinary readback diagnosis using exact committed parent control and normative ordinary output equality. Keep eval/readback ownership and existing factories/checking, all failure images/logs and strict3 controls. No semantic waiver, new checker/authority, accepted edit or READY.",
+  "cost": "Original20:22-20:30 proposal expired/ungranted; this terminal/reaped owner report offers no future interval or grant.",
+  "Root_runtime_replay": false,
+  "READY": false,
+  "accepted_adoption": false,
+  "Goal_or_owner_actions": false,
+  "cost_samples": 0
+}

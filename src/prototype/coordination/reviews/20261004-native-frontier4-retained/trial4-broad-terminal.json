@@ -1,0 +1,20 @@
+{
+  "parent": "fc52755b345a555e49a79df40549e9cb23d54088",
+  "inputs657": "1487d388abd0cefa71cd3fac2ef4f8b88ffb198bc88f136a097cd0be3c56bd2c",
+  "code126": "5405b09eb0999b1e83b8a2698e02fc0352ffad5a422f0c3fda7fa666ab890cc9",
+  "argv": [
+    "make",
+    "-k",
+    "-f",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/history/trial4-inputs/src/Makefile",
+    "BUILD=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-trial4-o2",
+    "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+    "-j1",
+    "check-acceptance"
+  ],
+  "status": "terminal",
+  "scope": "Full actual acceptance recipe; keep-going exposes independent failed/missing groups, no inferred pass",
+  "cost_comparison": false,
+  "returncode": 2,
+  "log_sha256": "ce292da5d275816dcf85ca7cada9fa3b0d7e240d9f48e7f43728aed2cd4e315f"
+}

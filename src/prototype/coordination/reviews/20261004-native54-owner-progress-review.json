@@ -1,0 +1,147 @@
+{
+  "date_UTC": "2026-10-04T20:28:03.139340+00:00",
+  "classification": "Root independent static audit of private owner native54; no Root runtime replay/READY/adoption/net benefit",
+  "notice_SHA": "7a23b28fdee8acaa4b8d75bf3016bec5009086064e6a07b2f697094d58678a5b",
+  "input485_manifest_SHA": "8d55f203e3dbbd9639da257f63ba256c7253d0345ac70b9db15040c5e22cc22e",
+  "code120_SHA": "f35c7a61a8e91d9fc5cc269571d2b18c84d8b531b5a857b91d774f3b825c17f7",
+  "results31_manifest_SHA": "6be124e20a41afea9cdcec3222fc89415b869ba66d1eea5929a6f9be14c47897",
+  "all_inputs_results_binaries_raw_exact": true,
+  "owner_Core_O2": {
+    "returncode": 0,
+    "binary_sha256": "822ed67a30c972bbb0c60f23c218b87c05853c34b1855a70ae44a76496f94295",
+    "stdout_sha256": "995517eda13c6553a7d92b445a27961c2980bcf957ae59f21e629ffffbeba200",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "owner_six_SAN": [
+    {
+      "name": "native",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/build-trial54-san/native_owners"
+      ],
+      "environment": {
+        "ASAN_OPTIONS": "detect_leaks=1:abort_on_error=1",
+        "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+      },
+      "returncode": 0,
+      "binary_sha256": "9233c5b2dcd6e2ce4739c8e960e36785bd829548b40c31db38414e0d770a2eb2",
+      "stdout_sha256": "d339f23a8d7cc5611bcccfb570f887a239848abb40d32afb5fc27d29ab2fadcc",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "core",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/build-trial54-san/core_test"
+      ],
+      "environment": {
+        "ASAN_OPTIONS": "detect_leaks=1:abort_on_error=1",
+        "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+      },
+      "returncode": 0,
+      "binary_sha256": "bf40cc01086dff1a7f7a8ef0cc9467a1fcec245d1a5f39154f10770200265bae",
+      "stdout_sha256": "995517eda13c6553a7d92b445a27961c2980bcf957ae59f21e629ffffbeba200",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "synthesis",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/build-trial54-san/synthesis_test"
+      ],
+      "environment": {
+        "ASAN_OPTIONS": "detect_leaks=1:abort_on_error=1",
+        "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+      },
+      "returncode": 0,
+      "binary_sha256": "b2bd612728933b3d76abcebbf27637b4d45f83e5a7724f6a9f88932cbd5566b5",
+      "stdout_sha256": "44856864e89d881f782aa0536ff6a3e52768c95960a31b88783e76ca7d39db58",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "source",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial54-inputs/tests/source_io.sh",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/build-trial54-san/source_io_test"
+      ],
+      "environment": {
+        "ASAN_OPTIONS": "detect_leaks=1:abort_on_error=1",
+        "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+      },
+      "returncode": 0,
+      "binary_sha256": "f5305f8a18e552c8945c6803e5fa5e55870d4dbb94206d44615826641b384025",
+      "stdout_sha256": "ab9f5495573feafadb68b3b741619f0bef57df94c2cb1b36414c92a43cf6af46",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "typed",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial54-inputs/tests/typed_structure.sh",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/build-trial54-san/typed_structure_test"
+      ],
+      "environment": {
+        "ASAN_OPTIONS": "detect_leaks=1:abort_on_error=1",
+        "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+      },
+      "returncode": 0,
+      "binary_sha256": "de2b5a80095ef495bab2134f5f47c4c9682c6257badec925f68c7f1c08ce4cbf",
+      "stdout_sha256": "8c35de2c5b40eaa885c2927e61dd32f55e756f6289a0b1723f4f3974f7122475",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "occurrence",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial54-inputs/tests/occurrence_io.sh",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/build-trial54-san/occurrence_io_test"
+      ],
+      "environment": {
+        "ASAN_OPTIONS": "detect_leaks=1:abort_on_error=1",
+        "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+      },
+      "returncode": 0,
+      "binary_sha256": "5cb490513159f005d424dd69163100032260757b93e11503860f6ee52623cb4f",
+      "stdout_sha256": "23f818616ed0f724d5154b1d3c95f43d2e8adef0ab53f85da6f747092eab042a",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "migration": {
+    "parent": "fc52755b345a555e49a79df40549e9cb23d54088",
+    "semantic_changes": "Native VARIABLE retains selected declaration Scope plus separately checked use Context; unused ambient formation history removed. Scoped weakening/unprojection reuse that declaration without a projection map. No receipt graph, index, checker or Oracle-level graph introduced.",
+    "lifetime": {
+      "before": "Native49/50 runtime81ad29f9 control51 builds0/runs134: raw copied use Context accepted; exact source/control b43f1797.",
+      "correction": "Existing Context index checks all use ancestors to selected declaration. An actual admitted canonical Scope is a fast path. Existing selected Scope ancestry/member guards remain.",
+      "fresh": "Native52 runtimea2460a65 copied head/owned head plus copied ancestor/Scope copied indices/family bounds/zero-step/twice-resave/extended reuse/ordinary two-input VAR controls debug0; full Source debug0. No blanket raw Scope factory policy."
+    },
+    "test_migration": [
+      {
+        "case": "Native map authority",
+        "old": "Only one lazy map receipt counted before64 image accesses.",
+        "new": "64 actual admitted VARIABLE endpoints plus native map; later image access no extra admissions. Debug48 confirms686->751 with actual local images. Bad tuple/formation/foreign/scope checks unchanged."
+      },
+      {
+        "case": "Redundant effect subsumption",
+        "old": "A no-op operation changes the receipt premise history while keeping the same endpoint.",
+        "new": "Same endpoint retains original force/target inputs. No-op force keeps actual FORCE rule/child, classifier and derivation reconstruction. Negative effect/totality checks unchanged."
+      },
+      {
+        "case": "Termination, request, Fold and handler aliases",
+        "old": "Identity reindex returns the same input, but repeating the constructor should allocate a different receipt on the same endpoint.",
+        "new": "Same actual inputs must reuse the exact native owner. Actual premises, operation signatures, totality grades, handler branch checks and reconstruction stay checked. Input identity assertions added before handler reuse assertion."
+      },
+      {
+        "case": "Descriptive wire",
+        "old": "Private9/3 family VARIABLE Scope described whole caller formation.",
+        "new": "PrivateA/4 declares selected family declaration input; earlier formats reject, no compatibility/trust/replay waiver."
+      },
+      {
+        "case": "Handler signature",
+        "old": "Checked native operation declarations and unformed label-only descriptor have identical pointer.",
+        "new": "Checked native signature retains actual selected payload/response facts; label-only descriptor has same ordered nominal labels but remains distinct. Repeated nominal lookup stable, all nine native premises/ordinary reconstruction/semantic negatives stay checked."
+      }
+    ],
+    "qualification": "Native53 O2 native control/Synthesis/Source/typed/Occurrence0; Core1346911 label-only signature equality preserved. Fresh54 O2/SAN pending.",
+    "strict": "Original1000+1000,1600+1600,completed1915/1921+0 remain unwaived; native public not run; AP6 separate.",
+    "overhead": "Occurrence144 versus earlier136; map80 versus56, selected maps share image tuples. Actual Scope/input/index/scratch overhead and net peak/time unmeasured; counts do not establish RSS or speed."
+  },
+  "Assessment": "Scoped54 full Core/O2 and six SAN0 supersede earlier receipt-contract134 only on exact54. Preserve original53 label-only/checked signature134 and51 copied Context134; deliberate checked native signature/first-owner operation migration retains nominal label distinction, all actual nine premises/reconstruction and semantic negatives per inspected migration and owner full gates. No native READY/adoption/public/strict3/frontier/joint/net cost conclusion. Native frontier2 is a separate composition; cost exact36 remains selected accepted Performance delta, not native54 benchmark."
+}

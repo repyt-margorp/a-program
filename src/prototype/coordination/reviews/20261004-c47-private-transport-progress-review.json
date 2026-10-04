@@ -1,0 +1,168 @@
+{
+  "date_UTC": "2026-10-04T20:44:43.353854+00:00",
+  "classification": "Private C47 progress, not frozen READY or Root runtime replay",
+  "resuming_notice_SHA": "e02a18bad20c9a078b641cc68b5f95ac11950534e999c2eb185b2cfe7c45f3bf",
+  "actual_source_inspection": {
+    "record": {
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/O2/c_acc_transport_inspect",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/actual-materialized.a",
+        "succ_access"
+      ],
+      "image_sha256": "7c1a4f35108dea9a91c4ffac90062b0c1d6bb1c145e116ff269942775e704aa4",
+      "binary_sha256": "4e857ccb90fe7213e69f2b0b9f5df6e66eed2d479d423745f5527a15108b9190",
+      "start": "2026-10-04T20:15:38.290357+00:00",
+      "exit": 0,
+      "finish": "2026-10-04T20:15:38.330504+00:00"
+    },
+    "raw_SHA": {
+      "inspect.json": "7128b660852ef0578175707c16b3bffabaa7ec0fd07c1955067f079fcd862bd7",
+      "inspect.out": "ee4011e018ba737e7404e043caa34fed545e0969fcdd674b3507058c629d9d65",
+      "inspect.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "candidate_phases": {
+    "candidate-O2": {
+      "record": {
+        "argv": [
+          "sh",
+          "src/prototype/c_backend/acc_transport/check.sh",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/O2/c_acc_transport_emit",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/actual-materialized.a",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch44-acc-capture-20261004/candidate-O2/main",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch44-acc-capture-20261004/candidate-O2/oracle.c",
+          "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/pointer-check",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/candidate-O2"
+        ],
+        "environment": {
+          "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/tmp",
+          "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+          "AR": "/usr/bin/ar",
+          "CLIENT_CFLAGS": "-O2"
+        },
+        "start": "2026-10-04T20:33:39.853606+00:00",
+        "exit": 1,
+        "finish": "2026-10-04T20:33:42.780093+00:00"
+      },
+      "raw_SHA": {
+        "candidate-O2.json": "518d168cae1f167dd6c3ac26edd13bf4a1bff2595339f4d28f6adaf4f5e9df97",
+        "candidate-O2.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "candidate-O2.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "rows": 37,
+      "outcomes": {
+        "0": 33,
+        "4": 3,
+        "1": 1
+      },
+      "mismatches": [
+        [
+          "map_client_build",
+          "0",
+          "1"
+        ]
+      ],
+      "status_SHA": "ab328b444244f5b3dbd3d3734b31e6d6e6e2ac350dd553c5e51f3a7a40a07fe0"
+    },
+    "candidate-O2-corrected": {
+      "record": {
+        "argv": [
+          "sh",
+          "src/prototype/c_backend/acc_transport/check.sh",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/O2/c_acc_transport_emit",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/actual-materialized.a",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch44-acc-capture-20261004/candidate-O2/main",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch44-acc-capture-20261004/candidate-O2/oracle.c",
+          "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/pointer-check",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/candidate-O2-corrected"
+        ],
+        "environment": {
+          "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/tmp",
+          "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+          "AR": "/usr/bin/ar",
+          "CLIENT_CFLAGS": "-O2"
+        },
+        "start": "2026-10-04T20:35:13.928064+00:00",
+        "correction": "map_client.c adds required stdio.h; component/emitter/source expectations unchanged",
+        "exit": 0,
+        "finish": "2026-10-04T20:35:17.162901+00:00"
+      },
+      "raw_SHA": {
+        "candidate-O2-corrected.json": "6a4146c4e865bfc06f84c3cd318dd0df140b63f075caf56972d00c26af68ffa7",
+        "candidate-O2-corrected.out": "b73fa12a34083f1648975c3585a23af950fd1f086b145c910a880a4403dbe6ac",
+        "candidate-O2-corrected.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "rows": 50,
+      "outcomes": {
+        "0": 44,
+        "4": 4,
+        "1": 1,
+        "2": 1
+      },
+      "mismatches": [],
+      "status_SHA": "1f689a263b1ca8b58b0178cf2d9b6b0e1f27e1d9980e2ab96d2d8c7a001b32d3"
+    },
+    "candidate-SAN": {
+      "record": {
+        "argv": [
+          "sh",
+          "src/prototype/c_backend/acc_transport/check.sh",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/SAN/c_acc_transport_emit",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/actual-materialized.a",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch44-acc-capture-20261004/candidate-O2/main",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch44-acc-capture-20261004/candidate-O2/oracle.c",
+          "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/pointer-check",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/candidate-SAN"
+        ],
+        "environment": {
+          "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/tmp",
+          "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+          "AR": "/usr/bin/ar",
+          "CLIENT_CFLAGS": "-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+          "ASAN_OPTIONS": "detect_leaks=1:halt_on_error=1",
+          "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+        },
+        "start": "2026-10-04T20:38:41.972659+00:00",
+        "exit": 0,
+        "finish": "2026-10-04T20:39:15.537031+00:00"
+      },
+      "raw_SHA": {
+        "candidate-SAN.json": "238e7d9c5f7bd807affe601549eaecf39a94ae667c9310a4d038c5249aed888c",
+        "candidate-SAN.out": "b73fa12a34083f1648975c3585a23af950fd1f086b145c910a880a4403dbe6ac",
+        "candidate-SAN.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "rows": 50,
+      "outcomes": {
+        "0": 44,
+        "4": 4,
+        "1": 1,
+        "2": 1
+      },
+      "mismatches": [],
+      "status_SHA": "1f689a263b1ca8b58b0178cf2d9b6b0e1f27e1d9980e2ab96d2d8c7a001b32d3"
+    }
+  },
+  "raw_pins": {
+    "inspect.json": "7128b660852ef0578175707c16b3bffabaa7ec0fd07c1955067f079fcd862bd7",
+    "inspect.out": "ee4011e018ba737e7404e043caa34fed545e0969fcdd674b3507058c629d9d65",
+    "inspect.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "candidate-O2.json": "518d168cae1f167dd6c3ac26edd13bf4a1bff2595339f4d28f6adaf4f5e9df97",
+    "candidate-O2.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "candidate-O2.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "candidate-O2/status.tsv": "ab328b444244f5b3dbd3d3734b31e6d6e6e2ac350dd553c5e51f3a7a40a07fe0",
+    "candidate-O2-corrected.json": "6a4146c4e865bfc06f84c3cd318dd0df140b63f075caf56972d00c26af68ffa7",
+    "candidate-O2-corrected.out": "b73fa12a34083f1648975c3585a23af950fd1f086b145c910a880a4403dbe6ac",
+    "candidate-O2-corrected.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "candidate-O2-corrected/status.tsv": "1f689a263b1ca8b58b0178cf2d9b6b0e1f27e1d9980e2ab96d2d8c7a001b32d3",
+    "candidate-SAN.json": "238e7d9c5f7bd807affe601549eaecf39a94ae667c9310a4d038c5249aed888c",
+    "candidate-SAN.out": "b73fa12a34083f1648975c3585a23af950fd1f086b145c910a880a4403dbe6ac",
+    "candidate-SAN.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "candidate-SAN/status.tsv": "1f689a263b1ca8b58b0178cf2d9b6b0e1f27e1d9980e2ab96d2d8c7a001b32d3"
+  },
+  "boundary": "Full ordered vectors/down/IH/captures/paths and descriptive Context identities are source-derived; not checked Scope certificates. C47 source Scope/action correspondence remains open. Initial map-client missing stdio.h build1 retained; corrected O2/SAN expected rows pass in owner records. Entire-emitter/product/client SAN is owner-reported, no full qualification inferred from this private snapshot.",
+  "Root_runtime_replay": false,
+  "frozen_READY": false,
+  "accepted_adoption": false,
+  "Goal_or_owner_actions": false,
+  "cost_samples": 0
+}

@@ -1,7 +1,7 @@
 # Solver and Evidence Duplication Audit
 
 Date: 2026-09-30
-Status: reviewed Job migration accepted/pushed as94a20003; native52 scoped Source/lifetime/resave progress verified statically, Core134 and full SE/frontier/net cost unfinished. Private native49/51 failures retained; sole native implementation list remains here.
+Status: Accepted94a/fc baseline preserved; native54 and composed frontier2 local gates advance, broad4 materialized finite-permutation semantic failure blocks full qualification. Current full/public/strict3/frontier/joint/net cost and READY remain open; this is the sole native implementation work list.
 Parent: [artifact plan, AP0](2026-09-28-ARTIFACT-SEMANTIC-PERSISTENCE-REFACTOR-PLAN.md#ap0-simplify-before-extending-persistence).
 This is the active prerequisite work list, not another artifact format proposal.
 
@@ -319,6 +319,40 @@ identical TSVs in O2 and ASan/UBSan builds, including repeated samples without
 additional fuel. No full acceptance suite was rerun for this audit-only change.
 
 ## Assessment
+
+2026-10-04, Root agent progress assessment within existing prototype scope:
+[native54](../src/prototype/coordination/reviews/20261004-native54-owner-progress-review.json)
+immutable485/code120f35c7a61/results31 pins full Core O2/six affected SAN0.
+Checked native operation signatures retain actual facts and nominal label
+negatives; preserve earlier53 signature134 and51 Context134/52 scoped repair.
+[Separate frontier2](../src/prototype/coordination/reviews/20261004-native-frontier2-local-progress-review.json)
+immutable498/code1265405b09e pins seven local O2/SAN suites0, Lambda destroyed
+owner/negative/binding controls. These supersede pending local gates only on
+those exact compositions, without broad/public/strict3/READY or net gain.
+
+[Later broad4](../src/prototype/coordination/reviews/20261004-native-frontier4-semantic-failure-review.json)
+exact6571487d388/unchangedcode126/rawce292da5 is terminal2: derivation header
+counts2/5 abort134, and independent materialized finite-permutation output is
+unequal at chunks1/64 while ordinary source/independent image paths agree.
+Adopt this as a required candidate semantic regression investigation, not an
+identity-only waiver or current-parent defect. Preserve exact input/log/source
+pins and failing artifacts; diagnose original typed Source/materialization/
+ordinary readback with a committed fc parent control before a source repair or
+explicit receipt-contract migration. Existing local Source passes do not qualify
+this independent materialized path. Broad3 host assertion2 and all old strict3
+remain separate. Necessary native Scope/map/Occurrence/input/wire bytes still
+enter parent-matched net accounting; counts are not measured memory/time.
+[Retained Source/frame cut controls](../src/prototype/coordination/inbox/job-retained-source-frame-controls-20261004.json)
+provide exact original source/foreign-reader pointers and preserved failed cuts;
+qualify their native correspondence without waking blocked Performance. The
+original Job owns this work in the existing Plan below; no competing work list,
+Root native replay, new checker/authority, accepted edit or READY follows.
+
+Common20:22-20:30 expired because Job's actual full acceptance gate prevented
+agreement; C alone agreed. No grant/collector/samples. Later Job terminal is no
+new personal interval or retrospective approval. Shorter actually agreed overlap
+and exact uncensored matched subset remain supported with600-second upper bound,
+fresh pins/exclusivity/absolute deadline/cleanup-release; no blind renewal.
 
 2026-10-04 20:07 UTC, inquiry-desk agent scheduling review under existing
 measurement scope, not a new human design approval:600 seconds is the collector
