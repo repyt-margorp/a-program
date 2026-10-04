@@ -1,0 +1,9 @@
+{
+  "parent_task": "Published exact E16 task6caf36cbfd548f7a8e3bddde08739154c16149dc/manifest2f5997d716407bb823540a4418804146dd4b58b514430de10543752a3df1f717; isolated E17/E18/E20/current Main/E10 excluded",
+  "parent_source156": "a00c742673f74c1ef0b12f800e572b4ec138fe56acf51d30319aad8536adceeb",
+  "candidate_source156": "ab5f874d67b977d78bc1d9d131895498c5187520dc09aef744135c509e6e22ae",
+  "applied_delta": "b2f89996e318bb5d8a44c500ef6c1eb9010159d11bde11dc86707b5076bba5f9",
+  "all156_after_apply_exact": true,
+  "canonical_reverse_parent_and_candidate_apply_raw_exact": true,
+  "shared_git_untouched": true
+}

@@ -1,0 +1,98 @@
+{
+  "source156_before_after_exact": true,
+  "all35_fields_equal_at_all_cuts": true,
+  "ordinary_imported_theorem_asserted": true,
+  "samples": [
+    {
+      "sample": "list",
+      "status": "DONE",
+      "steps": 1921,
+      "typed": 429,
+      "evidence": 555,
+      "all35_fields_equal_at_all_cuts": true,
+      "external_cumulative": {
+        "E16": {
+          "wrapped_arena_calls": 4360,
+          "wrapped_aligned_bytes": 441744
+        },
+        "E19": {
+          "wrapped_arena_calls": 4360,
+          "wrapped_aligned_bytes": 441744
+        }
+      }
+    },
+    {
+      "sample": "effect",
+      "status": "DONE",
+      "steps": 13142,
+      "typed": 2680,
+      "evidence": 3414,
+      "all35_fields_equal_at_all_cuts": true,
+      "external_cumulative": {
+        "E16": {
+          "wrapped_arena_calls": 27622,
+          "wrapped_aligned_bytes": 2783216
+        },
+        "E19": {
+          "wrapped_arena_calls": 27622,
+          "wrapped_aligned_bytes": 2783216
+        }
+      }
+    },
+    {
+      "sample": "captured",
+      "status": "DONE",
+      "steps": 2307,
+      "typed": 632,
+      "evidence": 797,
+      "all35_fields_equal_at_all_cuts": true,
+      "external_cumulative": {
+        "E16": {
+          "wrapped_arena_calls": 7558,
+          "wrapped_aligned_bytes": 736960
+        },
+        "E19": {
+          "wrapped_arena_calls": 7558,
+          "wrapped_aligned_bytes": 736960
+        }
+      }
+    },
+    {
+      "sample": "quick",
+      "status": "DONE",
+      "steps": 766477,
+      "typed": 114388,
+      "evidence": 94974,
+      "all35_fields_equal_at_all_cuts": true,
+      "external_cumulative": {
+        "E16": {
+          "wrapped_arena_calls": 2887031,
+          "wrapped_aligned_bytes": 229236512
+        },
+        "E19": {
+          "wrapped_arena_calls": 2887608,
+          "wrapped_aligned_bytes": 229264208
+        }
+      }
+    },
+    {
+      "sample": "handler",
+      "status": "DONE",
+      "steps": 2470,
+      "typed": 425,
+      "evidence": 530,
+      "all35_fields_equal_at_all_cuts": true,
+      "external_cumulative": {
+        "E16": {
+          "wrapped_arena_calls": 4649,
+          "wrapped_aligned_bytes": 468896
+        },
+        "E19": {
+          "wrapped_arena_calls": 4649,
+          "wrapped_aligned_bytes": 468896
+        }
+      }
+    }
+  ],
+  "scope": "Replace duplicate weaker revalidation tag gate with existing canonical pending-owner membership reader; no additional owner/index/checker/graph/trust/fuel policy. External cumulative interposition excludes graph.c internal calls and heap; not live/peak/time."
+}

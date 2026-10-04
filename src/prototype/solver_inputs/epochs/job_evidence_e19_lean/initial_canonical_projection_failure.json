@@ -1,0 +1,7 @@
+{
+  "exit": 1,
+  "attempt": "E19 canonical projection preflight: compare git show6caf36c:src/prototype/artifact_persistence/artifact/file.c against tested E16 src/artifact/file.c before using full-file canonical publication; assert before candidate writes.",
+  "verdict": "AssertionError: src/artifact/file.c",
+  "cause": "Canonical AP base precedes existing solver_inputs migration patches; owner tag/input API and AP semantic fixture adaptations are already in artifact_patches/file.c.patch and artifact_test_patches/semantic_test.c.patch. Wrong canonical destination, not source or runtime drift.",
+  "correction": "Reverse exact published solver_inputs migration patches against E16 parent, require exact original AP base, generate updated full patches and reapply to candidate exact bytes. Focused immutable manifest54b98153 unchanged."
+}

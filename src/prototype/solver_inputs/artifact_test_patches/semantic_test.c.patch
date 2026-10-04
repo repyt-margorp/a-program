@@ -1,6 +1,15 @@
+diff --git a/semantic_test.c b/semantic_test.c
 --- a/semantic_test.c
 +++ b/semantic_test.c
-@@ -67,7 +67,9 @@
+@@ -1,6 +1,7 @@
+ #define _POSIX_C_SOURCE 200809L
+ #include "source_io.h"
+ #include "synthesis_source.h"
++#include "synthesis_work.h"
+ #include "artifact/file.h"
+ #include "computation.h"
+ #include "retained_io.h"
+@@ -67,7 +68,9 @@
  	size_t occurrences = program->typing.occurrences.count, jobs = program->synthesis.jobs.count;
  	uint64_t steps = program->synthesis.steps;
  	FILE *file = tmpfile();
@@ -11,7 +20,7 @@
  	assert(terms == program->graph.terms.count && proofs == program->typing.proofs.count);
  	assert(occurrences == program->typing.occurrences.count && jobs == program->synthesis.jobs.count);
  	assert(steps == program->synthesis.steps);
-@@ -78,10 +80,6 @@
+@@ -78,10 +81,6 @@
  static void no_import_preparation(const struct pg_program *program)
  {
  	assert(!program->synthesis.steps && program->typing.proofs.count == 1);
@@ -22,7 +31,7 @@
  }
  
  static void finish_work(struct pg_synthesis *s, struct pg_synthesis_job *job)
-@@ -91,7 +89,8 @@
+@@ -91,7 +90,8 @@
  
  static void early_wake(void)
  {
@@ -32,7 +41,7 @@
  	struct pg_program *p = pg_program_allocate_empty(PG_DEFINITION_IMPLICIT_THUNK);
  	assert(p);
  	struct pg_synthesis_job *jobs[3];
-@@ -253,13 +252,14 @@
+@@ -253,13 +253,14 @@
  		assert(!fseek(file, (long)w[6], SEEK_CUR));
  		if (w[0] != 5) continue;
  		long offset = ftell(file);
@@ -51,7 +60,7 @@
  			rewind(file);
  			size_t count = 91;
  			struct pg_synthesis_job *const *roots = NULL;
-@@ -267,7 +267,7 @@
+@@ -267,7 +268,7 @@
  			assert(count == 91 && !roots);
  		}
  		assert(!fseek(file, offset, SEEK_SET));
@@ -60,7 +69,7 @@
  		++checked;
  	}
  	assert(checked == 1);
-@@ -302,18 +302,22 @@
+@@ -302,18 +303,22 @@
  			registration = pg_synthesis_prepare_module(&copy->synthesis, roots[0]);
  			assert(!pg_synthesis_definition_frontier(&copy->synthesis, registration, &after));
  			assert(before.count == after.count);
@@ -86,7 +95,7 @@
  				struct pg_module_frontier cursor = {.position = 1, .previous = after.entries[0]};
  				assert(!pg_synthesis_module_resume(&copy->synthesis, roots[0], &cursor));
  			}
-@@ -339,10 +343,11 @@
+@@ -339,10 +344,11 @@
  	const struct pg_evidence *empty = pg_prove_empty_context(&p->typing);
  	/* A type is not a Context extension. Registration may still publish names,
  	 * but neither the module nor its definitions may bypass this failed input. */
@@ -102,7 +111,7 @@
  	assert(scope && !pg_synthesis_scope_context(scope));
  	const char source[] = "main := @;";
  	struct pg_parser parser;
-@@ -384,25 +389,52 @@
+@@ -384,25 +390,52 @@
  	const struct pg_derivation_input *inputs[] = {deep, context, deep, universe,
  		rule_input(&p->graph, PG_CONTEXT_EMPTY, 0, NULL),
  		rule_input(&p->graph, PG_RETURN_INTRO, 1, &context)};
@@ -162,7 +171,7 @@
  	pg_program_destroy(p);
  	p = pg_program_allocate_empty(PG_DEFINITION_IMPLICIT_THUNK);
  	assert(p);
-@@ -410,8 +442,8 @@
+@@ -410,8 +443,8 @@
  	struct pg_derivation_input *cycle = rule_input(&p->graph, PG_UNIVERSE_FORM, 1, &context);
  	cycle->premises[0] = cycle;
  	const struct pg_derivation_input *cyclic = cycle;
@@ -173,7 +182,7 @@
  	no_import_preparation(p);
  	pg_program_destroy(p);
  	puts("direct rule import: shared iterative relocation, no preparation workers or proof admission");
-@@ -481,7 +513,7 @@
+@@ -481,7 +514,7 @@
  		FILE *file = tmpfile();
  		assert(file);
  		for (size_t i = 0; i < prefix; ++i) assert(fputc(0, file) == 0);
@@ -182,7 +191,7 @@
  		assert(!fseek(file, (long)prefix, SEEK_SET));
  		size_t count;
  		struct pg_synthesis_job *const *roots;
-@@ -582,7 +614,7 @@
+@@ -582,7 +615,7 @@
  	char path[] = "/tmp/a-program-publication-XXXXXX";
  	int descriptor = mkstemp(path);
  	assert(descriptor >= 0 && !close(descriptor));
@@ -191,7 +200,7 @@
  	/* A failed replacement must leave the previous artifact untouched. */
  	assert(pg_artifact_save_file(NULL, program, 0, NULL, PG_ARTIFACT_MATERIALIZED));
  	assert(pg_artifact_save_file(path, NULL, 0, NULL, PG_ARTIFACT_MATERIALIZED));
-@@ -607,7 +639,7 @@
+@@ -607,7 +640,7 @@
  	size_t occurrences = program->typing.occurrences.count, jobs = program->synthesis.jobs.count;
  	uint64_t steps = program->synthesis.steps;
  	FILE *file = tmpfile();
@@ -200,7 +209,7 @@
  	assert(terms == program->graph.terms.count && proofs == program->typing.proofs.count);
  	assert(occurrences == program->typing.occurrences.count && jobs == program->synthesis.jobs.count);
  	assert(steps == program->synthesis.steps);
-@@ -708,6 +740,20 @@
+@@ -708,6 +741,20 @@
  	pg_program_destroy(program);
  }
  
@@ -221,7 +230,7 @@
  static void materialized_validation(const char *source)
  {
  	struct pg_program *program = pg_program_create(source, strlen(source), PG_DEFINITION_IMPLICIT_THUNK);
-@@ -729,10 +775,12 @@
+@@ -729,10 +776,12 @@
  	assert(!pg_graph_init(&storage) && !pg_effect_inference_init(&effects, &storage));
  	assert(!pg_declaration_io_init(&codec, &program->typing));
  	const struct pg_derivation_input *const *inputs;
@@ -237,7 +246,7 @@
  	pg_declaration_io_destroy(&codec);
  	pg_effect_inference_destroy(&effects);
  	pg_graph_destroy(&storage);
-@@ -968,8 +1016,8 @@
+@@ -968,8 +1017,8 @@
  	assert((pg_synthesis_status(program->root) == PG_SYNTHESIS_DONE) == valid);
  	FILE *file = tmpfile();
  	assert(file);
@@ -248,7 +257,7 @@
  	pg_program_destroy(program);
  	struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = "main", .length = 4};
  	struct pg_synthesis_job *const *roots;
-@@ -1020,7 +1068,7 @@
+@@ -1020,7 +1069,7 @@
  	for (size_t i = 0; i < header[1]; ++i) {
  		uint64_t words[10];
  		for (size_t j = 0; j < 10; ++j) assert(!pg_wire_read_u64(file, &words[j]));
@@ -257,3 +266,48 @@
  	}
  	assert(!fseek(file, (long)(8 * header[2] + 56), SEEK_CUR));
  	long flag = ftell(file);
+@@ -1038,6 +1087,30 @@
+ 	assert(count == 91 && !roots);
+ 	assert(!fclose(file));
+ 	pg_program_destroy(program);
++}
++
++static void reject_copied_revalidation_target(struct pg_program *program, struct pg_synthesis_job *target)
++{
++	const struct pg_synthesis_work_class *role = pg_synthesis_work_role(target);
++	const char *state = pg_synthesis_work_state(target, role);
++	size_t offset = state ? (const char *)target - state : 0;
++	size_t bytes = offset + sizeof(*target) + target->input_count * sizeof(*target->inputs);
++	char *storage = malloc(bytes);
++	assert(storage);
++	memcpy(storage, state ? state : (const char *)target, bytes);
++	struct pg_synthesis_job *copy = (void *)(storage + offset);
++	struct pg_synthesis *synthesis = &program->synthesis;
++	struct pg_synthesis_job *ready = synthesis->ready, *tail = synthesis->ready_tail;
++	size_t jobs = synthesis->jobs.count, proofs = program->typing.proofs.count;
++	uint64_t steps = synthesis->steps, spent = 91;
++	assert(pg_synthesis_input_owned(synthesis, (struct pg_synthesis_input){.pending = pg_synthesis_pending(target)}));
++	assert(!pg_synthesis_input_owned(synthesis, (struct pg_synthesis_input){.pending = pg_synthesis_pending(copy)}));
++	assert(pg_artifact_revalidate(program, copy, 0, 0, &spent) == PG_SYNTHESIS_ERROR);
++	assert(pg_artifact_revalidate(program, copy, 100, 100, &spent) == PG_SYNTHESIS_ERROR);
++	assert(spent == 91 && synthesis->steps == steps);
++	assert(synthesis->ready == ready && synthesis->ready_tail == tail);
++	assert(synthesis->jobs.count == jobs && program->typing.proofs.count == proofs);
++	free(storage);
+ }
+ 
+ static void revalidation_budget(void)
+@@ -1082,11 +1155,13 @@
+ 	assert(spent == 91 && !program->synthesis.steps && !foreign->synthesis.steps);
+ 	assert(pg_artifact_revalidate(program, roots[0], 100, 100, NULL) == PG_SYNTHESIS_ERROR);
+ 	pg_program_destroy(foreign);
++	reject_copied_revalidation_target(program, roots[0]);
+ 	solving = 1;
+ 	assert(pg_artifact_revalidate(program, roots[0], 100000, UINT64_MAX, &spent) == PG_SYNTHESIS_DONE);
+ 	solving = 0;
+ 	assert(spent && spent < 100000 && spent == program->synthesis.steps);
+ 	uint64_t validation_spent = spent;
++	reject_copied_revalidation_target(program, roots[0]);
+ 	/* A completed target costs nothing even if unrelated work is still ready. */
+ 	assert(pg_artifact_revalidate(program, roots[0], 100000, 100000, &spent) == PG_SYNTHESIS_DONE);
+ 	assert(!spent && program->synthesis.steps == validation_spent);
