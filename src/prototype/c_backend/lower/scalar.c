@@ -35,6 +35,7 @@ struct expression {
 	const struct argument *pending, *arguments, *cursor;
 	size_t count, parameter, capture_count, id;
 	const struct pg_c_representation *type, *match, *expected;
+	const struct pg_object *nominal;
 	const struct pg_c_constructor_representation *construction;
 	struct expression *container, *foreign;
 	size_t constructor, field;
@@ -374,7 +375,7 @@ static struct function *callee(struct expression *e)
 	size_t native_captures = 0;
 	for (size_t i = 0; i < e->capture_count; ++i) {
 		const struct expression *v = e->captures[i]->value;
-		if (!v->type && !v->recursion && !v->delayed) return NULL;
+		if (!v->type && !v->recursion && !v->delayed && !v->nominal) return NULL;
 		if (v->type) ++native_captures;
 		hash = mix(mix(hash, (uintptr_t)e->captures[i]->binder), (uintptr_t)(v->type ? (const void *)v->type : (const void *)v));
 	}
@@ -447,7 +448,7 @@ static struct function *recursive_function(struct expression *e)
 		if (v->type) ++native_captures;
 		/* Thunk creation admits only known lambdas or direct IH calls;
 			* recursive target identities stay private, never C parameters. */
-		else if (!v->delayed && !v->recursion) return NULL;
+		else if (!v->delayed && !v->recursion && !v->nominal) return NULL;
 	}
 	if (e->count > SIZE_MAX - native_captures) return NULL;
 	struct function *f = function(m, e->count + native_captures);
@@ -608,6 +609,13 @@ static int lower(struct expression *e, size_t slot, const void **out)
 		if (object->kind == PG_BINDER) {
 			return forward(e, lookup(e->environment, object), 0);
 		}
+		/* A selected type constant stays a private identity token. Bind it
+			* through known lambdas; no runtime or public Universe ABI exists. */
+		if (pg_c_representation_find(representations, object) &&
+			(pg_data_declaration_view(object) || pg_host_type_name(object))) {
+			e->nominal = object; e->value = e;
+			return 0;
+		}
 		size_t count;
 		const unsigned char *bytes;
 		if (!pg_host_literal_view(object, &type, &count, &bytes)) return -1;
@@ -638,7 +646,9 @@ static int lower(struct expression *e, size_t slot, const void **out)
 			if (!b) return -1;
 			if (f->static_captures[i]) {
 				const struct expression *capture = f->static_captures[i];
-				if (capture->recursion) {
+				if (capture->nominal) {
+					if (b->value->nominal != capture->nominal) return -1;
+				} else if (capture->recursion) {
 					if (b->value->recursion != capture->recursion) return -1;
 				} else if (!b->value->delayed || b->value->suspended != capture->suspended) return -1;
 			} else if (b->value->type != f->parameters[p++]->type) return -1;
@@ -735,7 +745,8 @@ static int lower(struct expression *e, size_t slot, const void **out)
 	}
 	if (slot == e->count) {
 		for (size_t i = 0; i < e->count; ++i) if (e->inputs[i]->computation) return -1;
-		for (size_t i = 0; i < e->count; ++i) if (e->inputs[i]->value->delayed) return inline_call(e, out);
+		for (size_t i = 0; i < e->count; ++i)
+			if (e->inputs[i]->value->delayed || e->inputs[i]->value->nominal) return inline_call(e, out);
 		e->callee = e->recursive_template ? recursive_function(e) : callee(e);
 		if (!e->callee) return -1;
 		*out = e->callee->body;
@@ -755,7 +766,7 @@ static int lower_child(void *owner, const void *key, size_t slot, const void **o
 	struct expression *e = (struct expression *)key;
 	m->error = "unsupported native expression, argument or capture representation";
 	int status = lower(e, slot, out);
-	if (status == 0 && e->value == e && !e->delayed) {
+	if (status == 0 && e->value == e && !e->delayed && !e->nominal) {
 		struct function *f = e->function;
 		if (f->definitions == SIZE_MAX) return -1;
 		e->id = ++f->definitions;

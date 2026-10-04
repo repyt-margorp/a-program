@@ -104,6 +104,20 @@ names, separate directories and reviewed integration epochs.
 
 ### Objective (Code)
 
+2026-10-04, fresh Root C23 current-E18+MEM9 qualification: unchanged
+source128c414202a, exact13 task1a1e2614427397a79bad7f9a857b24b9d5bdb43c pushed/remote
+verified. Strict O2 backend/source-sort/nested inert helpers rebuilt, qualified
+MEM9 producer reused. Source-sort48 and affected C22 nested40 expected rows each
+O2/client-source SAN pass; all compared nested C/header bytes exact C22. Original
+linker O2 and corrected publication-I/O19 pass. Initial Root generated I/O script
+left a relative artifact filename; original missing-file2/gate1 remains retained,
+with only its exact image path corrected in a separate input/output run.
+Frozen13/retained207/runtime128/raw1270 and original worker setup/refusal evidence
+verify; historical E8 results remain separate. Nine source/readback observations,
+552 finite existing Core comparisons,341 finite Lists/client and rollback controls
+pass on the current producer. Other12 Main frozen paths exact; Goal provenance
+alone reconciled. [C23 Root receipt](../src/prototype/c_backend/verification/core-epoch23.json).
+
 2026-10-04, fresh Root C22 current-E18+MEM9 qualification: source128c414202a,
 exact12 task8b6debfcf836451b9e972aba9f3f624f24b406e9 pushed/remote verified. Strict O2
 backend/two inert helpers rebuilt; exact MEM9-qualified producer reused. Nested40
@@ -461,7 +475,8 @@ Current issue status (2026-10-04 local; detailed pins stay in linked epoch plans
 | #61 integer predicate/List boundary, C20 | Parent `0388736ad3` + [inspection plan](2026-10-04-C-BACKEND-INTEGER-PREDICATE-PLAN.md): admitted direct constant/captured Bool forms, ordinary signed List clients and retained parameterized refusals; emitter/ABI unchanged. | Worker qualified E8/frozen C17 backend O2/client-source SAN77 expected rows each (26zero/1three/50four); 341 Lists/width/client, six all/none calls/List, source/readback six observations, three products and resource controls. Initial fixture/harness failures retained. Fresh Root current-E18+MEM9 source128c414202a: rebuilt backend, integer77 and parent unit119 each O2/client-source SAN pass; generated48 bytes exact; raw3a412138. | Exact10 task7b883a8e pushed; other9 Main files exact, Goal provenance reconciled. No full #61/Goal completion. | Historical C20 known-capture refusal is superseded for live tests by C21 positives; dynamic signed predicates, indexed/callable Acc/native QuickSort/full #61 remain open. Limited SAN/borrowed input/depth contracts. | Preserve exact C20 evidence and prior Root77-row current qualification; C21 implements and tests eight formerly refused wrappers, with17 dynamic cases retained. |
 | #61 recursive known captures, C21 | Parent `7b883a8e` + `lower/scalar.c` SHA `30acb4b3` and [capture plan](2026-10-04-C-BACKEND-RECURSIVE-CAPTURE-PLAN.md): known private thunk heads, dense native capture parameters/rebinding; existing ABI; standalone and explicit-reexport fixtures. | Worker E8 strict build; O2/client-source SAN114 expected rows each (74zero/2three/38four), sixteen source/readback observations and200 separate Core Nat comparisons/family; signed maps, transitive/shadow captures and genuine Nat partitions. Affected transitive/numeric/native-predicate O2 pass; updated integer gate61 rows O2/SAN each retains34 dynamic refusals and tests former static refusals positively. Initial source/export-setup failures retained. Fresh Root current-E18+MEM9 source128c414202a: recursive114, integer61, parent unit119 each O2/client-source SAN and three affected O2 gates pass; raw942062b6. | Exact16 taskeaf57559 pushed/remote verified; prototype Main other15 frozen bytes exact, only Goal provenance reconciled. | General recursion-valued/callable/indexed captures, dynamic signed predicates, native Acc/QuickSort/full #61 open; bounded depth/borrowed inputs and limited SAN. | Freeze reviewed existing-ABI lowering; next inspect an admitted concrete Acc/native representation barrier within bounded scope and route shared-owner needs. |
 | #61 nested private IH captures, C22 | Parent `eaf5755914` + scalar delta +7/-2, [nested plan](2026-10-04-C-BACKEND-NESTED-CAPTURE-PLAN.md): retain known delayed IH/recursive identities in private recursive callees, with represented captures still dense C operands; existing ABI. | Fresh worker E8 strict build; O2/client-source SAN40 each (31zero/1three/8four), eight source/readback observations and120 separate Core comparisons; seed32/64 extrema, curried/List folds, unused/repeated IH and depth rollback pass. Affected C21 O2/SAN114 each pass; original refusal probe retained. Fresh Root E18+MEM9 nested40/parent114/integer61 each O2/client-source SAN pass; rawce041c85. | Exact12 task8b6debfc pushed/remote verified; prototype Main other11 frozen bytes exact, only Goal provenance reconciled. | Public dynamic functions/effects, callable/indexed fields and native Acc/QuickSort/full #61 remain unsupported. Borrowed input/depth and client-source-only SAN limits apply. | Hand off exact code/test/docs and retained initial pins; Root publication/audit remains separate. |
-| #61 native Acc/QuickSort (historical #44/#49) | C4 `a3b6bce` pins native refusal; C7-C9 retain it. Applied List resolves only the first representation obligation. No native sorter. | Historical checked/trusted status 4/no product; Root C9 sorting-boundary gate passes. Structural FFTT remains separate. | C4-C9 task/prototype Main published; no native Acc epoch publication. | Indexed SizedList and callable recursive Acc fields remain unsupported; no producer defect established. | Report concrete indexed/callable representation needs through Merge; keep work bounded and downstream. |
+| #61 private selected types/native source insertion sort, C23 | Parent `8b6debfcf` + scalar +16/-5, receipt +1/-1, [source sort plan](2026-10-04-C-BACKEND-SOURCE-SORT-PLAN.md): private known selected type bindings let unchanged admitted source insertion sorting emit C; ABI unchanged. | Worker E8 O2/client-source SAN48 each (31zero/1three/16four), nine observations,552 separate Core comparisons;341 Lists/client, two sorts/four insert pivots/identity and resource controls. Affected C22 O2/SAN40 each, linker O2/I-O19 pass. Original setup/refusal evidence retained. Fresh Root current E18+MEM9 source-sort48/nested40 each O2/client-source SAN, linker and I/O19 pass; rawd69730eb, initial Root I/O setup failure retained. | Exact13 task1a1e2614 pushed/remote verified; prototype Main other12 frozen bytes exact, only Goal provenance reconciled. | Public/unselected/computed type arguments, dynamic functions/effects and indexed/callable Acc/QuickSort remain refused; limited SAN/target Nat32/depth bounds. | Root exact publication/current-producer review; preserve historical snapshots and continue distinct bounded work. |
+| #61 native Acc/QuickSort (historical #44/#49) | C4 `a3b6bce` pins native refusal; C7-C9 retain it. Applied List resolves only the first representation obligation. C23 now separately delivers existing-source native insertion sorting; no indexed Acc/QuickSort implementation. | Historical checked/trusted status 4/no product; Root C9 sorting-boundary gate passes. Structural FFTT remains separate. Fresh C23 checked/trusted indexed QuickSort status4/no products retained. | C4-C9 task/prototype Main published; no native Acc epoch publication. | Indexed SizedList and callable recursive Acc fields remain unsupported; no producer defect established. | Report concrete indexed/callable representation needs through Merge; keep work bounded and downstream. |
 | #61 remaining public contracts (historical #49) | General/boxed callbacks, effects, higher Identity, recursive captures and shared nominal exchange remain explicit limits; C16 advances only fixed borrowed unary/binary scalar inputs. | Local/joint gates verify supported cases and refusals, not general completion. | Historical tasks/prototype Main published; no publication of general missing contracts. | Need bounded justified representation/demand contracts. | Preserve refusals; route shared needs through Merge. |
 
 Evidence: historical [C5](2026-10-03-C-BACKEND-EPOCH5-HANDOFF.md),
@@ -614,6 +629,20 @@ pinned/current producer images and emitted C/headers match byte-for-byte.
 Evidence and exact publication files are in the [epoch handoff](2026-10-03-C-BACKEND-EPOCH1-HANDOFF.md).
 
 ### Assessment
+
+2026-10-04, Root agent integration decision: known represented selected
+declarations/builtin references remain private type identities in existing known
+calls and recursive captures. Dense C parameters, public ABI and original admitted
+insertionSortBy/insertionSort/insertBy bodies remain unchanged; no hand-coded C
+sorter, source evaluation, new checker or producer/schema/erasure authority.
+Receipt transformations describe profile capabilities, not per-call checking.
+Eight checked/trusted public/unselected/computed types, dynamic comparator,
+effects and indexed/callable Acc/QuickSort refusals remain. Finite native source
+insertion sorting is an intermediate usable-C milestone, not native Acc/QuickSort
+or full61/Goal completion. Borrowed readable input/nonoverlap/lifetime, target
+Nat32/default-max256 depth and transactional failure contracts persist. SAN covers
+clients/generated source/raw/oracle, not compiler/helpers/producer/object/archive.
+No accepted promotion, comparative cost or closure follows this prototype merge.
 
 2026-10-04, Root agent decision: integrate the bounded private-IH capture
 correction after current qualification. Existing thunk creation remains known
@@ -1076,6 +1105,10 @@ shared IR, checker or image fields. The later 2026-10-03 lane assignment permits
 this target work while Main continues SE1, superseding the earlier AP6 hold.
 
 ### Plan
+
+- [x] C23: independently qualify exact13 selected-type/native-source insertion sorting
+  on current E18+MEM9 and publish task/Main prototype; preserve initial failures,
+  all refusal/resource contracts and open indexed Acc/QuickSort/full61/Goal criteria.
 
 - [x] C22: independently qualify exact12 private IH captures on current E18+MEM9
   and publish task/Main prototype; retain original probes/current refusals and

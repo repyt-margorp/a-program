@@ -114,7 +114,7 @@ static int receipt(const char *path, const struct pg_c_link_plan *plan, const ch
 	fputs(",\n  \"transformations\": ", file);
 	if (plan->lowering == PG_C_STRUCTURAL) fputs("[\"structural-closures\"]", file);
 	else {
-		fputs("[\"fixed-width-arithmetic\",\"pure-sequencing\",\"shared-direct-calls\",\"capture-lifting\"", file);
+		fputs("[\"fixed-width-arithmetic\",\"pure-sequencing\",\"shared-direct-calls\",\"capture-lifting\",\"known-selected-type-bindings\"", file);
 		if (plan->lowering == PG_C_CALLBACK_DIRECT) fputs(",\"borrowed-unary-scalar-callbacks\"", file);
 		if (plan->lowering == PG_C_CALLBACK2_DIRECT) fputs(",\"borrowed-unary-binary-scalar-callbacks\"", file);
 		if (plan->lowering == PG_C_PREDICATE_NATIVE_DIRECT) fputs(",\"borrowed-nat32-predicates\"", file);

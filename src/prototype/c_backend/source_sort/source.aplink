@@ -1,0 +1,19 @@
+aplink 1
+artifact sort.a
+abi c_native_v1
+target host-c11
+product source
+lowering native_direct_v1
+fallback reject
+enum32 bool_type Bool
+nat32 nat_type Nat
+data_of empty List
+export sort sort
+export sort_alias sort_alias
+export insert insert
+export fixed_id fixed_id
+export fixed_int32 fixed_int32
+export fixed_int64 fixed_int64
+export fixed_bool fixed_bool
+export compare compare
+export list_id list_id
