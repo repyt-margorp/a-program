@@ -123,6 +123,19 @@ names, separate directories and reviewed integration epochs.
 
 ### Objective (Code)
 
+Fresh C49 [actual frame plan](2026-10-04-C-BACKEND-ACC-FRAME-PLAN.md): admitted
+parameter/Fold/callback/constructor binder identities now locate all10/12/12
+frame slots; paths agree with existing boundaries. Combined source-derived table
+888dbff1 drives target role assembly without manually numbered assignments. Fixed
+ordinary898-line C SHA53f01aa8 preserves seven source bodies and public signature.
+Currentfc52755b/runtime120c206 strict O2/full emitter-inspector-module-client
+source/object/archive SAN53 expected rows each pass; source/reused Core341/resource/
+rollback/inertness, inherited16 raw endpoint/20 action and new8 frame refusals pass.
+Code/header/receipts/table exact across products/phases/example, no unexpected C49
+gate failure. Manual role values/action/checked Scope/general native Acc remain
+open. C48 exact18 submitted archive/handoff and other17 live paths preserved;
+publication/current Root/Main pending at this observation. Exact15 C49 prepared.
+
 Fresh C48 [actual endpoint plan](2026-10-04-C-BACKEND-ACC-ENDPOINTS-PLAN.md):
 existing admitted endpoint Match-on-Nat.succ exposes exact nominal LT/quoted
 TOTAL-pure Acc indices. Source-derived table14876c35 drives left LT projection,
@@ -880,6 +893,7 @@ Current issue status (2026-10-04 local; detailed pins stay in linked epoch plans
 | #61 current native capture-discovery compatibility, C46 | Owned scalar removes stale support include and uses inverse public readonly pg_term_independent at two sites; [plan](2026-10-04-C-BACKEND-CAPTURE-QUERY-PLAN.md). No producer support metadata or new checker/walker. Test-only current materialized profile adapter records transformed argv. | Currentfc52755b/runtime120c206 O2/SAN backend/helpers build; static-transitive58/recursive114/nested40 matching rows each,75 C/H exact, source/Core/resources/inert/static41-transitive340 query faults pass. Actual Acc checked/trusted each lowering4 with existing materialized profile. Initial inputs-only trusted pending3/harness1/shell2/receipt-only diff1 preserved. Whole backend/helpers/source/raw SAN; O2 objects/archive with client-only SAN. | Root exact task497f2a460582b55209b93b8576de3e4328e3c714/prototype Main205eeccccb8ffeb9cc34b80c38f77858e412e898 pushed/remote exact; independent current13 commands/O2-SAN212 each/75 C-H/materialized native4 qualify. Exact9 history preserved; worker Git read-only. | General native indexed/callable Acc and action/closure/source-equivalence remain open; target query work unmeasured. Existing depth/allocation/overflow/borrowed/nonoverlap and unsupported contracts persist. No full61/accepted/cost/Goal completion. | Review exact current correction and source boundary; continue actual-source C critical path without producer/checker/erasure/ABI expansion or List conveniences. |
 | #61 actual Acc ordered transport maps/captures, C47 | New acc_transport/ [plan](2026-10-04-C-BACKEND-ACC-TRANSPORT-PLAN.md): source-derived step6/weaken10/lift10 descriptors5646ca54 retain every image, six descriptive context tokens and both path binders; target full frame/left-right vectors keep original down/IH separate. Standalone823-line C SHAca73caaa preserves seven actual source bodies/signature. | Currentfc52755b/runtime120c206 O2/full emitter-candidate-client source/object/archive SAN50 matching rows each, source/reused Core341/resources/depth/rollback/inert/three branches/12 target refusals pass; six C/H/three provenance/descriptor exact. Initial missing stdio.h compiler1/37 rows preserved, include-only correction. Pointer/Core inputs O2. | Root exact task3526b9a3c46abe0fa92ed93bf0c691a73a372605/prototype Main099104ccf3568c3532a59e6215dd730ca665edb9 pushed/remote exact; independent current five commands/O2-full-source SAN50 each/code-table-receipts exact. Delivered before deadline; immutable16 history retained. | Descriptive tokens are not checked Scope certificates; complete context-declaration/action/source equivalence and general native indexed/callable Acc remain open. Bigger action/stack records/cost unmeasured; Nat32/depth256/node65536/borrowed/nonoverlap/overflow/finite SAN persist. No accepted/full61/Goal completion. | Preserve C47 history; C48 derives actual endpoint-type projections, still bounded/manual. |
 | #61 actual Acc endpoint projections, C48 | New acc_endpoints/ [plan](2026-10-04-C-BACKEND-ACC-ENDPOINTS-PLAN.md): exact admitted nominal endpoint indices drive LT/quoted Acc/down-domain actions;860-line ordinary module0faa1758/seven actual source bodies/signature unchanged. | Currentfc52755b/runtime120c206 O2/full affected SAN53 matching rows each; source/reused Core341/resources/inert/six endpoints/16 private structural refusals/inherited12/new8 action refusals pass; code/headers/receipts/table exact. Initial wrong test index/abort134 retained. | Exact18 [handoff](2026-10-04-C-BACKEND-EPOCH48-HANDOFF.md) prepared after published C47; delegated task/current Root/Main pending, no shared Git mutation. C32-C47 archives exact. | Manual frame/action/complete checked Scope/source-equivalence/general native Acc remain open; native4/input3 inherited C46. Nat32/depth256/node65536/borrowed/nonoverlap/finite SAN/overflow/cost limits persist; no accepted/full61/Goal completion. | Derive source field-to-frame binding or report a concrete exposed boundary; preserve actual algorithm without List/producer/checker/erasure expansion. |
+| #61 actual Acc binder-derived frames, C49 | New acc_frame/ [plan](2026-10-04-C-BACKEND-ACC-FRAME-PLAN.md): admitted parameter/Fold/callback/constructor binders locate all10/12/12 slots; table888dbff1 replaces manually numbered frame assignments. Fixed898-line module53f01aa8/source bodies/public ABI unchanged. | Currentfc52755b/runtime120c206 O2/full affected SAN53 expected rows each; source/reused Core341/resources/inertness/inherited endpoint16-action20/new frame8 refusals pass; products/table exact. No unexpected C49 failure. | Exact15 [handoff](2026-10-04-C-BACKEND-EPOCH49-HANDOFF.md) prepared after pending C48; delegated task/current Root/Main remain separate. C32-C48 submitted archives exact, C48 other17 live paths unchanged; shared Git read-only. | Target role values/action/complete checked Scope/source equivalence/general native Acc remain open. Native4/input3 inherited C46, not new execution. Nat32/depth256/node65536/lifetime/nonoverlap/finite SAN/overflow/cost limits persist; no accepted/full61/Goal claim. | Consolidate existing actual-source emitters into one bounded saved-image product command; preserve fixed/manual extent and ordinary native refusal, no new source authority. |
 | #61 remaining public contracts (historical #49) | General/boxed callbacks, effects, higher Identity, recursive captures and shared nominal exchange remain explicit limits; C16 advances only fixed borrowed unary/binary scalar inputs. | Local/joint gates verify supported cases and refusals, not general completion. | Historical tasks/prototype Main published; no publication of general missing contracts. | Need bounded justified representation/demand contracts. | Preserve refusals; route shared needs through Merge. |
 
 Evidence: historical [C5](2026-10-03-C-BACKEND-EPOCH5-HANDOFF.md),
@@ -1032,6 +1046,16 @@ pinned/current producer images and emitted C/headers match byte-for-byte.
 Evidence and exact publication files are in the [epoch handoff](2026-10-03-C-BACKEND-EPOCH1-HANDOFF.md).
 
 ### Assessment
+
+C49 agent result: actual admitted binder positions now determine the target frame,
+while role value/action representation and complete source-equivalence remain
+explicit manual limits. No new source classification/checking or producer field
+is needed. Next consolidate the existing actual-source emitters into one bounded
+saved-image product command using the same ordinary signature, keeping its fixed
+candidate scope and main-native refusal explicit. This is an agent implementation
+choice within prototype scope, not new user approval or generalized native success.
+Route a concrete missing shared view before source-owner edits; no List convenience,
+new source erasure, cost or full Goal claim.
 
 C48 agent result: affected indices now come from actual typed endpoint operands;
 manual frame binding/action representation and complete source-equivalence remain
@@ -1908,6 +1932,11 @@ this target work while Main continues SE1, superseding the earlier AP6 hold.
 - [x] C48: actual endpoint-driven LT/quoted Acc/domain projections; strict O2/full
   affected SAN53 rows each, source/Core/resources/private refusals pass; test-only
   initial assertion retained. Fixed860-line module and exact18 handoff prepared.
+- [x] C49: actual binder-derived10/12/12 frame positions; current O2/full affected
+  SAN53 expected rows each/source/Core/resources/inertness/new8 frame refusals pass.
+  Fixed898-line module and exact15 handoff prepared; C48 submitted history exact.
+- [ ] Consolidate existing actual-source emitters into one bounded saved-image
+  product command, retaining manual/native refusals and the existing public ABI.
 - [ ] Review broader actual-source action/capture correspondence and general
   indexed/callable native Acc; accepted adoption/actual costs/full Goal separate.
 - [ ] Automatically derive actual scoped down actions from admitted fields and

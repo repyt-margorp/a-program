@@ -1,0 +1,137 @@
+{
+  "scope": "C49 fixed actual Acc frame-binding candidate; not general native lowering",
+  "manual_inputs": {
+    "acc_quicksort_mockup/mockup.h": "0fdaeb6687be5b51ce865caf1698619f99d16c1c0cffc3f38a80fca0967ed0aa",
+    "acc_quicksort_mockup/mockup.c": "762f264ccad935d32a5fd2ad41958bc9cbd6882c98b829b8dae0ccacb7041cfe",
+    "acc_actions/runtime.c": "386af9b1f04b714a32ca86668298e4e0f2c922a2e8850cc2d1a5dbcb9502c923",
+    "acc_capture/support.c": "f04a4095824c283e3f637688eace944600b079116e215122bee18e9ba2ad5e41"
+  },
+  "source_body_inputs": {
+    "actions.inc": "1688e9e3618e8c89edef8e5286180df715b67aaec7fa932e0b4525704c129180",
+    "accessibility.inc": "ccdd139cc3e9414a398fb12bb7073a652d91d47f9cb37f84c3319d86310f55b9",
+    "comparison.inc": "6b63a59d024eec5a46f7c436ed300ecab72283e7a5e10fc565e23ffef2ba69c4",
+    "partition.inc": "b8238b022d1613d4cd8dffd4692f68d0e6668bf8206f3324588765bc25c2de31",
+    "append.inc": "ffd37ec2ed3ff967b588757b430b3a83042b4bfd737414141a0d6dffffefa6ac",
+    "clause.inc": "cd1a7d70441222995b12ca2354ae6aeda80eaa2f99cd296cfeb5ef451405804c",
+    "measure.inc": "60d51b65f7cedf55ea25d5e44251695ffb7adc98b35445bf63e1547237755803"
+  },
+  "sections": [
+    {
+      "name": "preamble",
+      "extent": "target packaging",
+      "offset": 258,
+      "bytes": 43,
+      "sha256": "0e88cd9effed72f4613a1ca26ec90a7d6942f4527befec8b697dd77e2bad708f"
+    },
+    {
+      "name": "private representations",
+      "extent": "manual target layout",
+      "offset": 355,
+      "bytes": 1725,
+      "sha256": "16a135edab1458b3c6546b3926aae879d7f835d0c0485b1faa2743b716290268"
+    },
+    {
+      "name": "storage and Nat/LT primitives",
+      "extent": "manual target primitives; zero-down foreign refusal",
+      "offset": 2171,
+      "bytes": 4770,
+      "sha256": "fbe9eff034d2f709628cf5b81df25cbf8b8105d5ea8bcac44c1abb00ac96a15f"
+    },
+    {
+      "name": "scoped actions",
+      "extent": "source-derived ordered maps, endpoint projections and frame positions; bounded manual role/action interpretation",
+      "offset": 7010,
+      "bytes": 15449,
+      "sha256": "6a21a06fca0f28db96d66117159a005a0a9db73428eaa9ea0bb4a54fad183f93"
+    },
+    {
+      "name": "successor down and captures",
+      "extent": "actual source expression emission C43/C44",
+      "offset": 22538,
+      "bytes": 2301,
+      "sha256": "1688e9e3618e8c89edef8e5286180df715b67aaec7fa932e0b4525704c129180"
+    },
+    {
+      "name": "successor adapter",
+      "extent": "target composition",
+      "offset": 24885,
+      "bytes": 64,
+      "sha256": "0a46c210ed14b68498124240dae5a27aad4b4e1fa00d8cb26e9c7319d2722003"
+    },
+    {
+      "name": "Nat accessibility",
+      "extent": "actual source expression emission C39",
+      "offset": 25014,
+      "bytes": 865,
+      "sha256": "ccdd139cc3e9414a398fb12bb7073a652d91d47f9cb37f84c3319d86310f55b9"
+    },
+    {
+      "name": "successor adapter end",
+      "extent": "target composition",
+      "offset": 25929,
+      "bytes": 26,
+      "sha256": "cddf670472630d962290cbd9b5253a22f0132ac2e86cdf9bb9a57d6a890ccdb5"
+    },
+    {
+      "name": "comparison",
+      "extent": "actual source expression emission C41",
+      "offset": 26013,
+      "bytes": 1254,
+      "sha256": "6b63a59d024eec5a46f7c436ed300ecab72283e7a5e10fc565e23ffef2ba69c4"
+    },
+    {
+      "name": "partition",
+      "extent": "actual source expression emission C37",
+      "offset": 27324,
+      "bytes": 4162,
+      "sha256": "b8238b022d1613d4cd8dffd4692f68d0e6668bf8206f3324588765bc25c2de31"
+    },
+    {
+      "name": "append",
+      "extent": "actual source expression emission C38",
+      "offset": 31540,
+      "bytes": 2116,
+      "sha256": "ffd37ec2ed3ff967b588757b430b3a83042b4bfd737414141a0d6dffffefa6ac"
+    },
+    {
+      "name": "partition/append adapters",
+      "extent": "target composition",
+      "offset": 33710,
+      "bytes": 95,
+      "sha256": "d58a81f3a7d7db76f90fa1d6614c68ce6a629de611c1d821bb5110f41dc4147f"
+    },
+    {
+      "name": "Acc QuickSort callable Fold",
+      "extent": "actual source expression emission C36",
+      "offset": 33880,
+      "bytes": 3416,
+      "sha256": "cd1a7d70441222995b12ca2354ae6aeda80eaa2f99cd296cfeb5ef451405804c"
+    },
+    {
+      "name": "adapters end",
+      "extent": "target composition",
+      "offset": 37337,
+      "bytes": 34,
+      "sha256": "7d989dcb56f2e684bb94c5281c4ce7f225fc9a487b4cbd567940158714405ee3"
+    },
+    {
+      "name": "measure and outer QuickSort",
+      "extent": "actual source expression emission C40",
+      "offset": 37446,
+      "bytes": 2353,
+      "sha256": "60d51b65f7cedf55ea25d5e44251695ffb7adc98b35445bf63e1547237755803"
+    },
+    {
+      "name": "array boundary",
+      "extent": "manual target staging/copy-out/lifetime",
+      "offset": 39863,
+      "bytes": 1075,
+      "sha256": "6e1a4693af055a4ec9518beb244b09e7b6d971bb85529f484e6bb36f1bcb5e9e"
+    }
+  ],
+  "component.c": "53f01aa8932efcd57f9395183d77402fd6779cb29f49a04dc2260a5dfb87089d",
+  "component.h": "246364a170ff3443c5e89a15e033ecaf3e230ea657ee8a670b0e4582cf78c044",
+  "transport_descriptor": "888dbff17e481d65fb071612fce4f05b24853843623a804db76c6f918e3ec0de",
+  "target_runtime_input": "b325609ac5b4e5a03bfe1b539b5733748c9a14ee89e7e2381c40b62e7c9c2a01",
+  "sealed_C45_component": "49d3a0797ba60fbf83d0dd53bef9262e219f194387c68f293419b0243d8619ee"
+}
