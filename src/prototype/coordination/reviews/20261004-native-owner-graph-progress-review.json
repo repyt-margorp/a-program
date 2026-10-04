@@ -1,0 +1,133 @@
+{
+  "date_UTC": "2026-10-04T14:58:29.141178+00:00",
+  "notice_SHA": "1d195c62dfc5818fc31bef1c07cca4be7274a138896c45b873ebd352759f251d",
+  "parent_revision": "fc52755b345a555e49a79df40549e9cb23d54088",
+  "parent_committed120_exact": true,
+  "parent_runtime120": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907",
+  "trial_history": {
+    "1": {
+      "history_manifest_SHA": "7d2b86f3df71dd69f42dbac73faead3078e50dc92ad273bd75e26dd01a6c7ea9",
+      "verified_files": 10,
+      "runtime120_SHA": "34483551d2b6561979f4a1048aecb45bad554380be80327320d3b1646de9b3f4",
+      "unchanged_committed_parent_files_reconstructed": 115,
+      "changed_runtime_paths": [
+        "src/evidence.c",
+        "src/scope.c",
+        "src/scope.h",
+        "src/typing.c",
+        "src/typing.h"
+      ],
+      "terminal_record": {
+        "trial": "native-owners-trial1",
+        "build_exit": 2,
+        "execution": "not run",
+        "reason": "eight malformed accessor rewrites",
+        "runtime_manifest": "34483551d2b6561979f4a1048aecb45bad554380be80327320d3b1646de9b3f4"
+      },
+      "terminal_record_SHA": "57f67ef60b14cfdd28689958a3d4c5fcb79e530e03b5b32cb96a78aaadb9a517"
+    },
+    "2": {
+      "history_manifest_SHA": "669527af85bc44007872e0fee62e614a85f507f0a811a2e9d699baec1e77282d",
+      "verified_files": 13,
+      "runtime120_SHA": "d7ea5d4de264591f5f54185c3918d2206d220df60bc9f98c88c6b73c6728464f",
+      "unchanged_committed_parent_files_reconstructed": 115,
+      "changed_runtime_paths": [
+        "src/evidence.c",
+        "src/scope.c",
+        "src/scope.h",
+        "src/typing.c",
+        "src/typing.h"
+      ],
+      "terminal_record": {
+        "build_exit": 0,
+        "run_exit": 0,
+        "scope": "native ownership, copied/foreign rejection, direct Pi/Lambda/RETURN",
+        "broad": "not run",
+        "runtime_manifest": "d7ea5d4de264591f5f54185c3918d2206d220df60bc9f98c88c6b73c6728464f"
+      },
+      "terminal_record_SHA": "363264ae3a685e527d03ba711523de6a9b2838a0110024674807ac1425cc3e3b"
+    },
+    "3": {
+      "history_manifest_SHA": "70e567ea85683cbc94cce09b47791802cf6c2545ba01413722f2d1706b233442",
+      "verified_files": 473,
+      "runtime120_SHA": "48201a1dfb06f3617774d898647a59642cf0bb7221d387d62db9e77e3664f31c",
+      "unchanged_committed_parent_files_reconstructed": 0,
+      "changed_runtime_paths": [
+        "src/evidence.c",
+        "src/scope.c",
+        "src/scope.h",
+        "src/typing.c",
+        "src/typing.h"
+      ],
+      "terminal_record": {
+        "build": 0,
+        "native_owner_run": 0,
+        "full_synthesis_run": 134,
+        "failure": "named_case_scope_borrowing root not DONE; semantic failure, not waived",
+        "runtime_manifest": "48201a1dfb06f3617774d898647a59642cf0bb7221d387d62db9e77e3664f31c"
+      },
+      "terminal_record_SHA": "a0218153a574e2f5e7f95cf9372448078e2f22219413c05c50e3eb1e52cc9b16"
+    },
+    "4": {
+      "history_manifest_SHA": "939cbfe13d862a6e6d3010f61e25c3b6ee5e9fab72acd5d500b374f431ba3bac",
+      "verified_files": 125,
+      "runtime120_SHA": "baf470178495c7784dd96de6d1d994b9a4ee53da30993caa8e6f5376738cdd21",
+      "unchanged_committed_parent_files_reconstructed": 0,
+      "changed_runtime_paths": [
+        "src/derivation.c",
+        "src/evidence.c",
+        "src/scope.c",
+        "src/scope.h",
+        "src/typing.c",
+        "src/typing.h"
+      ],
+      "terminal_record": {
+        "build": 0,
+        "full_synthesis_run": 134,
+        "prior_named_case_failure": "advanced beyond previous failure without changing semantic assertion",
+        "failure": "source_schemas retained constructor field recovery, semantic failure not waived",
+        "runtime_manifest": "baf470178495c7784dd96de6d1d994b9a4ee53da30993caa8e6f5376738cdd21"
+      },
+      "terminal_record_SHA": "d94b783aee8eb2519709523b7ff7dd33c608697868694d51cf92f7f540883f05"
+    },
+    "5": {
+      "history_manifest_SHA": "e3c5c70f29af7cf52c34efc64f2be521a007e077bbbb37ef195ef322e371f174",
+      "verified_files": 125,
+      "runtime120_SHA": "33210311b45c66cb54a76501b21f46be514c274ce44d5b2366e15be2756488c2",
+      "unchanged_committed_parent_files_reconstructed": 0,
+      "changed_runtime_paths": [
+        "src/derivation.c",
+        "src/evidence.c",
+        "src/scope.c",
+        "src/scope.h",
+        "src/typing.c",
+        "src/typing.h"
+      ],
+      "terminal_record": {
+        "build": 0,
+        "full_synthesis_run": 139,
+        "failure": "segmentation fault after native constructor-input action repair; no assertion waiver"
+      },
+      "terminal_record_SHA": "39d9464a26488fe2171b833d27bcb4ebcca82f0fff328ecc692b16192d3a5429"
+    }
+  },
+  "retained_semantic_failure_records": {
+    "3": {
+      "SHA": "3489faf2412ab0885bb536d980d0080a473718e58f1da5b8f1cff9732b03b8e3",
+      "message": "synthesis_test: /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/tests/synthesis.c:11873: named_case_scope_borrowing: Assertion `pg_synthesis_status(root) == PG_SYNTHESIS_DONE' failed."
+    },
+    "4": {
+      "SHA": "59888d28d6db6b2dcdb28c3ebb88876f81ad4b207681abf647a99a41c3e6931b",
+      "message": "synthesis_test: /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/tests/synthesis.c:9763: source_schemas: Assertion `returned && pg_prove_constructor_field(typing, returned, field)' failed."
+    }
+  },
+  "source_inspection": "Trial5 removes the concrete pg_evidence struct and typing proof index. Opaque input APIs borrow actual Occurrence/Scope/map addresses, alternative for_subject iteration is retired, admission metadata is separate from descriptive membership. Constructor/type-case maps and local certificate fields remain. Transitional construction selector and generic premise-reader switch remain, so complete owner-local migration is open. No replacement Evidence header/index observed in inspected runtime.",
+  "focused_control_inspection": "Trial2 checks direct Pi/Lambda/RETURN native owner identity, structural sharing and copied Occurrence/Scope/map/foreign typing rejection. Recorded native gate0 is distinct from later full Synthesis failures.",
+  "verification_scope": "Fresh hashes of all five retained history manifests and 120-source reconstruction each, committed parent blobs and static source/control inspection. Terminal JSON/log records reviewed; Root did not replay builds or tests. This progress handoff lacks a complete READY publication packet or full raw argv/status gate qualification.",
+  "unresolved": "Full Synthesis trial3/4 recorded134; trial5 recorded139. Trial5 live debug log reports source_declarations context-map dereference, an owner diagnostic pending correction/qualification. Preserve these failures; temporary selector, typed-query/direct construction reuse, Source I/O, inert bytes/fuel/frontier/public/strict/cost/joint qualification remain open.",
+  "accepted_implementation_changes": false,
+  "Root_runtime_replay": false,
+  "READY": false,
+  "current_Performance_composition": false,
+  "cost_gain_or_Goal_completion": false
+}

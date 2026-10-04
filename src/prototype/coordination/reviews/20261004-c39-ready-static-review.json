@@ -1,0 +1,120 @@
+{
+  "date_UTC": "2026-10-04T14:52:55.318029+00:00",
+  "notice_SHA": "0336fc54ce5543035f4510b4ee4e9d0c8625ce2f2e551399a093e071e3fbcc14",
+  "freeze": {
+    "Main_integration": "pending",
+    "accepted_promotion": false,
+    "archive_sha256": "d3c5b078c059146f496725d6d28270fa161c2641fda5f19062c763823e54f4c8",
+    "branch": "parallel/c-backend-20261003",
+    "chosen_commit_message": "prototype: emit actual Acc Nat accessibility recurrence",
+    "classification": "actual Nat accessibility recurrence with explicit supplied manual successor/zero-down transports; sealed Acc/partition/append composition",
+    "current_Root_producer_qualification": "pending",
+    "epoch": "C39",
+    "frozen_at": "2026-10-04T14:47:11.880729+00:00",
+    "full_native_generalized_Acc_QuickSort_complete": false,
+    "goal_status": "active",
+    "handoff_sha256": "6d669ef70487439e9092d1b819e4dc5dc123019840c4977452b4cf9e1877fb69",
+    "manifest_sha256": "07cdb467138c72671325b23669d568861dc038251dac80232007cd8ac497d326",
+    "parent_dependency": "ordered sealed C32-C38; C33 primitives/successor/zero-down, C36-C38 products/header immutable",
+    "publication_count": 13,
+    "published_parent_observed": "cc3cba3495b81628e0a68ec8b45aee4f5447d188",
+    "qualified_inputs_count": 160,
+    "qualified_inputs_sha256": "25c4c693b33766e7e8c5dd5e7131643d0840ec9b943e9d86f6d6b384f37184ce",
+    "raw_count": 436,
+    "raw_manifest_sha256": "c59140b4cf36df31e4cccf15d844c4ae961a6a2dc2ca605acf8d9ff17b184089",
+    "ready_for_delegated_task_publication": true,
+    "runtime_count": 128,
+    "style_sha256": "82744d4539ff8539027632ce537e28f657b6a8fac0c1acfdb91145b159c09d27",
+    "verification_sha256": "352ca2dc358328683b4096e69586853e42ad7c11f39aabef246c7b5c26d5dd8f"
+  },
+  "frozen13_all_archive_bytes_exact": {
+    "doc/2026-10-03-C-BACKEND-GOAL.md": "e9dde662f78dfb142e2f4026575a1b52dc880ac65316550b6df63347a5efa890",
+    "doc/2026-10-04-C-BACKEND-ACC-ACCESSIBILITY-PLAN.md": "7b623b8349e09eb2c36795dc0d963cfd13f54c36405135ee0a41a9c474c860d1",
+    "doc/2026-10-04-C-BACKEND-EPOCH39-HANDOFF.md": "6d669ef70487439e9092d1b819e4dc5dc123019840c4977452b4cf9e1877fb69",
+    "src/prototype/c_backend/acc_accessibility/README.md": "c934cd64673e262ba37d186d89d4d57ce0eecb0d2872433a02c732f60eca1717",
+    "src/prototype/c_backend/acc_accessibility/access_client.c": "f16ac28d6f3b3afe792e34cd7bfeff222a997b912acda9be9573c33146886493",
+    "src/prototype/c_backend/acc_accessibility/build.mk": "f81109bd609b3c0be0c232c77e606f438f2ebfc5ff1b571390ee292c7c00269e",
+    "src/prototype/c_backend/acc_accessibility/check.sh": "bb59e4e915f8f81fa623f583bf462121b452853160d7a77f4ee65df481c4be56",
+    "src/prototype/c_backend/acc_accessibility/emit.c": "719dff0381e90154aa267da9f27f19dd4c3e4e267afcf73abaea6c97d5ab0df9",
+    "src/prototype/c_backend/acc_accessibility/emit.h": "8cf04ed0b36c34a8696105cb954906bf2949f6877a6e042a58a0b458c5391e94",
+    "src/prototype/c_backend/acc_accessibility/emit_test.c": "7de9d24319e5c14f80b340e19f2539eb48aea71c0b14a3b6fa889a023ba3cdeb",
+    "src/prototype/c_backend/acc_accessibility/fixture.p": "ead80df038c76ffc94d271a1e65cd3ac3692902e1512de61b5ce266876a95bdc",
+    "src/prototype/c_backend/acc_accessibility/probe.c": "a2af09820d262f3770a922348512cdfd681dc908c932466c2c3cae5661e2831e",
+    "src/prototype/c_backend/acc_accessibility/support.c": "77686cde7e30e00a14a5a2d5e51675d71fffc9665fba5f359322a74eeac9bf42"
+  },
+  "live_publication_differences": [],
+  "raw436_all_exact": true,
+  "retained160_copies_exact": true,
+  "live_input_differences": [],
+  "runtime128_independently_recomputed": "9ba2b33cbe8bc68eac338073506bcb205f36d20cb0a34f9f88607d975ef07740",
+  "products_all_exact": 204,
+  "terminal_worker_phases": {
+    "terminal-O2": {
+      "raw_argv_status_JSON_rows_exact": 29,
+      "exits": {
+        "0": 25,
+        "4": 4
+      }
+    },
+    "SAN": {
+      "raw_argv_status_JSON_rows_exact": 29,
+      "exits": {
+        "0": 25,
+        "4": 4
+      }
+    }
+  },
+  "Root_runtime_replay": false,
+  "source_outputs_verified": {
+    "sort": "0,1,2,2,3,|",
+    "accessibility_subjects": "0,1,3|"
+  },
+  "source_selection_guard": "Complete selected Core alpha identity with supplied admitted reference, followed by actual field/clause/type checks. Different callback negative remains refusal4 with no partial output; prior output preserved. Source-specific experiment, not generalized selection/body lowering.",
+  "initial_failures_retained": [
+    "strict build2 missing indexed-entry declaration header corrected",
+    "premature gate missing emitter binary127 retained",
+    "composition helper aliases omitted134 corrected",
+    "changed callback expected4/actual0 unsafe provenance Fold selection; complete selected Core/reference alpha guard corrected without weakening expectation"
+  ],
+  "manual_extent": [
+    "closed Nat32/storage/Nat/LT primitives",
+    "accessibility successor/raw-down/zero-down transport bodies",
+    "comparison",
+    "measure",
+    "outer array/copy-out orchestration"
+  ],
+  "limits": [
+    "Nat32",
+    "depth256",
+    "node65536",
+    "borrowed source-valid immutable data/code/context lifetime",
+    "private statuses1-6",
+    "overflow guard inspected not exercised",
+    "final destination I/O/publication cleanup caller-owned",
+    "finite SAN paths only",
+    "main native Acc/dynamic/effect/Identity/general indexed-callable refusals persist"
+  ],
+  "old32_to38_archives_exact": {
+    "32": "db6a663c11197d92a28d13c8344da02aaccdd59c32864bfba106391a7f7e05ae",
+    "33": "a8bd408cc099885ab26780a901017fb3a9087294ce5e8b768b84ea6c2b7a6499",
+    "34": "26138ad62d6e819a722b3264c6d050d6d906a208190985158a68c86055d6ad77",
+    "35": "6bfebc166faca426c59b63d6df98a27cce0e51dad59fcc93aabd48802f74ba6c",
+    "36": "935cbfa3c56f20af251770180172e795eb14e866d5569318eae515e0e047acbd",
+    "37": "a82d8be6c7d1615ded0c217a6facf291c828c2ecea5325e7ee598de231664416",
+    "38": "bb0c2ccc7c53cf1656e20ffa3b265db45bf97e0ce01c938c9af6fd22122efc4f"
+  },
+  "sealed_C36_C37_C38_products_exact": {
+    "clause.inc": "cd1a7d70441222995b12ca2354ae6aeda80eaa2f99cd296cfeb5ef451405804c",
+    "partition.inc": "b8238b022d1613d4cd8dffd4692f68d0e6668bf8206f3324588765bc25c2de31",
+    "append.inc": "ffd37ec2ed3ff967b588757b430b3a83042b4bfd737414141a0d6dffffefa6ac"
+  },
+  "generated_Nat_recurrence_SHA": "ccdd139cc3e9414a398fb12bb7073a652d91d47f9cb37f84c3319d86310f55b9",
+  "generated_Nat_recurrence_lines": 22,
+  "qualification": "Worker oldE8 only. Pointer/Core oracle and read-only probe O2, not SAN/current accepted. No Root runtime replay/current accepted qualification/task or Main implementation publication/accepted adoption/native61/cost/Goal completion.",
+  "transport_boundary_report_SHA": "9c1e66c8141009f0149b2cbe2e483311cbcfd9786e4ce49e576a7a0e2430f757",
+  "next_gap": "Actual source Boolean comparison, with successor/raw-down/zero-down Identity transports still manual and owner-routed.",
+  "Root_static_source_review": "Frozen 241-line emitter checks selected Core alpha identity against the admitted reference, actual Nat/Acc declaration arities, pure indexed result, selected Fold context, predecessor and thunked IH. It traverses actual zero/successor clause expressions, Lambda bindings and ordered calls. Generated 22-line recurrence allocates the zero Acc value, recursively forces predecessor IH and calls the explicitly manual accessibleSucc body. Staged emission leaves output unchanged on refusal. The composed entry calls generated Nat recurrence, Acc Fold, partition and append; manual Nat32/storage/LT/zero-down/successor/raw-down/comparison/measure/outer code remains. Count snapshots and advance wrappers are worker inertness controls; no source erasure inferred.",
+  "native_controls": "Worker client separately covers emitted subjects 0..31, manual down step/weaken/lift on emitted proof data and depth300/status4/no-allocation. Resource/fault/Core-oracle groups recorded0. These finite controls do not prove Identity transport body lowering.",
+  "source_selection_defect_disposition": "Retained initial changed-zero expected4/actual0 exposed unsafe matching through imported Fold provenance. The complete selected-Core/reference alpha guard corrects this bounded target association; original expected refusal4 stays unchanged. No producer defect or missing-field request follows.",
+  "transport_boundary_report_unchanged": true
+}

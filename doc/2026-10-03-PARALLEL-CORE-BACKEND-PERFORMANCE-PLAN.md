@@ -1,7 +1,7 @@
 # Parallel Development: Inquiry Desk, Merge and Workers
 
 Date: 2026-10-03
-Status: approved Performance promotion fc52755b complete; original acceptance 363 and adopted normative four tests verified separately on c206. Human Evidence/Occurrence static audit delivered; coherent prototype migration continues. C38 reviewed, C39 Identity boundary routed; current qualification remains. Cost request 2 expired without all three acknowledgments; no grant/sample/hold. Original Goals and review timer unchanged.
+Status: approved Performance promotion fc52755b complete; original acceptance 363 and adopted four tests verified separately on c206. Human Evidence/Occurrence static audit delivered; coherent prototype migration continues. C39 actual Nat recurrence reviewed on oldE8; Identity transport bodies/current qualification remain. Cost request2 expired/released; no grant/sample/hold. Original Goals and review timer unchanged.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `fd45c42`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -17,7 +17,7 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | ID | Problem / owner | Related | Status |
 | --- | --- | --- | --- |
 | 1 | Inquiry desk -> `merge`: reporting vs coordination/integration | All lanes | Desk answers the user; only Merge integrates after verified handoff |
-| 2 | `c-backend`: downstream C design | #61 (supersedes #44/#49); shared policy #47 | C33 faithful manual executable delivered before deadline; C36 actual source-driven clause emission verified statically. Current qualification and helper body/capture/outer lowering remain; C34/C35 preserved, C32 sealed/parked |
+| 2 | `c-backend`: downstream C design | #61 (supersedes #44/#49); shared policy #47 | C33 faithful manual executable delivered before deadline; C39 actual Nat recurrence and C36-C38 generated composition reviewed statically on oldE8. Identity transport bodies/current qualification/comparison/measure/outer remain; C32 sealed/parked |
 | 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Primary current stateless-head allocation deletion/acceptance and matched actual peak RSS/time; pending codec disposition/exclusive drain, peripheral MEM10/spine/empty arrays parked |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
 | 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | E25 already-active review finished/prototype integrated; primary deterministic retained Source/checked-owner relocation and genuine frontier; E26 terminal safe boundary/E27 parked; strict3/full SE/AP remain open |
@@ -26,6 +26,30 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | 8 | `issue-audit`: evidence-backed GitHub disposition | All open Issues/PRs | Bounded Goal complete; verified dispositions, task8bb5018/Mainb461ace; #61 retains C residuals |
 
 ### Current Delivery Status
+
+2026-10-04, [native-owner deletion progress](../src/prototype/coordination/reviews/20261004-native-owner-graph-progress-review.json):
+Root verifies the committed fc52755b parent and all five retained trial histories,
+with each 120-source set reconstructed exactly. The prototype physically removes
+the Evidence allocation/proof index/alternative iteration; existing APIs borrow
+Occurrence/Scope/map owners with admission separate from membership. Focused
+native ownership control recorded0. Full Synthesis trial3/4 recorded134 and
+trial5 recorded139; these failures remain unwaived. Transitional construction
+selector/generic readers and Source/public/inert/fuel/frontier/current joint
+qualification remain open. The original owner continues investigation; this is
+substantive coding progress, not READY, adoption or a measured cost gain.
+
+2026-10-04, [C39 static review](../src/prototype/coordination/reviews/20261004-c39-ready-static-review.json):
+all 13 frozen files, 436 raw hashes, 160 retained inputs and 204 products verify;
+oldE8 runtime128 is independently reconstructed. O2/SAN each record 29 expected
+rows: 25 zero and four refusal4. The actual 241-line emitter generates 22 lines
+for Nat accessibility recurrence and composes sealed Acc/partition/append.
+The initial changed-zero false emission remains a failed record; complete
+selected-Core/reference alpha identity now guards this source-specific target.
+Successor/raw-down/zero-down Identity transports and storage/primitives,
+comparison, measure and outer orchestration remain manual. Current accepted
+qualification, ordered task/Main implementation publication and general native61
+remain separate. The original C owner continues actual Boolean comparison;
+no new owner, runtime replay, accepted adoption or cost claim.
 
 2026-10-04, superseding acceptance and cost status: [Root scope review](../src/prototype/coordination/reviews/20261004-performance-prefix-scope-correction-review.json)
 verifies the immutable scope addendum and the existing strict Root result/log.
@@ -1809,6 +1833,15 @@ conventions must not become new `.a` fields or source-semantic requirements.
 
 ### Objective (Code)
 
+2026-10-04, C39 review at Main metadata `8b8cb8a1`: frozen13/raw436/
+retained160/products204 and oldE8 runtime128 exact; O2/SAN29 raw argv and
+expected status rows each verified. Actual Nat Fold/zero Acc/ordered IH call
+emits22 lines, composing immutable C36-C38 products. The initial selected-Fold
+provenance false emission remains retained, and the corrected complete selected
+Core alpha guard preserves refusal4/no partial output. Pointer/Core oracle and
+read-only probe are O2, not sanitized/current accepted. This is fresh static
+review of worker records, not Root runtime execution. [Detailed review](../src/prototype/coordination/reviews/20261004-c39-ready-static-review.json).
+
 2026-10-04 09:23 UTC, C actual priority acknowledgment SHA1c90b8ec:
 C32 terminal tested snapshot is sealed at a safe boundary; further List
 conveniences deferred. Next milestone pins admitted Acc QuickSort/partition
@@ -2017,6 +2050,14 @@ change. [Core evidence](../src/prototype/c_backend/verification/core-epoch6.json
 pins the fresh combined run, not a rerun of the worker's seven sanitizer gates.
 
 ### Assessment
+
+2026-10-04, Root accepts C39 as bounded progress in actual source recurrence.
+It does not complete the supplied manual Identity transport bodies or general
+executable/Fold association. Retain the source-specific alpha guard and all
+historical failures; the selected-root defect does not establish a producer bug
+or justify erasure. Continue actual source Boolean comparison within the same
+Goal while current accepted qualification and ordered publication remain open.
+No new human approval is inferred from READY.
 
 2026-10-04, Root C31 bounded prototype adopted: optional finite List validated
 count before caller copy-buffer allocation, existing ABI1/validators. Iterative
@@ -2862,6 +2903,16 @@ concrete duplication deletion, correct resume and meaningful verification.
 
 ### Objective (Code)
 
+2026-10-04, native-owner progress review at Main metadata `8b8cb8a1`:
+notice `1d195c62` and all five history manifests verify. Trial1/2 reconstruct
+unchanged files from committed fc52755b; trial3-5 retain complete120 sources.
+The native focused control recorded0, while full Synthesis retains two134
+semantic failures and trial5 fault139. Static source inspection confirms
+Evidence struct/proof index/alternative iteration deletion, native addresses and
+separate admission metadata. Generic borrowed-premise readers and transitional
+construction selection remain. No Root build/test replay or public/current
+composition qualification. [Detailed review](../src/prototype/coordination/reviews/20261004-native-owner-graph-progress-review.json).
+
 2026-10-04 09:26 UTC, actual Job reply in original pane and independently
 confirmed by inquiry desk: E25-E27 work is parked after E26 running command
 reaches a safe terminal. Next trace retained Source ordering failures to a
@@ -3077,6 +3128,15 @@ producer. The same three strict reload failures remain failed and unwaived in
 the [partition report](../src/prototype/solver_inputs/joint_verification/combined-partitions.tsv).
 
 ### Assessment
+
+2026-10-04, Root treats this as material deletion progress toward the human
+Evidence/Occurrence concern. Defer integration while Synthesis failures and
+owner-local reader/selector migration remain unresolved; direct native sharing
+alone is insufficient. Preserve obsolete-history migration records separately
+from genuine semantic failures. Continue the original investigation and later
+Source I/O, typed-query/direct reuse, inert/fuel/frontier gates. Current
+Performance and oldE8 C39 interfaces cannot be assumed compatible with the new
+native graph. No new human design approval or Goal completion follows.
 
 2026-10-04, Root promotion decision within explicit adopted Job scope: use
 qualified E25 sourcea87cba42 as the comparison/reference, select only reviewed
