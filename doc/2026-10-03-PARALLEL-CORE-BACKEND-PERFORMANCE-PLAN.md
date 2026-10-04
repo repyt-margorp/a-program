@@ -1,7 +1,7 @@
 # Parallel Development: Inquiry Desk, Merge and Workers
 
 Date: 2026-10-03
-Status: Merge owns Main; C, Performance and the original Job now visibly pursue their Goals. Root sent no Job resume or input after the human direct-session clarification. E17-E22, C17-C28 and MEM9 are verified and prototype-integrated; MEM6/MEM7 runtime holds remain; MEM10 frozen handoff is held for byte disposition and current qualification. Test-suite, issue disposition, static audit and finite-function bounded Goals are complete; full development issues remain open.
+Status: Merge owns Main; C, Performance and the original Job now visibly pursue their Goals. Root sent no Job resume or input after the human direct-session clarification. E17-E23, C17-C28 and MEM9 are verified and prototype-integrated; MEM6/MEM7 runtime holds remain; MEM10 frozen handoff is held for byte disposition and current qualification. Test-suite, issue disposition, static audit and finite-function bounded Goals are complete; full development issues remain open.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `fd45c42`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -20,26 +20,29 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | 2 | `c-backend`: downstream C design | #61 (supersedes #44/#49); shared policy #47 | C1-C28 bounded prototypes integrated; C28 ordinary signed module products current-E22+MEM9 qualified; native Acc/QuickSort remains open |
 | 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Accepted performance7631e5a; V3 bounded measured tree gain reviewed; MEM2 beta environment elision rejected; IADT source9 published, bounded tree RSS gain/mixed timing measured; full Goal active |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
-| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | E1-E4/E6-E22 corrected prototypes Main integrated; E22 exact31/current E21+MEM9/C27 qualified; E23 retention focus only; strict3/full SE/AP/cost criteria remain |
+| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | E1-E4/E6-E23 corrected prototypes Main integrated; E23 exact33/current E22+MEM9/C28 qualified; E24 private broad pending; strict3/full SE/AP/cost criteria remain |
 | 6 | `verification-audit`: independent read-mostly suite/debt inventory | #59 / PR #60, #51 | Bounded static inventory/pilot complete; measured cost deferred, full #59 remains open |
 | 7 | `test-suite`: implement coverage-preserving test reductions | #59 / PR #60 | Bounded Goal complete; exact7 taskbc16df9 pushed/remote verified, Root raw/assembly review complete, prototype Main36a27be integrated |
 | 8 | `issue-audit`: evidence-backed GitHub disposition | All open Issues/PRs | Bounded Goal complete; verified dispositions, task8bb5018/Mainb461ace; #61 retains C residuals |
 
 ### Current Delivery Status
 
-2026-10-04T07:28:45.318544+00:00, current delivery checkpoint: C27 task4b9c1094/Main89711d73,
-E22 task69ceadfa/Mainb060684f and C28 task0c852ce6/Maina6361c44
-pushed/remote exact. Current E22 producer30 and C27 downstream33/381 C-H exact;
-C28 registration0 and373 expected O2/SAN rows each,128 linked/32 loaded clients,
-48 generated C-H exact worker, unchanged C27 backend/ABI. [C28 review](../src/prototype/c_backend/verification/core-epoch28.json).
-Frame cumulative/cost HOLD remains; roots15/private25/all274/raw6 and spine20
-preparation/four exact published patches independently verified. Tree16 remainder
-17758336 is unclassified, not reclaimable memory. [Roots/spines review](../src/prototype/performance_followup/current-roots-spines-prepared-held-root-review.json).
-Spine runtime/fuel/cut/SAN and E23 final READY/current qualification remain pending.
-All seven panes reviewed, C/Job/Performance pursuing; four bounded owners complete.
-Nine issue bodies/dates exact/zero PRs. Original Job HEAD/index/pane/protected9
-preserved; no Root Job input/resume, accepted promotion, byte waiver or cost grant.
-Timer unchanged, next07:44:22 UTC; full Goals/issues incomplete.
+2026-10-04T07:40:05.918413+00:00, current delivery checkpoint: C27 task4b9c1094/Main89711d73,
+E22 task69ceadfa/Mainb060684f, C28 task0c852ce6/Maina6361c44 and E23
+taskc3f3bcd7/Main2e1561c4 pushed/remote exact. Fresh E23 producer30
+expected records/public52/full TSV exact E22/strict3 retained; C28 downstream
+registration0/two373 phases/48 C-H exact. [E23 review](../src/prototype/solver_inputs/joint_verification/e23-main-integration-review.json),
+[C28 review](../src/prototype/c_backend/verification/core-epoch28.json).
+Frame cumulative/cost and roots reviews unchanged/HOLD. Spine focused19/raw22/
+16 outputs verified; original candidate setup2 preserved, separate retry only
+restores exact Makefile support. [Focused review](../src/prototype/performance_followup/current-spines-focused-held-root-review.json).
+Raw separate-process cuts/current consumers/full acceptance/original codec
+disposition/actual costs pending; paired6/146/inert29/48/all history unwaived.
+All seven panes inspected: Job pursuing E24 private broad, C/Performance recent
+progress followed by response-wait overlays requiring no action; four bounded
+owners remain complete. No stall cause inferred or owner resumed/duplicated.
+Nine issue criteria remain open/zero PRs; original Job HEAD/index/pane/protected9
+preserved. Timer unchanged/next07:44:22 UTC, full Goals incomplete.
 
 2026-10-03 15:29 UTC material review at local/remote Main `4853cb6`, exactly
 verified. All seven retained panes inspected: Performance pursues its Goal;
@@ -583,9 +586,9 @@ cost slot or accepted edit; protected9/timer unchanged, next07:44:22 UTC.
 
 | Owner / issue scope | Delivered and verified | Not yet delivered / next boundary |
 | --- | --- | --- |
-| Job/Evidence; SE1-SE5 / AP0, #51/#47 | E1-E4/E6-E22 corrected prototypes delivered. Latest E22 exact31 task69ceadfa/Mainb060684f, current source1285235ee3c producer30 expected gates/C27 downstream33;381 C-H/public52/full TSV exact E21. E19/E20/E21 canonical/bridges and MEM9 preserved, original Job HEAD/index unchanged. [E22 receipt](../src/prototype/solver_inputs/joint_verification/e22-main-integration-review.json) | Five copied pending/completed Source owner gaps reproduced on current E21; candidate O2/SAN full semantic/synthesis/Source/normalization and six boundaries pass, completed prepare already rejected. Worker isolated E18 broad/C/census distinct; control16+ corrected to frozen15+. E23 isolated focused13/raw23/source156 retention counterexample reviewed, not full READY/current-qualified. Strict3/public frontier/codec/full SE-AP/current broad/acceptance/actual costs/adoption remain; leave human Job pane free |
-| C backend; #61 | C1-C28 exact prototype tasks/Main delivered. C28 exact13 task0c852ce6/Maina6361c44, currentE22 registration0/O2SAN373 expected rows each/128 linked+32 loaded clients each/48 C-H exact. C27 backend/ABI unchanged, Main other12 frozen bytes and Goal reconciliation verified. [C28 receipt](../src/prototype/c_backend/verification/core-epoch28.json) | Ordinary factories/adapters translate distinct nominal enum orders under successful pure-total provider interpretation and synchronous borrowed context/API/code lifetime. Constant signed predicates are not source comparators/native indexed AccQuickSort. Depth256/nonoverlap/transactional outputs and limited SAN retained; full61/effects/ownership/actual cost/adoption open. Subsequent owned linker work private/unqualified |
-| Performance; #56/#51/#52 | V3/MEM2/MEM3/MEM4/MEM5/MEM9 prototypes delivered. Current frame cumulative15/raw14/all280 and costproposal14/36/all297 reviewed. New roots15/private25/source256/all274/raw6 exact; Tree16 used25435872-linked7650176-frame27360 leaves17758336 unclassified. Spine preparation20/source25967429 only computation.c/iadt.c equals fresh four-patch composition;126 others/evaluator and three fixtures exact. [Review](../src/prototype/performance_followup/current-roots-spines-prepared-held-root-review.json) | Runtime byte HOLD paired6/146/inert29/48/strict/all history unwaived; capacity/cumulative counts do not establish RSS/peak/time/dead/reclaim. Spine current focused/fuel/cut/SAN and lifetime gates pending, original setup2 retained. New cost slot deferred/ungranted; full acceptance/current E22 composition/original codec disposition/actual cost/adoption open; continue bounded owned work without blanket hold |
+| Job/Evidence; SE1-SE5 / AP0, #51/#47 | E1-E4/E6-E23 prototype tasks/Main delivered. E23 exact33 taskc3f3bcd7/Main2e1561c4, current sourcec78b71d7/producer30 and C28 downstream3/two373 phases/48 C-H exact. Public52/full TSV exact E22; strict3 retained, original Job HEAD/index preserved. [E23 receipt](../src/prototype/solver_inputs/joint_verification/e23-main-integration-review.json) | Two current parent repeated1024 rejected-capture retention failures reproduced; O2/SAN full affected gates pass. Delay permanent Source allocation only after caller jobs[] validation; later owners[] failures outside scope. E24 private broad running/unreviewed. Full SE/AP/current broad/acceptance/public frontier/codec/actual costs/adoption open; human Job pane remains free |
+| C backend; #61 | C1-C28 exact prototype tasks/Main delivered. C28 exact13 task0c852ce6/Maina6361c44, currentE22 and laterE23 registration0/O2SAN373 expected rows each/128 linked+32 loaded clients each/48 C-H exact. C27 backend/ABI unchanged, Main other12 frozen bytes and Goal reconciliation verified. [C28 receipt](../src/prototype/c_backend/verification/core-epoch28.json) | Ordinary factories/adapters translate distinct nominal enum orders under successful pure-total provider interpretation and synchronous borrowed context/API/code lifetime. Constant signed predicates are not source comparators/native indexed AccQuickSort. Depth256/nonoverlap/transactional outputs and limited SAN retained; full61/effects/ownership/actual cost/adoption open. Subsequent owned linker progress private/unqualified; current response-wait overlay requires no action |
+| Performance; #56/#51/#52 | V3/MEM2/MEM3/MEM4/MEM5/MEM9 prototypes delivered. Current frame cumulative15/raw14/all280 and costproposal14/36/all297 reviewed. New roots15/private25/source256/all274/raw6 exact; Tree16 used25435872-linked7650176-frame27360 leaves17758336 unclassified. Spine preparation20/source25967429 only computation.c/iadt.c equals fresh four-patch composition;126 others/evaluator and three fixtures exact. [Review](../src/prototype/performance_followup/current-roots-spines-prepared-held-root-review.json) | Runtime byte HOLD paired6/146/inert29/48/strict/all history unwaived; capacity/cumulative counts do not establish RSS/peak/time/dead/reclaim. Spine focused19/raw22/16 outputs exact, original setup2 retained and separate retry restores only exact Makefile support. Raw cut/current consumers/lifetime gates pending; recent fresh-process cut progress followed by no-action response-wait overlay. New cost slot deferred/ungranted; full acceptance/current E22 composition/original codec disposition/actual cost/adoption open; continue bounded owned work without blanket hold |
 | Surface; #57 | Verified prototype integrated, completed owner stopped | Accepted policy/promotion and selector diagnostics unresolved; no owner restart |
 | Static audit; #59/PR #60 | Task7ed3ad1/Main5683755; Root385 source/114 archived dependency hashes and exact inventory verified; bounded Goal achieved | Dynamic/full #59 and controlled cost remain open; no static-owner restart |
 | Sort; #41/F3-F5 | PR54 and finite-function task5e6ed84/Main966c4e1 integrated; bounded Goal achieved, focused gates0 | Accepted Sort/F5 and broader interfaces remain separate |
@@ -616,9 +619,9 @@ reporting subsystem. Its audit cover is pinned to `37de1e8`, not current Main.
 
 | Order / owner | Issue or PR | Next deliverable and dependency |
 | --- | --- | --- |
-| 0 / desk -> Merge | Workflow | All seven original owners reviewed. C27/C28/E22 prototype task/Main delivered/current qualified. Frame cumulative/cost HOLD and roots/spines preparation/E23 focus reviewed. C/Job/Performance pursue; four bounded owners achieved/stopped. Human direct Job pane/HEAD/index preserved, no input/resume/new owner/model/accepted promotion. One distinct durable inquiry report; timer unchanged |
-| 1 / Job, Root reviews independently | SE/AP, #51 | E17-E22 delivered, latest exact31/current30/C27_33/381 C-H/public52/full TSV exact, strict3 retained. E23 failed-mapping storage focus verified on isolated private E22 only; final freeze/current qualification pending. Full SE/AP/current broad/acceptance/public frontier/codec/cost/adoption open. Original codec notices remain durable; no Root Job input/resume/ack, preserve human direct conversation |
-| 1 / performance + Root shared-owner review | #56 / #51 | Cumulative15/costproposal14 remain reviewed/HOLD. Roots15/private25/all274/raw6 exact; residual17758336 unclassified. Spine20 current source25967429 only computation.c/iadt.c equals fresh composition of four published MEM2/3/4/5 patches,126 others exact. Runtime/fuel/cut/SAN/lifetime/current E22 composition pending. Paired6/146/inert29/48/all history unwaived, cost deferred/ungranted, full acceptance/codec/actual RSS-time open; no blanket implementation hold |
+| 0 / desk -> Merge | Workflow | All seven original owners reviewed. C27/C28/E22/E23 prototype task/Main delivered/current qualified. Frame cumulative/cost HOLD and roots/spines preparation/E23 focus reviewed. Job pursues; C/Performance recent progress now no-action response-wait overlays; four bounded owners achieved/stopped. Human direct Job pane/HEAD/index preserved, no input/resume/new owner/model/accepted promotion. One distinct durable inquiry report; timer unchanged |
+| 1 / Job, Root reviews independently | SE/AP, #51 | E17-E23 delivered; latest exact33/current30/C28 two373 phases/48 C-H/public52/full TSV exact/strict3 retained. E24 private broad running, no frozen READY or Root qualification. Full SE/AP/current broad/acceptance/frontier/codec/actual cost/adoption open. No new original Job inbox/input/resume; preserve human direct conversation |
+| 1 / performance + Root shared-owner review | #56 / #51 | Cumulative15/costproposal14 remain reviewed/HOLD. Roots15/private25/all274/raw6 exact; residual17758336 unclassified. Spine20 current source25967429 only computation.c/iadt.c equals fresh composition of four published MEM2/3/4/5 patches,126 others exact. Focused19/initial12+retry10/16 outputs exact, original setup2 retained. Raw cut/current consumer/lifetime/current E23 composition pending. Paired6/146/inert29/48/all history unwaived, cost deferred/ungranted, full acceptance/codec/actual RSS-time open; no blanket implementation hold |
 | Complete bounded / test-suite; Root publishes | #59 / PR #60 | Verified pilot removes22 duplicate calls with all distinct outcomes preserved; Root raw/assembly review complete. Exact7 taskbc16df9/Main36a27be prototype integrated; broader inventory/cost/accepted adoption remain open |
 | Complete bounded / issue-audit | All open Issues/PRs | Verified comments/dispositions,44/49 superseded by61; nine issues open. Owner stopped; Root resumes coordination, no repeat audit |
 | Complete bounded / verification-audit | #59 / PR #60; #51 | Static inventory/pilot delivered and worker complete; four-job measured cost remains deferred, full #59 open. Do not restart the completed owner automatically |
@@ -859,6 +862,14 @@ Earlier requirements remain: do not duplicate Term/Oracle structures above the
 typed owners; preserve Core/type separation and ordinary Solve semantics.
 
 ### Objective (Code)
+
+2026-10-04, E23 exact33/current30/C28 two373 phases task/Main delivered at
+2e1561c4; all seven original panes inspected and bounded handoffs exact.
+Job E24 private broad running; C/Performance response-wait overlays after recent
+progress require no action. Read-thread notLoaded/interrupted history does not
+establish a stall cause. No owner input/resume/restart/model change. Root Goal
+freshly reads blocked/incomplete; timer/watcher/protected9/original Job HEAD/index
+unchanged. [Status](../src/prototype/coordination/reviews/20261004T-e23-c28-spines-material-review.json).
 
 2026-10-04, later current material review at Maina6361c44: C28 task/Main
 freshly exact/pushed; E22/C27 deliveries unchanged. All seven original panes and
@@ -1437,6 +1448,11 @@ conventions must not become new `.a` fields or source-semantic requirements.
 
 ### Objective (Code)
 
+2026-10-04, later E23 downstream C28: source128c78b71d7, registration0/two373
+expected phases/128 linked+32 loaded/source16 observations each and48 generated
+C-H directly exact worker. Qualified C27 backend reused; C28 runtime/ABI unchanged.
+[C28 receipt](../src/prototype/c_backend/verification/core-epoch28.json).
+
 2026-10-04, C28 frozen13/retained271/runtime128/raw3058/worker746/generated48
 verified. Fresh E22 registration0 and O2/SAN373 expected rows each,128 linked/32
 loaded clients/source16 observations and48 C-H exact. Task0c852ce6/prototype
@@ -1785,6 +1801,12 @@ forthcoming; this is not approval to weaken checking or introduce a new engine.
 
 ### Objective (Code)
 
+2026-10-04, focused spine notice53a6c2c9: frozen19/b613c923/private24+153,
+initial270->278/retry426->434 pins verified. Original12 records retain candidate
+Makefile setup2/no candidate units launched; parent10 all0 reused. Separate
+retry10 all0 and sixteen execution outputs exact, runtime128/source25967429
+unchanged; restore only byte-exact parent Makefile support. [Review](../src/prototype/performance_followup/current-spines-focused-held-root-review.json).
+
 2026-10-04, roots/spines noticecb2a3534: roots15/20094657/private25/8204001b/
 source256/all274/raw6 expected0 verified, original caps/checks unchanged. Three
 previous arena totals reproduced, Tree16 linked layout7648152/root counts238815
@@ -2007,6 +2029,13 @@ Four cross-instrumentation raw image hashes differ; all 140 cross-build reads
 pass. No cross-instrumentation byte equality or wall/RSS speedup is claimed.
 
 ### Assessment
+
+2026-10-04, Root focused spine assessment: bounded Fold/materialized/direct/
+malformed-cursor O2/SAN gates pass after exact build support restoration; original
+setup2 retained. Raw cuts/cross-read/resave/fuel/current consumers and borrowed
+lifetime qualification remain pending. Source pair80b->259 stays distinct from
+current E23c78b, no automatic composition/historical gain transfer. All byte
+holds and cost deferred/ungranted remain. Continue bounded owned work, no resume.
 
 2026-10-04, Root attribution/reconciliation assessment: retain runtime HOLD and
 defer ungranted cost36. Unclassified used storage is not dead storage or reclaim
@@ -2305,6 +2334,17 @@ concrete duplication deletion, correct resume and meaningful verification.
 
 ### Objective (Code)
 
+2026-10-04, E23 READY675501ba exact33/a19b595a/transporte9faf892 verified,
+source156/actual471/raw28/control7/canonical2/public52/all35-fourcuts exact.
+Worker private E22 broad0/C0/strict1 retained, original private-parent label
+corrected without source changes. Fresh current E22+MEM9 source128c78b71d7:
+30 expected producer records, two current parent retention assertions134, four
+other owner guards0, candidate full affected O2/SAN0. Public52/full TSV exact
+E22/strict3 retained. C28 downstream registration0/two373 phases/48 C-H exact.
+Taskc3f3bcd7/prototype Main2e1561c4 pushed/all33 bytes exact,
+E19/E20/E21/MEM9/C27/C28 and original Job HEAD/index/pane preserved.
+[E23 receipt](../src/prototype/solver_inputs/joint_verification/e23-main-integration-review.json).
+
 2026-10-04, E22 READYf4b884b6/correctionca3f2c98 exact31/233fa25a/transport813b2762
 verified on separate E18 task. Source156/actual471/raw28/control7/canonical2/
 public52/all35-fourcut census exact, isolated broad0/C0/strict1 retained.
@@ -2495,6 +2535,16 @@ the [partition report](../src/prototype/solver_inputs/joint_verification/combine
 
 ### Assessment
 
+2026-10-04, Root E23 bounded integration decision: delay permanent Source
+transport allocation until caller jobs[] membership/uniqueness passes. Runtime
+6+/3-, regression6+/2-; repeated1024 rejected pending/completed mappings preserve
+graph block head. Later owners[]/record failure allocations remain outside scope.
+Early count bounds preserve prior refusal, no new index/graph/pool/authority/
+schema/fuel/evaluator/readback. Quick cumulative-18384/captured-48 are observations,
+not attributed whole-workload RSS/peak/time gains. Full SE/AP/current broad/
+acceptance/strict3/public frontier/codec/actual costs/adoption remain; E24 private
+broad work distinct/unreviewed. No Root Job inbox/input/resume.
+
 2026-10-04, Root E22 bounded integration decision: reuse existing canonical
 pending-owner membership for Source capture/mapping, replacing duplicate tag
 checks. Runtime6+/2-, permanent tests47+, standalonecontrol15+ (original16+
@@ -2569,7 +2619,8 @@ use automatic trust to repair a gate.
 - [x] Qualify/publish bounded E20 active Match scratch bookkeeping on current E18+MEM9+E19/C25; preserve all strict/codec/full SE/AP/cost limits.
 - [x] Verify E21 exact33 transport/four canonical digests/current scheduler and denied-allocation/public/C26 gates; publish prototype task/Main with original Job HEAD/index preserved.
 - [x] Qualify/publish E22 exact31/current30/C27 downstream33; preserve isolated/current provenance, strict3 and original Job HEAD/index.
-- [ ] Review E23 final frozen READY/current failure-path storage when available; isolated focus is preliminary.
+- [x] Qualify/publish E23 exact33/current30/C28 downstream3; preserve narrow failure-path scope and all strict/cost boundaries.
+- [ ] Review E24 final frozen READY/current schema scratch-input evidence when available; private broad work unreviewed.
 
 - [x] Qualify/publish bounded E19 canonical revalidation membership with current E18+MEM9/C24 gates; full SE/AP/strict/codec/cost criteria remain open.
 

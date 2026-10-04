@@ -104,6 +104,11 @@ names, separate directories and reviewed integration epochs.
 
 ### Objective (Code)
 
+2026-10-04, later C28 qualification on fresh E23 source128c78b71d7: registration0,
+O2/SAN373 expected rows each and48 generated C-H directly exact worker. C27
+backend reused/C28 runtime and ABI unchanged. Full61/native indexed/actual costs
+remain. [C28 review](../src/prototype/c_backend/verification/core-epoch28.json).
+
 2026-10-04, fresh Root C28 on qualified E22+MEM9 source1285235ee3c:
 exact13 task0c852ce6995cbb9a933910fda6d37490291fdcbb pushed/remote exact; backend/ABI/producer
 unchanged. Reuse exact qualified C27 backend/E22 pointer, standalone dry-run0

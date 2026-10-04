@@ -1,0 +1,34 @@
+{
+  "date_UTC": "2026-10-04T07:33:18.554075+00:00",
+  "notice_sha256": "53a6c2c9c0b4bd8934f010b67a7d85b2b181a7f199999a94ac65fda3aea82356",
+  "frozen19_manifest_sha256": "b613c923377f42f7d25b559b2e98d72f7e668fe9e7adf63012cf15acca72c925",
+  "worker_initial12_and_separate_retry10_raw_records_verified": true,
+  "initial_candidate_setup_builds2_retained_no_candidate_units_launched": true,
+  "parent10_success_reused_not_rebuilt": true,
+  "worker16_execution_outputs_directly_byte_exact": [
+    "run-fold_spine_test-parent-o2",
+    "run-fold_cursor_boundary_test-parent-o2",
+    "run-materialized_fields_test-parent-o2",
+    "run-performance_direct_test-parent-o2",
+    "run-fold_spine_test-parent-san",
+    "run-fold_cursor_boundary_test-parent-san",
+    "run-materialized_fields_test-parent-san",
+    "run-performance_direct_test-parent-san"
+  ],
+  "private24_and153_manifests_actual_pins_verified": {
+    "initial": {
+      "before": 270,
+      "after": 278
+    },
+    "retry": {
+      "before": 426,
+      "after": 434
+    }
+  },
+  "candidate_source128": "25967429ca326339107bb5851da27876b74186fe310b0b285a27c32058bd2efc",
+  "retry_runtime128_exact_unchanged_and_only_build_support_Makefile_restored": true,
+  "cost36_config_all297_pins_unchanged": true,
+  "no_Root_runtime_compiler_gdb_or_cost_rerun": true,
+  "decision": "Focused evidence review only: Fold67/materialized79/direct55/malformed-cursor O2/SAN controls now pass under leak/stack-return settings. Correct missing build support in separate copy, retain original setup2; no runtime/assertion/fixture/owner/codec adapter. Separate-process raw cut/cross-read/resave/readback/fuel/current-consumer/namespace/borrowed-output qualification remains pending. Paired6/146/inert29/48/strict3/observer/SAN/setup/V1V2/all historical byte failures remain HOLD. No runtime publication or current E22 gain transfer. Cost36 original pair remains deferred/ungranted and must drain before a future explicit slot. Full acceptance/original codec-owner disposition/actual RSS-time/adoption open.",
+  "runtime_READY_task_publication_cost_grant_accepted_adoption_or_Goal_completion": false
+}

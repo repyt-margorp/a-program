@@ -1,7 +1,7 @@
 # Job/Evidence Implementation Handoff
 
 Date: 2026-10-03
-Status: bounded E1-E4/E6-E22 prototypes verified/Main integrated; E23 focused only, SE1-SE5 unfinished.
+Status: bounded E1-E4/E6-E23 prototypes verified/Main integrated; E24 private broad pending, SE1-SE5 unfinished.
 Branch: `parallel/job-evidence-20261003`.
 Producer checkpoint: `64df10dfb6caf69226cebb401b88714541334768`.
 Related: [coordination](2026-10-03-PARALLEL-CORE-BACKEND-PERFORMANCE-PLAN.md),
@@ -78,6 +78,17 @@ Earlier workflow requirements: independent worktrees, `/goal`, `6.1 Sol` at
 only Core merges Main. Prototype integration is not accepted-source promotion.
 
 ### Objective (Code)
+
+2026-10-04, E23 READY675501ba exact33/a19b595a/transporte9faf892 verified,
+source156/actual471/raw28/control7/canonical2/public52/all35-fourcuts exact.
+Worker private E22 broad0/C0/strict1 retained, original private-parent label
+corrected without source changes. Fresh current E22+MEM9 source128c78b71d7:
+30 expected producer records, two current parent retention assertions134, four
+other owner guards0, candidate full affected O2/SAN0. Public52/full TSV exact
+E22/strict3 retained. C28 downstream registration0/two373 phases/48 C-H exact.
+Taskc3f3bcd7/prototype Main2e1561c4 pushed/all33 bytes exact,
+E19/E20/E21/MEM9/C27/C28 and original Job HEAD/index/pane preserved.
+[E23 receipt](../src/prototype/solver_inputs/joint_verification/e23-main-integration-review.json).
 
 2026-10-04, E22 READYf4b884b6/correctionca3f2c98 exact31/233fa25a/transport813b2762
 verified on separate E18 task. Source156/actual471/raw28/control7/canonical2/
@@ -189,6 +200,16 @@ definition checks, failures and real quotation proofs must remain correct.
 This is a candidate deletion, not user approval of a solution or the full Goal.
 
 ### Assessment
+
+2026-10-04, Root E23 bounded integration decision: delay permanent Source
+transport allocation until caller jobs[] membership/uniqueness passes. Runtime
+6+/3-, regression6+/2-; repeated1024 rejected pending/completed mappings preserve
+graph block head. Later owners[]/record failure allocations remain outside scope.
+Early count bounds preserve prior refusal, no new index/graph/pool/authority/
+schema/fuel/evaluator/readback. Quick cumulative-18384/captured-48 are observations,
+not attributed whole-workload RSS/peak/time gains. Full SE/AP/current broad/
+acceptance/strict3/public frontier/codec/actual costs/adoption remain; E24 private
+broad work distinct/unreviewed. No Root Job inbox/input/resume.
 
 2026-10-04, Root E22 bounded integration decision: reuse existing canonical
 pending-owner membership for Source capture/mapping, replacing duplicate tag
