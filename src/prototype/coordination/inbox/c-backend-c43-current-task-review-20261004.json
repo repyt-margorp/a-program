@@ -1,0 +1,62 @@
+{
+  "date_UTC": "2026-10-04T17:52:53.090132+00:00",
+  "classification": "Frozen task publication/current replay evidence under existing prototype authorization, not user approval.",
+  "C43_task_commit": "22a5e5ea18ecb79e970f1aff4b4ae682f033cf3e",
+  "remote_exact": "22a5e5ea18ecb79e970f1aff4b4ae682f033cf3e",
+  "next_task_parent": "22a5e5ea18ecb79e970f1aff4b4ae682f033cf3e",
+  "frozen13_archive_SHA": "fd346700ec4523a5889b99b92c632641d9ea890255dd741ddabf6345890ad513",
+  "current_qualification": {
+    "accepted_commit": "fc52755b345a555e49a79df40549e9cb23d54088",
+    "Main_parent": "2fb449ab30231ec570a2a724c54eb4bb8b39689c",
+    "runtime120_manifest_SHA": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907",
+    "C43_manifest_SHA": "3e6dc547803f2cd790fb96b4815e5763cdccd0c43b5c312efa63ba1148f6fce6",
+    "compiler_SHA": "a23ecab8ff08f09ad8c80602c2c5df7f49e09c25905cb8975902e101bf72635f",
+    "scope": "Frozen actual source successor down branch emission into manual C42 actions/captures. Current acceptedc206 runtime/new emitter and composed clients O2/ASan-UBSan-leak, six current C41 bodies reused. Pointer/Core oracles O2. No broad/general Identity/accepted/cost claim.",
+    "started": "2026-10-04T17:48:52.024967+00:00",
+    "complete": true,
+    "phases": {
+      "O2": {
+        "expected_rows": 29,
+        "exits": {
+          "0": 25,
+          "4": 4
+        },
+        "source_sort": "0,1,2,2,3,|"
+      },
+      "SAN": {
+        "expected_rows": 29,
+        "exits": {
+          "0": 25,
+          "4": 4
+        },
+        "source_sort": "0,1,2,2,3,|"
+      }
+    },
+    "generated_down_SHA": {
+      "O2": "b40f2a36bd6b5539f466b995503138d3c133c3a10e303208bfc2ab5e76578937",
+      "SAN": "b40f2a36bd6b5539f466b995503138d3c133c3a10e303208bfc2ab5e76578937"
+    },
+    "generated_down_lines": 37,
+    "Core_sorting_observations": 341,
+    "six_reused_products": {
+      "measure.inc": "60d51b65f7cedf55ea25d5e44251695ffb7adc98b35445bf63e1547237755803",
+      "clause.inc": "cd1a7d70441222995b12ca2354ae6aeda80eaa2f99cd296cfeb5ef451405804c",
+      "partition.inc": "b8238b022d1613d4cd8dffd4692f68d0e6668bf8206f3324588765bc25c2de31",
+      "append.inc": "ffd37ec2ed3ff967b588757b430b3a83042b4bfd737414141a0d6dffffefa6ac",
+      "accessibility.inc": "ccdd139cc3e9414a398fb12bb7073a652d91d47f9cb37f84c3319d86310f55b9",
+      "comparison.inc": "6b63a59d024eec5a46f7c436ed300ecab72283e7a5e10fc565e23ffef2ba69c4"
+    },
+    "pointer_Core_oracles_SAN": false,
+    "new_emitter_current_runtime_clients_SAN": true,
+    "all_original_inputs_unchanged": true,
+    "all_reused_inputs_unchanged": true,
+    "finished": "2026-10-04T17:49:34.086977+00:00",
+    "all_commands_terminal_reaped": true,
+    "commands": 4
+  },
+  "Main_integration": "Exact13/current raw prepared; final Main/remote preservation proof follows.",
+  "C44": "Notice3014304b reviewed, proceed same-owner actual capture construction independently; no new checker/producer/schema/erasure or publication hold.",
+  "cost": "Both proposals cancelled ungranted; no hold/collector/sample. Existing actual-boundary request still awaits active Job current agreement; original Performance remains blocked without invented ACK/resume.",
+  "original_C_Git_preserved": true,
+  "Goal_or_owner_actions": false
+}

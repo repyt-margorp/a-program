@@ -1,7 +1,7 @@
 # Parallel Development: Inquiry Desk, Merge and Workers
 
 Date: 2026-10-03
-Status: C42 manual scoped Acc candidate exact10 taskc3ef05cb/currentc206 Root O2/client SAN19 qualified; prototype Main integration recorded here. Native30 full Source/Synthesis/Identity/typed O2 advances on d1d824da but Core/IADT134 remain; later owner trials separate. Performance Goal remains BLOCKED, zero cost samples. Cancelled17:15 proposal and checkpoint-driven physical exclusivity workflow supersede blind three-ACK slots. No owner reset; timer unchanged.
+Status: C43 actual successor down37 lines exact13/currentc206 Root O2/emitter-runtime-client SAN29 qualified and delegated task published; prototype Main integration recorded here. C42 remains published at2fb449ab. C44 capture construction private/unrun. Native30 scoped O2 advances but Core/IADT134 remain. Both cost proposals cancelled ungranted, zero samples; physical blocked/idle Performance observation replaces impossible ACK, active Job terminal agreement pending. Original Goals/timer unchanged.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `fd45c42`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -26,6 +26,34 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | 8 | `issue-audit`: evidence-backed GitHub disposition | All open Issues/PRs | Bounded Goal complete; verified dispositions, task8bb5018/Mainb461ace; #61 retains C residuals |
 
 ### Current Delivery Status
+
+2026-10-04, [C43 actual down sequencing](../src/prototype/coordination/reviews/20261004-c43-current-composition-review.json):
+Root independently checks exact13/all394 raw/all171 retained inputs/current120
+and C32-C42 archives. The actual admitted successor Fold retains four operands,
+including both index endpoints; original initial emit4 assumed two and remains
+preserved with source/binary/debug evidence. Current acceptedc206 four serial
+commands pass uncensored: O2 and new emitter-runtime-composed-client sanitizer
+gates each29 expected rows,25zero/four refusal4,341 Core sorts/source output.
+Both phases/aliases/repeat emit the same37-line actual branch sequence b40f2a36
+into manual C42 actions. Pointer/Core oracles remain O2. Exact13 task is pushed
+remote exact; this prototype integration retains current raw evidence. Manual
+refinement/action representation, full correspondence, capture construction,
+original Acc/zeroDown/closed primitives/array staging remain open. Original
+[C44 progress](../src/prototype/coordination/reviews/20261004-c44-capture-progress-review.json)
+attacks actual capture construction; it is private/unrun at this checkpoint.
+No accepted/general61/full Goal/cost claim follows.
+
+2026-10-04, actual C43 terminal proposed17:35-17:45 light feasibility;
+[cancellation](../src/prototype/coordination/inbox/accepted94-cost-c43-1735-1745-cancelled-ungranted-20261004.json)
+is explicit/ungranted because current active Job agreement never arrived.
+Its earlier no-child ACK was invalidated, and fresh pane shows ongoing trial40
+correctness work. No hold/collector/sample or blind future interval renewal.
+The blocked-Performance reply problem is resolved operationally by actual
+blocked/idle observation, without inferred ACK/resume. Remaining route is
+existing actual-boundary request63d42425: original Job reports actual terminal
+feasibility, C/Root align one future bounded interval with fresh pins/monitoring.
+Root guard envelope is syntax checked only, not executed or runtime-qualified;
+no current launch grant exists. Root C43 correctness replay is terminal17:49:34.
 
 2026-10-04, [C42 current composition](../src/prototype/coordination/reviews/20261004-c42-current-composition-review.json):
 exact10 manual scoped-action prototype and all311 raw/all151 retained inputs,

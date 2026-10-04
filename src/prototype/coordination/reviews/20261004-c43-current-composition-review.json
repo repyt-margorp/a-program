@@ -1,0 +1,231 @@
+{
+  "date_UTC": "2026-10-04T17:52:53.090132+00:00",
+  "notice_SHA": "cddfc310de829861b075ee44e7ea24c9d1546b1445b688b03cb9e197e75b3e8b",
+  "freeze": {
+    "Main_integration": "pending",
+    "accepted_promotion": false,
+    "archive_sha256": "fd346700ec4523a5889b99b92c632641d9ea890255dd741ddabf6345890ad513",
+    "branch": "parallel/c-backend-20261003",
+    "chosen_commit_message": "prototype: emit actual Acc down branch sequencing",
+    "classification": "actual source down branch sequencing emitted into explicitly manual bounded C42 action runtime/capture representation; not generalized Identity lowering",
+    "current_Root_C43_qualification": "pending",
+    "delegated_task_parent": "c3ef05cb17cc8e58d1bcb35b9ec0ff2e973ca772",
+    "epoch": "C43",
+    "frozen_at": "2026-10-04T17:43:36.973835+00:00",
+    "full_native_generalized_Acc_QuickSort_complete": false,
+    "goal_status": "active",
+    "handoff_sha256": "dfdfb8c702a32b6354da40c2f984055b9cfa41e349104130627f566deebb10db",
+    "manifest_sha256": "3e6dc547803f2cd790fb96b4815e5763cdccd0c43b5c312efa63ba1148f6fce6",
+    "measurement_samples": 0,
+    "original_worker_HEAD": "cc3cba3495b81628e0a68ec8b45aee4f5447d188",
+    "publication_count": 13,
+    "qualified_inputs_count": 171,
+    "qualified_inputs_sha256": "0b28f8800a366fbcd32746114692512ea37faec91bb90f97a69058dc00e202bf",
+    "raw_count": 394,
+    "raw_manifest_sha256": "2c6aff5b362d0a4d906c0a7240ede5e7a375fa194edc6dd61bfdc5b25ea41299",
+    "ready_for_delegated_task_publication": true,
+    "runtime_count": 120,
+    "runtime_manifest_sha256": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907",
+    "source_deltas_sha256": "be5692cf4a73f4d2987198e7366430922fb90988a79f26cd248d8faf330415f1",
+    "style_sha256": "409a9fe70e4b4dd9ac4481306d95e2ad4eb100c324f6f4effcfa9e1281b2e353",
+    "task_publication": "pending",
+    "verification_sha256": "906f41e0cfbc352aef7f2d25e335cbb6581b9031e34e13d05014ae67fe47cdc5"
+  },
+  "frozen13_archive_exact": {
+    "doc/2026-10-03-C-BACKEND-GOAL.md": "774ec895e9726eccd42807f69dfaf3e941fe482ccdbe21f27cbecdd68179a4fc",
+    "doc/2026-10-04-C-BACKEND-ACC-ACTION-DERIVATION-PLAN.md": "f33dedaba252ca09d66b6a8408cd6c22d9fdea48a944a76292f9c13140523d92",
+    "doc/2026-10-04-C-BACKEND-EPOCH43-HANDOFF.md": "dfdfb8c702a32b6354da40c2f984055b9cfa41e349104130627f566deebb10db",
+    "src/prototype/c_backend/acc_actions/README.md": "ebd8c10c3b2a2317c176ef5bd95218152308165980949c420c050efa468c84e4",
+    "src/prototype/c_backend/acc_actions/action_client.c": "b7bbd37d76c0c140fbd0182ee92e8a4e21fd9106d11cbf35f7fff3949abd9671",
+    "src/prototype/c_backend/acc_actions/build.mk": "1527817b144cd33f62123929999506872da4b4f9de3423a8c9142718c99a9d25",
+    "src/prototype/c_backend/acc_actions/check.sh": "57eb8919eae13b9cfa2b9884c54af99e8239b455aeebd0b8b6c3325c49245b26",
+    "src/prototype/c_backend/acc_actions/emit.c": "c54103e31e7ac280f6db4eaac02a6c6518b09a89ad134c611af572021ac7c2ec",
+    "src/prototype/c_backend/acc_actions/emit.h": "d8a5d53e05c8aa21ebe73ae2b4937a409b61cfcdb4a4c47b5439744b0061ecdb",
+    "src/prototype/c_backend/acc_actions/emit_test.c": "488e216b367a15e0e5d76719cc9aeaaddd848f8f732c796336b875d42cff9c94",
+    "src/prototype/c_backend/acc_actions/fixture.p": "b56903d53891ce567c9e037e11929425956fcbd8fe3161d28ea5a9ceb0f95364",
+    "src/prototype/c_backend/acc_actions/runtime.c": "386af9b1f04b714a32ca86668298e4e0f2c922a2e8850cc2d1a5dbcb9502c923",
+    "src/prototype/c_backend/acc_actions/support.c": "e9e06128b82e50ea8420bd116371b6550c017cbd01c7d912663d326d3fe299d7"
+  },
+  "raw394_exact": true,
+  "raw_manifest_SHA": "2c6aff5b362d0a4d906c0a7240ede5e7a375fa194edc6dd61bfdc5b25ea41299",
+  "retained171_input_copies_exact": true,
+  "live_input_differences": [],
+  "runtime120_independently_recomputed": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907",
+  "historical_worker_phases": {
+    "O2": {
+      "rows": 29,
+      "exits": {
+        "0": 25,
+        "4": 4
+      },
+      "source_sort": "0,1,2,2,3,|"
+    },
+    "SAN": {
+      "rows": 29,
+      "exits": {
+        "0": 25,
+        "4": 4
+      },
+      "source_sort": "0,1,2,2,3,|"
+    }
+  },
+  "old_C32_C42_archives_independently_exact": [
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42
+  ],
+  "Root_runtime_replay": true,
+  "generated_down_lines": 37,
+  "generated_down_SHA": "b40f2a36bd6b5539f466b995503138d3c133c3a10e303208bfc2ab5e76578937",
+  "source_review": "Selected actual Core alpha matches pinned successor; admitted indexed layouts, unique owned Acc Fold retains scrutinee/clause/two endpoints (four operands). Bind actual clause/Match/capture objects, evaluate only pure syntactic carriers/beta binding, derive right quoted Acc/FORCE, left prior LT/raw-down and left prior LT/folded-IH sequences with admitted nominal transport direction and two paths/map cardinality. Stage output transactionally. Manual C42 refinement/action representation/capture construction and source-specific correspondence remain explicitly bounded; no expected-classifier fallback/new checker authority.",
+  "limits": "C42 manual runtime/capture semantics, zero-down refusal, closed Nat/LT/storage/array staging remain. No serialized full maps/general witness-action equivalence/arbitrary capture/main-native61/accepted/full Goal/cost claim. Initial emit4/source/debug/binaries retained, actual four operands corrected only in target.",
+  "Root_current_qualification": {
+    "accepted_commit": "fc52755b345a555e49a79df40549e9cb23d54088",
+    "Main_parent": "2fb449ab30231ec570a2a724c54eb4bb8b39689c",
+    "runtime120_manifest_SHA": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907",
+    "C43_manifest_SHA": "3e6dc547803f2cd790fb96b4815e5763cdccd0c43b5c312efa63ba1148f6fce6",
+    "compiler_SHA": "a23ecab8ff08f09ad8c80602c2c5df7f49e09c25905cb8975902e101bf72635f",
+    "scope": "Frozen actual source successor down branch emission into manual C42 actions/captures. Current acceptedc206 runtime/new emitter and composed clients O2/ASan-UBSan-leak, six current C41 bodies reused. Pointer/Core oracles O2. No broad/general Identity/accepted/cost claim.",
+    "started": "2026-10-04T17:48:52.024967+00:00",
+    "complete": true,
+    "phases": {
+      "O2": {
+        "expected_rows": 29,
+        "exits": {
+          "0": 25,
+          "4": 4
+        },
+        "source_sort": "0,1,2,2,3,|"
+      },
+      "SAN": {
+        "expected_rows": 29,
+        "exits": {
+          "0": 25,
+          "4": 4
+        },
+        "source_sort": "0,1,2,2,3,|"
+      }
+    },
+    "generated_down_SHA": {
+      "O2": "b40f2a36bd6b5539f466b995503138d3c133c3a10e303208bfc2ab5e76578937",
+      "SAN": "b40f2a36bd6b5539f466b995503138d3c133c3a10e303208bfc2ab5e76578937"
+    },
+    "generated_down_lines": 37,
+    "Core_sorting_observations": 341,
+    "six_reused_products": {
+      "measure.inc": "60d51b65f7cedf55ea25d5e44251695ffb7adc98b35445bf63e1547237755803",
+      "clause.inc": "cd1a7d70441222995b12ca2354ae6aeda80eaa2f99cd296cfeb5ef451405804c",
+      "partition.inc": "b8238b022d1613d4cd8dffd4692f68d0e6668bf8206f3324588765bc25c2de31",
+      "append.inc": "ffd37ec2ed3ff967b588757b430b3a83042b4bfd737414141a0d6dffffefa6ac",
+      "accessibility.inc": "ccdd139cc3e9414a398fb12bb7073a652d91d47f9cb37f84c3319d86310f55b9",
+      "comparison.inc": "6b63a59d024eec5a46f7c436ed300ecab72283e7a5e10fc565e23ffef2ba69c4"
+    },
+    "pointer_Core_oracles_SAN": false,
+    "new_emitter_current_runtime_clients_SAN": true,
+    "all_original_inputs_unchanged": true,
+    "all_reused_inputs_unchanged": true,
+    "finished": "2026-10-04T17:49:34.086977+00:00",
+    "all_commands_terminal_reaped": true,
+    "commands": 4
+  },
+  "Root_current_result_SHA": "6da7c298da4b15b57016dcaf3fbafe63472f5f7a4c9a000c4af01845da351112",
+  "Root_raw_evidence": "src/prototype/c_backend/verification/epoch43-current-accepted-20261004",
+  "Root_raw_evidence_manifest_SHA": "d55b84a0dd8b6e8e11bbc7dbefe0444804192669a06372bb121664a77be7a706",
+  "Root_raw_files": 165,
+  "task_publication": {
+    "date_UTC": "2026-10-04T17:50:15.966784+00:00",
+    "epoch": "C43",
+    "branch": "parallel/c-backend-20261003",
+    "parent": "c3ef05cb17cc8e58d1bcb35b9ec0ff2e973ca772",
+    "commit": "22a5e5ea18ecb79e970f1aff4b4ae682f033cf3e",
+    "remote_exact": "22a5e5ea18ecb79e970f1aff4b4ae682f033cf3e",
+    "exact_snapshot_files": 13,
+    "all_committed_snapshot_blobs_exact": true,
+    "original_C_HEAD_ref_index_unchanged": true,
+    "original_C_guard": {
+      "HEAD": "cc3cba3495b81628e0a68ec8b45aee4f5447d188",
+      "branch_ref": "cc3cba3495b81628e0a68ec8b45aee4f5447d188",
+      "index_SHA": "848aae6bed8ddf19f70473244f94f8ca144b4bbe3ca7a427b2f44e2a5e842325"
+    },
+    "frozen_files": {
+      "doc/2026-10-03-C-BACKEND-GOAL.md": "774ec895e9726eccd42807f69dfaf3e941fe482ccdbe21f27cbecdd68179a4fc",
+      "doc/2026-10-04-C-BACKEND-ACC-ACTION-DERIVATION-PLAN.md": "f33dedaba252ca09d66b6a8408cd6c22d9fdea48a944a76292f9c13140523d92",
+      "doc/2026-10-04-C-BACKEND-EPOCH43-HANDOFF.md": "dfdfb8c702a32b6354da40c2f984055b9cfa41e349104130627f566deebb10db",
+      "src/prototype/c_backend/acc_actions/README.md": "ebd8c10c3b2a2317c176ef5bd95218152308165980949c420c050efa468c84e4",
+      "src/prototype/c_backend/acc_actions/action_client.c": "b7bbd37d76c0c140fbd0182ee92e8a4e21fd9106d11cbf35f7fff3949abd9671",
+      "src/prototype/c_backend/acc_actions/build.mk": "1527817b144cd33f62123929999506872da4b4f9de3423a8c9142718c99a9d25",
+      "src/prototype/c_backend/acc_actions/check.sh": "57eb8919eae13b9cfa2b9884c54af99e8239b455aeebd0b8b6c3325c49245b26",
+      "src/prototype/c_backend/acc_actions/emit.c": "c54103e31e7ac280f6db4eaac02a6c6518b09a89ad134c611af572021ac7c2ec",
+      "src/prototype/c_backend/acc_actions/emit.h": "d8a5d53e05c8aa21ebe73ae2b4937a409b61cfcdb4a4c47b5439744b0061ecdb",
+      "src/prototype/c_backend/acc_actions/emit_test.c": "488e216b367a15e0e5d76719cc9aeaaddd848f8f732c796336b875d42cff9c94",
+      "src/prototype/c_backend/acc_actions/fixture.p": "b56903d53891ce567c9e037e11929425956fcbd8fe3161d28ea5a9ceb0f95364",
+      "src/prototype/c_backend/acc_actions/runtime.c": "386af9b1f04b714a32ca86668298e4e0f2c922a2e8850cc2d1a5dbcb9502c923",
+      "src/prototype/c_backend/acc_actions/support.c": "e9e06128b82e50ea8420bd116371b6550c017cbd01c7d912663d326d3fe299d7"
+    },
+    "archive_SHA": "fd346700ec4523a5889b99b92c632641d9ea890255dd741ddabf6345890ad513",
+    "manifest_SHA": "3e6dc547803f2cd790fb96b4815e5763cdccd0c43b5c312efa63ba1148f6fce6",
+    "qualification": {
+      "accepted_commit": "fc52755b345a555e49a79df40549e9cb23d54088",
+      "Main_parent": "2fb449ab30231ec570a2a724c54eb4bb8b39689c",
+      "runtime120_manifest_SHA": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907",
+      "C43_manifest_SHA": "3e6dc547803f2cd790fb96b4815e5763cdccd0c43b5c312efa63ba1148f6fce6",
+      "compiler_SHA": "a23ecab8ff08f09ad8c80602c2c5df7f49e09c25905cb8975902e101bf72635f",
+      "scope": "Frozen actual source successor down branch emission into manual C42 actions/captures. Current acceptedc206 runtime/new emitter and composed clients O2/ASan-UBSan-leak, six current C41 bodies reused. Pointer/Core oracles O2. No broad/general Identity/accepted/cost claim.",
+      "started": "2026-10-04T17:48:52.024967+00:00",
+      "complete": true,
+      "phases": {
+        "O2": {
+          "expected_rows": 29,
+          "exits": {
+            "0": 25,
+            "4": 4
+          },
+          "source_sort": "0,1,2,2,3,|"
+        },
+        "SAN": {
+          "expected_rows": 29,
+          "exits": {
+            "0": 25,
+            "4": 4
+          },
+          "source_sort": "0,1,2,2,3,|"
+        }
+      },
+      "generated_down_SHA": {
+        "O2": "b40f2a36bd6b5539f466b995503138d3c133c3a10e303208bfc2ab5e76578937",
+        "SAN": "b40f2a36bd6b5539f466b995503138d3c133c3a10e303208bfc2ab5e76578937"
+      },
+      "generated_down_lines": 37,
+      "Core_sorting_observations": 341,
+      "six_reused_products": {
+        "measure.inc": "60d51b65f7cedf55ea25d5e44251695ffb7adc98b35445bf63e1547237755803",
+        "clause.inc": "cd1a7d70441222995b12ca2354ae6aeda80eaa2f99cd296cfeb5ef451405804c",
+        "partition.inc": "b8238b022d1613d4cd8dffd4692f68d0e6668bf8206f3324588765bc25c2de31",
+        "append.inc": "ffd37ec2ed3ff967b588757b430b3a83042b4bfd737414141a0d6dffffefa6ac",
+        "accessibility.inc": "ccdd139cc3e9414a398fb12bb7073a652d91d47f9cb37f84c3319d86310f55b9",
+        "comparison.inc": "6b63a59d024eec5a46f7c436ed300ecab72283e7a5e10fc565e23ffef2ba69c4"
+      },
+      "pointer_Core_oracles_SAN": false,
+      "new_emitter_current_runtime_clients_SAN": true,
+      "all_original_inputs_unchanged": true,
+      "all_reused_inputs_unchanged": true,
+      "finished": "2026-10-04T17:49:34.086977+00:00",
+      "all_commands_terminal_reaped": true,
+      "commands": 4
+    },
+    "accepted_code_changes": false,
+    "Goal_or_owner_actions": false,
+    "cost_samples": 0
+  },
+  "Main_parent": "2fb449ab30231ec570a2a724c54eb4bb8b39689c",
+  "Main_integration": "Exact13 prototype/code/test/docs and scoped Root raw included in the commit containing this review; final remote/preservation proof follows separately.",
+  "publication_assessment": "Agent decision under delegated prototype scope: actual source branch sequencing qualifies its pinned successor/Core/runtime scope and reduces manual sequencing, while manual action/capture semantics and general correspondence remain open. Preserve initial worker emit4 and original archives. No accepted implementation promotion or generalized61/Goal/cost claim."
+}

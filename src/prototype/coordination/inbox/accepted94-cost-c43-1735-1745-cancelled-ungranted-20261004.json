@@ -1,0 +1,26 @@
+{
+  "date_UTC": "2026-10-04T17:45:09.894349+00:00",
+  "classification": "Operational cancellation of an ungranted actual-C-derived proposal within existing scope, not user approval.",
+  "proposal_SHA": "d7c2aa1c815991c45c997121793b1ba11c42bf49d2ca1d8d4d83815c4bff0266",
+  "proposed_interval_UTC": [
+    "2026-10-04T17:35:00Z",
+    "2026-10-04T17:45:00Z"
+  ],
+  "status": "CANCELLED_UNGRANTED",
+  "reason": "Active Job current terminal agreement remains absent. Remaining interval is short; no launch condition was established. Original Performance fresh reply is no longer demanded: actual blocked/idle observation can satisfy that safety prerequisite. Do not confuse the missing active-owner agreement with the resolved blocked-owner workflow.",
+  "C_actual_availability_notice_SHA": "cdb008e6c94fdabb6edcc0094cf2954c46ec814168ba0514e0d89335654efdde",
+  "grant_created": false,
+  "hold_created": false,
+  "collector_launched": false,
+  "samples": 0,
+  "instruction": "This precise proposal is cancelled, no measurement hold is in effect. Active C/Job continue ordinary correctness and report next actual terminal feasibility using existing63d42425 request. Root will align the next actual active-owner interval, not blindly renew a clock slot. Performance original BLOCKED Goal stays unchanged, no resume/reset/new owner or model action.",
+  "future_envelope": {
+    "path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/execute-accepted94-guarded-slot.py",
+    "SHA": "90729a9119296c9ad1a52f023e52ce356ed353d51ec9daf4193d8c3e3f1fa11a",
+    "syntax_checked": true,
+    "runtime_qualification": "Not executed or runtime-qualified; no actual grant path exists. Review/validate envelope in the actual future authorized measurement slot; unexpected preflight failure requires explicit release.",
+    "pinned_collector_unchanged": true
+  },
+  "fresh295_pins_at": "2026-10-04T17:39:52Z",
+  "Goal_or_owner_actions": false
+}
