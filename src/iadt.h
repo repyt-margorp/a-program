@@ -4,6 +4,7 @@
 #include "eval.h"
 
 struct pg_data_layout;
+struct pg_evidence_inputs;
 struct pg_match_clause {
 	const struct pg_object *constructor;
 	const struct pg_term *branch;
@@ -122,13 +123,13 @@ int pg_data_recursive_field(const struct pg_term *type, const struct pg_object *
  * a second semantic schema. Positivity and fibrancy are not certified here. */
 const struct pg_data_schema *pg_data_schema(struct pg_typing *typing,
 	const struct pg_data_signature *signature,
-	size_t count, const struct pg_evidence *const *results);
+	size_t count, struct pg_evidence_inputs results);
 /* Attach checked premises to the exact inert declaration. Never replace its
  * contexts, images or nominal identity with facts supplied by a caller. */
 const struct pg_data_schema *pg_data_schema_check(struct pg_typing *typing,
 	const struct pg_data_declaration *declaration,
 	const struct pg_data_signature *signature,
-	size_t count, const struct pg_evidence *const *results);
+	size_t count, struct pg_evidence_inputs results);
 /* Apply the syntactic positivity condition to every field in the checked
  * schema. Index arity comes from the signature, not the erased layout.
  * Same return convention and limitations as pg_data_field_positive; this
@@ -148,6 +149,12 @@ const struct pg_evidence *pg_data_schema_parameters(const struct pg_data_schema 
 const struct pg_evidence *pg_data_schema_indices(const struct pg_data_schema *schema);
 const struct pg_evidence *pg_data_schema_fields(const struct pg_data_schema *schema,
 	const struct pg_object *constructor);
+/* Constant-time declaration-order field prefix, excluding schema parameters.
+ * The checked schema borrows these existing context proofs once; this view is
+ * neither a second declaration nor solver history, and is not serialized.
+ * Returns NULL for a foreign constructor or an out-of-range index. */
+const struct pg_evidence *pg_data_schema_field(const struct pg_data_schema *schema,
+	const struct pg_object *constructor, size_t index);
 const struct pg_evidence *pg_data_schema_result(const struct pg_data_schema *schema,
 	const struct pg_object *constructor);
 /* Compose the constructor's result substitution with its checked field

@@ -6,6 +6,7 @@
 enum pg_evidence_judgement { PG_JUDGEMENT_CONTEXT, PG_JUDGEMENT_VALUE_TYPE,
 	PG_JUDGEMENT_COMPUTATION_TYPE, PG_JUDGEMENT_VALUE, PG_JUDGEMENT_COMPUTATION,
 	PG_JUDGEMENT_SUBSTITUTION, PG_JUDGEMENT_TYPE_FAMILY, PG_JUDGEMENT_INPUT };
+struct pg_evidence;
 
 /* Immutable declared telescope. Its existence is not a typing certificate. */
 struct pg_context {
@@ -15,6 +16,9 @@ struct pg_context {
 	enum pg_evidence_judgement judgement;
 	/* Family signature telescope, extending parent; not formation evidence. */
 	const struct pg_context *indices;
+	/* Kernel-owned admission link, excluded from descriptive identity and I/O.
+	 * Constructors ignore incoming links; only checking publishes receipts. */
+	struct pg_evidence *receipts;
 };
 
 /* Lexical allocation of recursive elimination, not acceptance evidence.
@@ -54,6 +58,7 @@ struct pg_occurrence {
 	/* Selected construction maps follow operands in the same allocation.
 	 * Unlike map above, they are inputs, not an action on the whole subject. */
 	size_t map_count;
+	struct pg_evidence *receipts;
 	const struct pg_occurrence *operands[];
 };
 
@@ -63,6 +68,7 @@ struct pg_context_map {
 	struct pg_index_entry index;
 	const struct pg_context *source, *destination;
 	size_t count;
+	struct pg_evidence *receipts;
 	const struct pg_occurrence *images[];
 };
 
@@ -91,9 +97,8 @@ struct pg_typing {
 	/* Memoized default lexical allocation requests, not acceptance evidence. */
 	struct pg_index induction_requests;
 	struct pg_index proofs;
-	/* Read-only lookup paths to the same accepted derivations, not claims or
-	 * another acceptance store. Alternatives are never replaced. */
-	struct pg_index evidence_conclusions;
+	/* NULL Context has no allocated descriptive owner for its admission link. */
+	struct pg_evidence *empty_receipts;
 	/* Computation work, not an additional source of typing evidence. */
 	struct pg_substitution_work substitutions;
 	struct pg_typing_wait *free_waits;
@@ -111,6 +116,10 @@ const struct pg_context *pg_context_bind(struct pg_typing *typing,
 	const struct pg_term *declared_type, enum pg_evidence_judgement judgement);
 const struct pg_context *pg_context_intern(struct pg_typing *typing,
 	const struct pg_context *declaration);
+/* Canonical descriptive ownership of this node only, without checking/allocation.
+ * A copied tuple/receipt link is not membership; NULL is the empty Context.
+ * A locally interned head may have a caller-owned parent. */
+int pg_context_owned_by(const struct pg_context *, const struct pg_typing *);
 /* Close a declared telescope into its logical Pi signature. No typing claim. */
 const struct pg_term *pg_context_signature(struct pg_graph *graph,
 	const struct pg_context *parent, const struct pg_context *indices,
@@ -185,8 +194,8 @@ const struct pg_context_map *pg_context_lift_result(const struct pg_context_lift
 /* Completed action on a family's index telescope; NULL for a value binder. */
 const struct pg_context_map *pg_context_lift_indices(const struct pg_context_lift *work);
 uint64_t pg_context_lift_steps(const struct pg_context_lift *work);
-/* Immutable erased projection of the typed images, computed at construction. */
-const struct pg_binding_value *pg_context_map_bindings(const struct pg_context_map *map);
+/* Synchronous borrowed projection of typed images; no copied Core-value array. */
+struct pg_binding_inputs pg_context_map_bindings(const struct pg_context_map *map);
 /* Return the oldest source image for binder. Optional index identifies its
  * source-telescope position even when multiple binders have the same image. */
 const struct pg_occurrence *pg_context_map_lookup(const struct pg_context_map *map,

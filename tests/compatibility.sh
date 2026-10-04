@@ -385,7 +385,7 @@ client="$acceptance/legacy-quicksort-property.p"
 check_property "$client" main:ascending emptyMain:empty singletonMain:singleton \
 	ascendingMain:ascending descendingMain:ascending duplicatesMain:duplicatesExpected unorderedMain:mixed
 # Completed source allocations must also survive retained-result images.
-"${checker[@]}" --steps 1000000 --retain-reductions \
+"${checker[@]}" --steps 1000000 \
 	--imports "$fixtures/typing/if8_fuel_free_quicksort_check.p" \
 	--save "$directory/retained-property.a" "$client"
 "${checker[@]}" --load --steps 1000000 "$directory/retained-property.a"

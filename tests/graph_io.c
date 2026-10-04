@@ -118,6 +118,8 @@ static const struct pg_object *wrong_kind(void *context, const char *label)
 struct image_payload {
 	const struct pg_term *term;
 	const struct pg_term *first, *second;
+	const struct pg_term *const *first_roots;
+	const struct pg_term *const *second_roots;
 	int stop;
 };
 
@@ -128,7 +130,8 @@ static int image_write(FILE *file, const struct pg_graph_codec *codec, void *sta
 	if (pg_wire_write_u64(file, 42)) return -1;
 	struct pg_graph scratch;
 	if (pg_graph_init(&scratch)) return -1;
-	const struct pg_term *copy = pg_reference(&scratch, payload->term->as.reference);
+	const struct pg_term *copy = payload->term->kind == PG_REFERENCE
+		? pg_reference(&scratch, payload->term->as.reference) : payload->term;
 	int status = !copy ? -1 : pg_graph_write_descriptors(file, 1, &copy, codec, NULL);
 	pg_graph_destroy(&scratch);
 	return status;
@@ -142,37 +145,52 @@ static int image_read(FILE *file, struct pg_graph *graph, size_t limit, size_t n
 	const struct pg_term *const *roots;
 	if (pg_graph_read_descriptors(file, graph, limit, name_limit, codec, NULL, &count, &roots) || count != 1) return -1;
 	payload->first = roots[0];
+	payload->first_roots = roots;
 	if (payload->stop) return 0;
 	uint64_t marker;
 	if (pg_wire_read_u64(file, &marker) || marker != 42) return -1;
 	if (pg_graph_read_descriptors(file, graph, limit, name_limit, codec, NULL, &count, &roots) || count != 1) return -1;
 	payload->second = roots[0];
+	payload->second_roots = roots;
 	return 0;
 }
 
-static void shared_image(void)
+static void shared_image(size_t depth)
 {
 	struct pg_graph source, destination;
 	assert(!pg_graph_init(&source) && !pg_graph_init(&destination));
 	struct image_payload payload = {.term = pg_reference(&source, pg_binder(&source))};
+	for (size_t i = 0; i < depth; ++i)
+		payload.term = pg_application(&source, payload.term, payload.term);
 	FILE *file = tmpfile();
 	const char version[8] = "APGTST\1";
 	assert(file && !pg_graph_image_write(file, version, NULL, NULL, image_write, &payload));
 	pg_graph_destroy(&source);
 	rewind(file);
-	assert(!pg_graph_image_read(file, version, &destination, 100, 100, NULL, NULL, image_read, &payload));
+	assert(!pg_graph_image_read(file, version, &destination, 10000, 100, NULL, NULL, image_read, &payload));
 	assert(payload.first == payload.second);
+	/* The global relocation table is gone; selected roots and actual Terms live. */
+	assert(payload.first_roots[0] == payload.first && payload.second_roots[0] == payload.second);
+	const struct pg_term *cursor = payload.first;
+	for (size_t i = 0; i < depth; ++i) {
+		assert(cursor->kind == PG_APPLICATION && cursor->as.application.function == cursor->as.application.argument);
+		cursor = cursor->as.application.argument;
+	}
+	assert(cursor->kind == PG_REFERENCE && destination.terms.count == depth + 1);
+	assert(pg_application(&destination, payload.first, payload.first));
+	assert(payload.first_roots[0] == payload.second_roots[0]);
 	/* The owner's success does not bypass the complete-payload boundary. */
 	payload.stop = 1;
 	rewind(file);
-	assert(pg_graph_image_read(file, version, &destination, 100, 100, NULL, NULL, image_read, &payload));
+	assert(pg_graph_image_read(file, version, &destination, 10000, 100, NULL, NULL, image_read, &payload));
 	assert(!fclose(file));
 	pg_graph_destroy(&destination);
 }
 
 int main(void)
 {
-	shared_image();
+	shared_image(0);
+	shared_image(2048);
 	struct pg_graph source, destination;
 	assert(pg_graph_init(&source) == 0 && pg_graph_init(&destination) == 0);
 	symmetry_transport(&source, &destination);

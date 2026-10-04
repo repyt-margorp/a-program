@@ -7,7 +7,7 @@ int pg_seed_write(FILE *file, const char *source, size_t length,
 	if (!file) return -1;
 	struct pg_program *program = pg_program_create(source, length, policy);
 	if (!program) return -1;
-	int status = program->root ? pg_sources_write(file, &program->synthesis, 1, &program->root) : -1;
+	int status = program->root ? pg_sources_write(file, &program->synthesis, 1, &(struct pg_synthesis_input){.pending = pg_synthesis_pending(program->root)}) : -1;
 	pg_program_destroy(program);
 	return status;
 }

@@ -2,6 +2,7 @@
 #define A_PROGRAM_POINTER_EFFECT_INFERENCE_H
 
 #include "classifier.h"
+#include "subscription.h"
 
 struct pg_effect_equation;
 struct pg_effect_dependency;
@@ -11,8 +12,11 @@ struct pg_effect_inference {
 	struct pg_graph *rows;
 	struct pg_index dependencies;
 	struct pg_index row_sources;
+	struct pg_effect_equation *first_equation, *last_equation;
+	struct pg_effect_dependency *first_dependency, *last_dependency;
 	struct pg_effect_equation *head, *tail, *current;
 	struct pg_effect_dependency *cursor;
+	struct pg_subscription *waiters;
 	int sealed, failed;
 };
 
@@ -37,7 +41,8 @@ struct pg_effect_equation *pg_effect_equation_find(const struct pg_effect_infere
 	const struct pg_object *parameter);
 const struct pg_effect_row *pg_effect_equation_seed(const struct pg_effect_inference *work,
 	const struct pg_effect_equation *equation);
-/* Read immutable definitions, equations before edges, once each. Callbacks
+/* Read immutable definitions in registration order, equations before edges,
+ * once each. Neither hash layout nor solver progress changes this order. Callbacks
  * return zero to continue and must not mutate work. Queue/value approximations
  * and the disposable constant-source lookup cache are not exported. */
 int pg_effect_inference_visit(const struct pg_effect_inference *work, void *context,
@@ -86,6 +91,8 @@ int pg_effect_handler_dependencies(struct pg_effect_inference *work,
 	const struct pg_effect_row *handled, struct pg_effect_equation *returned,
 	size_t count, struct pg_effect_equation *const *clauses);
 void pg_effect_inference_seal(struct pg_effect_inference *work);
+/* Wake parked consumers without a second scheduling/result owner. */
+void pg_effect_inference_fail(struct pg_effect_inference *work);
 /* -1 failure, 0 pending, 1 converged. One transition processes one edge or
  * one empty adjacency list. Row set operations are not wall-time bounded. */
 int pg_effect_inference_advance(struct pg_effect_inference *work, uint64_t budget);

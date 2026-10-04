@@ -1,4 +1,5 @@
 #include "action.h"
+#include "typed_query.h"
 #include <stdlib.h>
 
 static int boundary_argument(const struct pg_term **core, const struct pg_term *argument)
@@ -164,7 +165,7 @@ static const struct pg_evidence *selected_family(struct pg_typing *typing,
 		rs = pg_prove_substitution_compose(typing, rs, map);
 	}
 	const struct pg_evidence *result = term ? pg_prove_family_action(typing, type, term, ls, rs, count, paths)
-		: pg_prove_family_identity_type(typing, type, ls, rs, count, paths, left, right);
+		: pg_prove_family_identity_type(typing, type, ls, rs, count, (struct pg_evidence_inputs){.owner = paths}, left, right);
 	pg_graph_destroy(&temporary);
 	return result;
 }
@@ -239,64 +240,47 @@ static const struct pg_evidence *formation_from_origin(struct pg_typing *typing,
 	return selected_family(typing, pg_prove_structural_subject(typing, boundary.family), &boundary, map, left, right, NULL);
 }
 
-struct pg_identity_formation_work {
-	struct pg_typing *typing;
-	struct formation_origin origin;
-	const struct pg_evidence *result;
-	int failed;
-};
+static int formation_advance(struct pg_typed_query *query)
+{
+	struct pg_typing *typing = pg_typed_query_typing(query);
+	struct formation_origin *origin = pg_typed_query_state(query);
+	int status = formation_origin_step(typing, origin);
+	if (status > 0) {
+		query->result = formation_from_origin(typing, origin);
+		if (!query->result) return -1;
+	}
+	return status;
+}
 
-static int formation_initialize(struct pg_identity_formation_work *work, struct pg_typing *typing,
+static const struct pg_typed_query_class FORMATION[1] = {{
+	.pending = {&pg_typed_query_pending_ops},
+	.size = sizeof(struct formation_origin), .input_count = 1,
+	.advance = formation_advance}};
+
+struct pg_typed_query *pg_identity_formation_request(struct pg_typing *typing,
 	const struct pg_evidence *formation)
 {
-	if (!pg_evidence_owned_by(formation, typing)) return -1;
+	if (!pg_evidence_owned_by(formation, typing)) return NULL;
 	switch (pg_evidence_judgement(formation)) {
 	case PG_JUDGEMENT_VALUE_TYPE: case PG_JUDGEMENT_COMPUTATION_TYPE: break;
-	default: return -1;
+	default: return NULL;
 	}
-	*work = (struct pg_identity_formation_work){.typing = typing,
-		.origin = {.term = pg_evidence_subject(formation)}};
-	return 0;
-}
-
-struct pg_identity_formation_work *pg_identity_formation_init(struct pg_typing *typing,
-	const struct pg_evidence *formation)
-{
-	struct pg_identity_formation_work *work = malloc(sizeof(*work));
-	if (!work) return NULL;
-	if (formation_initialize(work, typing, formation) != 0) { free(work); return NULL; }
-	return work;
-}
-
-int pg_identity_formation_advance(struct pg_identity_formation_work *work, uint64_t fuel)
-{
-	if (!work || work->failed) return -1;
-	while (!work->result) {
-		if (!fuel--) return 0;
-		int status = formation_origin_step(work->typing, &work->origin);
-		if (status > 0) {
-			work->result = formation_from_origin(work->typing, &work->origin);
-			if (!work->result) status = -1;
-		}
-		if (status < 0) { work->failed = 1; return -1; }
+	const void *inputs[] = {formation};
+	int created = 0;
+	struct pg_typed_query *query = pg_typed_query_request(typing, FORMATION, 0, inputs, &created);
+	if (created) {
+		struct formation_origin *origin = pg_typed_query_state(query);
+		origin->term = pg_evidence_subject(formation);
 	}
-	return 1;
+	return query;
 }
-
-const struct pg_evidence *pg_identity_formation_result(const struct pg_identity_formation_work *work)
-{
-	return work && !work->failed ? work->result : NULL;
-}
-
-void pg_identity_formation_destroy(struct pg_identity_formation_work *work) { free(work); }
 
 const struct pg_evidence *pg_identity_formation(struct pg_typing *typing,
 	const struct pg_evidence *formation)
 {
-	struct pg_identity_formation_work work;
-	if (formation_initialize(&work, typing, formation) != 0) return NULL;
-	while (pg_identity_formation_advance(&work, UINT64_MAX) == 0) {}
-	return pg_identity_formation_result(&work);
+	struct pg_typed_query *query = pg_identity_formation_request(typing, formation);
+	while (pg_typed_query_advance(query, UINT64_MAX) == 0) {}
+	return pg_typed_query_result(query);
 }
 
 struct endpoint_frame {
@@ -305,52 +289,31 @@ struct endpoint_frame {
 	struct pg_identity_boundary boundary;
 };
 
-struct pg_identity_endpoint_work {
+struct endpoint_work {
 	struct pg_graph temporary;
-	struct pg_typing *typing;
-	const struct pg_evidence *context, *formation, *result;
-	struct formation_origin origin;
+	const struct pg_evidence *context, *formation, *value;
 	struct endpoint_frame *stack;
 	size_t depth;
-	enum pg_identity_direction side;
-	int failed;
 };
 
-struct pg_identity_endpoint_work *pg_identity_endpoint_init(struct pg_typing *typing,
-	const struct pg_evidence *context,
-	const struct pg_evidence *formation, size_t depth, enum pg_identity_direction side)
+static int endpoint_step(struct pg_typed_query *query)
 {
-	if (!pg_evidence_owned_by(context, typing)) return NULL;
-	if (pg_evidence_judgement(context) != PG_JUDGEMENT_CONTEXT) return NULL;
-	if (!pg_evidence_owned_by(formation, typing)) return NULL;
-	if (pg_evidence_judgement(formation) != PG_JUDGEMENT_VALUE_TYPE &&
-		pg_evidence_judgement(formation) != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
-	if (pg_evidence_context(context) != pg_evidence_context(formation)) return NULL;
-	if (side != PG_IDENTITY_LEFT && side != PG_IDENTITY_RIGHT) return NULL;
-	struct pg_identity_endpoint_work *work = calloc(1, sizeof(*work));
-	if (!work) return NULL;
-	work->typing = typing;
-	work->context = context;
-	work->formation = formation;
-	work->depth = depth;
-	work->side = side;
-	return work;
-}
-
-static int endpoint_step(struct pg_identity_endpoint_work *work)
-{
-	struct pg_typing *typing = work->typing;
-	if (!work->result) {
-		if (!work->origin.term) work->origin.term = pg_evidence_subject(work->formation);
-		int status = formation_origin_step(typing, &work->origin);
-		if (status <= 0) return status;
-		const struct pg_evidence *formation = formation_from_origin(typing, &work->origin);
-		work->origin = (struct formation_origin){0};
+	struct pg_typing *typing = pg_typed_query_typing(query);
+	struct endpoint_work *work = pg_typed_query_state(query);
+	if (!work->value) {
+		if (!query->dependency) query->dependency = pg_identity_formation_request(typing, work->formation);
+		if (!query->dependency) return -1;
+		if (!query->dependency->status) return 0;
+		const struct pg_evidence *formation = pg_typed_query_result(query->dependency);
+		query->dependency = NULL;
 		struct pg_identity_boundary boundary;
 		if (!formation || !pg_identity_boundary_view(pg_evidence_subject(formation), &boundary)) return -1;
 		if (!work->depth) {
-			work->result = pg_prove_structural_subject(typing, work->side == PG_IDENTITY_LEFT ? boundary.left : boundary.right);
-			return work->result ? 0 : -1;
+			enum pg_identity_direction side = *(const enum pg_identity_direction *)query->inputs[2];
+			work->value = pg_prove_structural_subject(typing, side == PG_IDENTITY_LEFT ? boundary.left : boundary.right);
+			if (!work->value) return -1;
+			if (!work->stack) { query->result = work->value; return 1; }
+			return 0;
 		}
 		if (boundary.family->judgement == PG_JUDGEMENT_VALUE) return -1;
 		struct endpoint_frame *frame = pg_alloc(&work->temporary, sizeof(*frame));
@@ -365,88 +328,81 @@ static int endpoint_step(struct pg_identity_endpoint_work *work)
 		return 0;
 	}
 	const struct endpoint_frame *frame = work->stack;
-	const struct pg_evidence *type = pg_prove_classifier(typing, work->context, work->result);
+	const struct pg_evidence *type = pg_prove_classifier(typing, work->context, work->value);
 	const struct pg_identity_boundary *boundary = &frame->boundary;
-	work->result = pg_identity_boundary_action(typing, boundary, type, work->result);
-	if (!work->result) return -1;
+	work->value = pg_identity_boundary_action(typing, boundary, type, work->value);
+	if (!work->value) return -1;
 	work->context = frame->context;
 	work->stack = frame->previous;
+	if (!work->stack) { query->result = work->value; return 1; }
 	return 0;
 }
 
-int pg_identity_endpoint_advance(struct pg_identity_endpoint_work *work, uint64_t fuel)
+static void endpoint_cleanup(struct pg_typed_query *query)
 {
-	if (!work || work->failed) return -1;
-	while (!work->result || work->stack) {
-		if (!fuel) return 0;
-		--fuel;
-		if (endpoint_step(work) < 0) { work->failed = 1; return -1; }
-	}
-	return 1;
-}
-
-const struct pg_evidence *pg_identity_endpoint_result(const struct pg_identity_endpoint_work *work)
-{
-	return work && !work->failed && !work->stack ? work->result : NULL;
-}
-
-void pg_identity_endpoint_destroy(struct pg_identity_endpoint_work *work)
-{
-	if (!work) return;
+	struct endpoint_work *work = pg_typed_query_state(query);
 	pg_graph_destroy(&work->temporary);
-	free(work);
+	work->stack = NULL;
+}
+
+static const struct pg_typed_query_class ENDPOINT[1] = {{
+	.pending = {&pg_typed_query_pending_ops}, .size = sizeof(struct endpoint_work),
+	.input_count = 3, .advance = endpoint_step, .destroy = endpoint_cleanup}};
+
+static int boundary_inputs(struct pg_typing *typing,
+	const struct pg_evidence *context, const struct pg_evidence *formation)
+{
+	if (!pg_evidence_owned_by(context, typing)) return 0;
+	if (pg_evidence_judgement(context) != PG_JUDGEMENT_CONTEXT) return 0;
+	if (!pg_evidence_owned_by(formation, typing)) return 0;
+	if (pg_evidence_context(context) != pg_evidence_context(formation)) return 0;
+	enum pg_evidence_judgement kind = pg_evidence_judgement(formation);
+	return kind == PG_JUDGEMENT_VALUE_TYPE || kind == PG_JUDGEMENT_COMPUTATION_TYPE;
+}
+
+struct pg_typed_query *pg_identity_endpoint_request(struct pg_typing *typing,
+	const struct pg_evidence *context, const struct pg_evidence *formation,
+	size_t depth, enum pg_identity_direction side)
+{
+	if (!boundary_inputs(typing, context, formation)) return NULL;
+	if (side != PG_IDENTITY_LEFT && side != PG_IDENTITY_RIGHT) return NULL;
+	static const enum pg_identity_direction directions[] = {PG_IDENTITY_RIGHT, PG_IDENTITY_LEFT};
+	const void *inputs[] = {context, formation, &directions[side]};
+	int created = 0;
+	struct pg_typed_query *query = pg_typed_query_request(typing, ENDPOINT, depth, inputs, &created);
+	if (created) {
+		struct endpoint_work *work = pg_typed_query_state(query);
+		work->context = context;
+		work->formation = formation;
+		work->depth = depth;
+	}
+	return query;
 }
 
 const struct pg_evidence *pg_identity_face_endpoint(struct pg_typing *typing,
 	const struct pg_evidence *context,
 	const struct pg_evidence *formation, size_t depth, enum pg_identity_direction side)
 {
-	struct pg_identity_endpoint_work *work = pg_identity_endpoint_init(typing, context, formation, depth, side);
-	while (pg_identity_endpoint_advance(work, UINT64_MAX) == 0) {}
-	const struct pg_evidence *result = pg_identity_endpoint_result(work);
-	pg_identity_endpoint_destroy(work);
-	return result;
+	struct pg_typed_query *query = pg_identity_endpoint_request(typing, context, formation, depth, side);
+	while (pg_typed_query_advance(query, UINT64_MAX) == 0) {}
+	return pg_typed_query_result(query);
 }
 
-struct pg_identity_face_work {
-	struct pg_typing *typing;
-	const struct pg_evidence *context, *formation, *layer, *result;
-	struct formation_origin origin;
-	const struct pg_dimension_map *face;
-	struct pg_identity_endpoint_work *endpoint;
+struct face_work {
+	const struct pg_evidence *formation, *layer;
 	size_t checked, axes, next, retained, remaining;
-	int failed;
 };
 
-struct pg_identity_face_work *pg_identity_face_init(struct pg_typing *typing,
-	const struct pg_evidence *context,
-	const struct pg_evidence *formation, const struct pg_dimension_map *face)
+static int face_step(struct pg_typed_query *query)
 {
-	if (!face || face->source >= face->target || !face->coordinates) return NULL;
-	if (!pg_evidence_owned_by(formation, typing)) return NULL;
-	if (pg_evidence_judgement(formation) != PG_JUDGEMENT_VALUE_TYPE &&
-		pg_evidence_judgement(formation) != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
-	if (!pg_evidence_owned_by(context, typing)) return NULL;
-	if (pg_evidence_judgement(context) != PG_JUDGEMENT_CONTEXT) return NULL;
-	if (pg_evidence_context(context) != pg_evidence_context(formation)) return NULL;
-	struct pg_identity_face_work *work = calloc(1, sizeof(*work));
-	if (!work) return NULL;
-	work->typing = typing;
-	work->context = context;
-	work->formation = work->layer = formation;
-	work->face = face;
-	work->next = face->target;
-	work->remaining = face->target - face->source;
-	return work;
-}
-
-static int face_step(struct pg_identity_face_work *work)
-{
-	const struct pg_dimension_map *face = work->face;
+	struct pg_typing *typing = pg_typed_query_typing(query);
+	const struct pg_evidence *context = query->inputs[0];
+	const struct pg_dimension_map *face = query->inputs[2];
+	struct face_work *work = pg_typed_query_state(query);
 	if (work->checked < face->target) {
-		if (!work->origin.term) work->origin.term = pg_evidence_subject(work->layer);
-		int status = formation_origin_step(work->typing, &work->origin);
-		if (status <= 0) return status;
+		if (!query->dependency) query->dependency = pg_identity_formation_request(typing, work->layer);
+		if (!query->dependency) return -1;
+		if (!query->dependency->status) return 0;
 		struct pg_coordinate coordinate = face->coordinates[work->checked];
 		switch (coordinate.kind) {
 		case PG_AXIS:
@@ -455,70 +411,65 @@ static int face_step(struct pg_identity_face_work *work)
 		case PG_ENDPOINT_ZERO: case PG_ENDPOINT_ONE: break;
 		default: return -1;
 		}
-		const struct pg_evidence *layer = formation_from_origin(work->typing, &work->origin);
-		work->origin = (struct formation_origin){0};
+		const struct pg_evidence *layer = pg_typed_query_result(query->dependency);
+		query->dependency = NULL;
 		struct pg_identity_boundary boundary;
 		if (!layer || !pg_identity_boundary_view(pg_evidence_subject(layer), &boundary)) return -1;
 		if (!work->checked) work->formation = layer;
-		work->layer = pg_prove_structural_subject(work->typing, boundary.family);
+		work->layer = pg_prove_structural_subject(typing, boundary.family);
 		if (!work->layer) return -1;
 		++work->checked;
 		return 0;
 	}
 	if (work->axes != face->source) return -1;
-	if (!work->endpoint) {
+	if (!query->dependency) {
 		if (!work->next) return -1;
 		enum pg_coordinate_kind kind = face->coordinates[--work->next].kind;
 		if (kind == PG_AXIS) { ++work->retained; return 0; }
-		work->endpoint = pg_identity_endpoint_init(work->typing,
-			work->context, work->formation, work->retained,
+		query->dependency = pg_identity_endpoint_request(typing,
+			context, work->formation, work->retained,
 			kind == PG_ENDPOINT_ZERO ? PG_IDENTITY_LEFT : PG_IDENTITY_RIGHT);
-		if (!work->endpoint) return -1;
+		if (!query->dependency) return -1;
 		return 0;
 	}
-	int status = pg_identity_endpoint_advance(work->endpoint, 1);
-	if (status <= 0) return status;
-	const struct pg_evidence *result = pg_identity_endpoint_result(work->endpoint);
-	pg_identity_endpoint_destroy(work->endpoint);
-	work->endpoint = NULL;
-	if (!--work->remaining) { work->result = result; return 1; }
-	work->formation = pg_prove_classifier(work->typing, work->context, result);
+	if (!query->dependency->status) return 0;
+	const struct pg_evidence *result = pg_typed_query_result(query->dependency);
+	query->dependency = NULL;
+	if (!result) return -1;
+	if (!--work->remaining) { query->result = result; return 1; }
+	work->formation = pg_prove_classifier(typing, context, result);
 	return work->formation ? 0 : -1;
 }
 
-int pg_identity_face_advance(struct pg_identity_face_work *work, uint64_t fuel)
+static const struct pg_typed_query_class FACE[1] = {{
+	.pending = {&pg_typed_query_pending_ops}, .size = sizeof(struct face_work),
+	.input_count = 3, .advance = face_step}};
+
+struct pg_typed_query *pg_identity_face_request(struct pg_typing *typing,
+	const struct pg_evidence *context, const struct pg_evidence *formation,
+	const struct pg_dimension_map *face)
 {
-	if (!work || work->failed) return -1;
-	if (work->result) return 1;
-	while (fuel--) {
-		int status = face_step(work);
-		if (status < 0) work->failed = 1;
-		if (status) return status;
+	if (!face || face->source >= face->target || !face->coordinates) return NULL;
+	if (!boundary_inputs(typing, context, formation)) return NULL;
+	const void *inputs[] = {context, formation, face};
+	int created = 0;
+	struct pg_typed_query *query = pg_typed_query_request(typing, FACE, 0, inputs, &created);
+	if (created) {
+		struct face_work *work = pg_typed_query_state(query);
+		work->formation = work->layer = formation;
+		work->next = face->target;
+		work->remaining = face->target - face->source;
 	}
-	return 0;
-}
-
-const struct pg_evidence *pg_identity_face_result(const struct pg_identity_face_work *work)
-{
-	return work && !work->failed ? work->result : NULL;
-}
-
-void pg_identity_face_destroy(struct pg_identity_face_work *work)
-{
-	if (!work) return;
-	pg_identity_endpoint_destroy(work->endpoint);
-	free(work);
+	return query;
 }
 
 const struct pg_evidence *pg_identity_proper_face(struct pg_typing *typing,
 	const struct pg_evidence *context,
 	const struct pg_evidence *formation, const struct pg_dimension_map *face)
 {
-	struct pg_identity_face_work *work = pg_identity_face_init(typing, context, formation, face);
-	while (pg_identity_face_advance(work, UINT64_MAX) == 0) {}
-	const struct pg_evidence *result = pg_identity_face_result(work);
-	pg_identity_face_destroy(work);
-	return result;
+	struct pg_typed_query *query = pg_identity_face_request(typing, context, formation, face);
+	while (pg_typed_query_advance(query, UINT64_MAX) == 0) {}
+	return pg_typed_query_result(query);
 }
 
 const struct pg_evidence *pg_identity_context_extend(struct pg_typing *typing,
@@ -563,7 +514,7 @@ const struct pg_evidence *pg_identity_family_pi_type(struct pg_typing *typing,
 	const struct pg_object *x0, const struct pg_object *x1, const struct pg_object *path)
 {
 	if (!pg_prove_family_identity_type(typing, pi, left_substitution, right_substitution,
-		count, paths, left, right)) return NULL;
+		count, (struct pg_evidence_inputs){.owner = paths}, left, right)) return NULL;
 	const struct pg_evidence *domain = pg_prove_pi_domain(typing, pi);
 	if (!domain || count >= SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
 	struct pg_graph temporary = {0};
@@ -582,7 +533,7 @@ const struct pg_evidence *pg_identity_family_pi_type(struct pg_typing *typing,
 	const struct pg_evidence *rs = pg_prove_substitution_compose(typing, right_substitution, prefix);
 	for (size_t i = 0; i < count; ++i) centers[i] = pg_prove_projection(typing, boundary, paths[i]);
 	const struct pg_evidence *center_type = pg_prove_family_identity_type(typing, domain, ls, rs,
-		count, centers, pg_prove_variable(typing, boundary, x0), pg_prove_variable(typing, boundary, x1));
+		count, (struct pg_evidence_inputs){.owner = centers}, pg_prove_variable(typing, boundary, x0), pg_prove_variable(typing, boundary, x1));
 	boundary = pg_prove_context_extension(typing, boundary, path, center_type);
 	if (!boundary) goto done;
 	const struct pg_term *a, *c;
@@ -601,7 +552,7 @@ const struct pg_evidence *pg_identity_family_pi_type(struct pg_typing *typing,
 		pg_prove_substitution_compose(typing, left_substitution, prefix), source, l);
 	rs = pg_prove_substitution_pair(typing,
 		pg_prove_substitution_compose(typing, right_substitution, prefix), source, r);
-	body = pg_prove_family_identity_type(typing, codomain, ls, rs, count + 1, centers,
+	body = pg_prove_family_identity_type(typing, codomain, ls, rs, count + 1, (struct pg_evidence_inputs){.owner = centers},
 		pg_prove_application(typing, pg_prove_projection(typing, boundary, left), l),
 		pg_prove_application(typing, pg_prove_projection(typing, boundary, right), r));
 	for (size_t i = 0; body && i < 3; ++i) {
@@ -665,19 +616,19 @@ const struct pg_evidence *pg_identity_context(struct pg_typing *typing,
 		if (!context) goto done;
 		project_paths(typing, context, i, centers_proof);
 		const struct pg_evidence *prefix = pg_context_parent_input(typing, extensions[i]);
-		ls = pg_prove_substitution_extension(typing, prefix, context, ls, 0, NULL);
-		rs = pg_prove_substitution_extension(typing, prefix, context, rs, 0, NULL);
+		ls = pg_prove_substitution_extension(typing, prefix, context, ls, 0, (struct pg_evidence_inputs){.owner = NULL});
+		rs = pg_prove_substitution_extension(typing, prefix, context, rs, 0, (struct pg_evidence_inputs){.owner = NULL});
 		const struct pg_evidence *l = pg_prove_variable(typing, context, binders[0]);
 		const struct pg_evidence *r = pg_prove_variable(typing, context, binders[1]);
-		const struct pg_evidence *center_type = pg_prove_family_identity_type(typing, type, ls, rs, i, centers_proof, l, r);
+		const struct pg_evidence *center_type = pg_prove_family_identity_type(typing, type, ls, rs, i, (struct pg_evidence_inputs){.owner = centers_proof}, l, r);
 		context = pg_prove_context_extension(typing, context, binders[2], center_type);
 		if (!context) goto done;
 		project_paths(typing, context, i, centers_proof);
 		l = pg_prove_variable(typing, context, binders[0]);
 		r = pg_prove_variable(typing, context, binders[1]);
 		centers_proof[i] = pg_prove_variable(typing, context, binders[2]);
-		ls = pg_prove_substitution_extension(typing, extensions[i], context, ls, 1, &l);
-		rs = pg_prove_substitution_extension(typing, extensions[i], context, rs, 1, &r);
+		ls = pg_prove_substitution_extension(typing, extensions[i], context, ls, 1, (struct pg_evidence_inputs){.owner = &l});
+		rs = pg_prove_substitution_extension(typing, extensions[i], context, rs, 1, (struct pg_evidence_inputs){.owner = &r});
 		if (!ls || !rs) goto done;
 	}
 	*left = ls;
@@ -725,7 +676,7 @@ const struct pg_evidence *pg_identity_substitution_context(struct pg_typing *typ
 		const struct pg_evidence *l = pg_prove_projection(typing, context, pg_substitution_image_at(typing, left, common + i));
 		const struct pg_evidence *r = pg_prove_projection(typing, context, pg_substitution_image_at(typing, right, common + i));
 		const struct pg_evidence *type = pg_prove_family_identity_type(typing,
-			pg_context_declared_input(typing, extensions[i]), ls, rs, i, centers, l, r);
+			pg_context_declared_input(typing, extensions[i]), ls, rs, i, (struct pg_evidence_inputs){.owner = centers}, l, r);
 		context = pg_prove_context_extension(typing, context, binders[i], type);
 		if (!context) goto done;
 		project_paths(typing, context, i, centers);
@@ -734,8 +685,8 @@ const struct pg_evidence *pg_identity_substitution_context(struct pg_typing *typ
 		if (i + 1 < count) {
 			l = pg_prove_projection(typing, context, l);
 			r = pg_prove_projection(typing, context, r);
-			ls = pg_prove_substitution_extension(typing, extensions[i], context, ls, 1, &l);
-			rs = pg_prove_substitution_extension(typing, extensions[i], context, rs, 1, &r);
+			ls = pg_prove_substitution_extension(typing, extensions[i], context, ls, 1, (struct pg_evidence_inputs){.owner = &l});
+			rs = pg_prove_substitution_extension(typing, extensions[i], context, rs, 1, (struct pg_evidence_inputs){.owner = &r});
 		}
 	}
 	for (size_t i = 0; i < count; ++i) paths[i] = centers[i];

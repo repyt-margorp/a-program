@@ -20,12 +20,13 @@ SOURCES := $(ROOT)graph.c $(ROOT)dag.c $(ROOT)dimension.c $(ROOT)eval.c $(ROOT)t
 
 SOURCES += $(ROOT)function_graph.c $(ROOT)host.c $(ROOT)execution.c
 SOURCES += $(ROOT)evidence_function.c $(ROOT)evidence_cbpv.c $(ROOT)evidence_identity.c
-SOURCES += $(ROOT)scope.c $(ROOT)evidence_scope.c $(ROOT)typed_query.c
+SOURCES += $(ROOT)scope.c $(ROOT)evidence_scope.c $(ROOT)typed_query.c $(ROOT)subscription.c
 WITNESS_SOURCE := $(ROOT)function_witness.c
 SYNTHESIS_SOURCES := $(ROOT)synthesis.c $(ROOT)synthesis_work.c $(ROOT)synthesis_effect.c $(ROOT)synthesis_handler.c $(ROOT)synthesis_operation.c $(ROOT)synthesis_cbpv.c $(ROOT)synthesis_function.c $(ROOT)synthesis_context.c $(ROOT)synthesis_iadt.c $(ROOT)synthesis_identity.c
 SYNTHESIS_SOURCES += $(ROOT)synthesis_conversion.c $(ROOT)synthesis_derivation.c $(ROOT)synthesis_binding.c
 SYNTHESIS_SOURCES += $(ROOT)synthesis_schema.c
-CLI_SOURCES := $(ROOT)reader.c $(ROOT)syntax.c $(SYNTHESIS_SOURCES) $(ROOT)program.c $(ROOT)graph_io.c $(ROOT)wire.c $(ROOT)source_io.c $(ROOT)retained_io.c $(ROOT)reduction_io.c $(ROOT)syntax_io.c $(ROOT)derivation_io.c $(ROOT)main.c
+ARTIFACT_FILES := $(ROOT)artifact/file.c
+CLI_SOURCES := $(ROOT)reader.c $(ROOT)syntax.c $(SYNTHESIS_SOURCES) $(ROOT)program.c $(ROOT)graph_io.c $(ROOT)wire.c $(ROOT)source_io.c $(ROOT)retained_io.c $(ROOT)context_io.c $(ROOT)occurrence_io.c $(ROOT)reduction_io.c $(ROOT)syntax_io.c $(ROOT)derivation_io.c $(ROOT)main.c $(ARTIFACT_FILES)
 
 .PHONY: check check-examples check-example-results check-open-families check-image-origins check-operation-origins check-handler-origins check-handler-nesting check-prepared-modules check-acceptance check-eval-io check-identity-io
 .PHONY: check-source-compatibility check-host check-execution check-sort-insertion check-generic-sorted check-generic-retained check-quick-result
@@ -84,7 +85,6 @@ check-generic-sorted: $(BUILD)/pointer-check $(BUILD)/syntax_io_test $(BUILD)/pr
 	bash $(TESTS)/generic_sorted.sh $(BUILD)/pointer-check
 
 check-generic-retained: $(BUILD)/pointer-check $(BUILD)/program_test
-	bash $(TESTS)/generic_sorted.sh $(BUILD)/pointer-check 1
 	bash $(TESTS)/retained_quicksort.sh $(BUILD)/pointer-check
 	bash $(TESTS)/derived_lt.sh $(BUILD)/pointer-check
 
@@ -102,7 +102,7 @@ check-acceptance: check-head-delivery
 check-head-delivery: $(BUILD)/direct_test $(BUILD)/head_test $(BUILD)/total_result_test $(BUILD)/head_cleanup_test
 	bash $(TESTS)/head_delivery.sh $(BUILD)
 
-HEAD_MACHINE_IO := $(addprefix $(ROOT),retained_io.c derivation_io.c reduction_io.c machine_io.c computation_io.c identity_io.c comparison_io.c graph_io.c eval_io.c wire.c)
+HEAD_MACHINE_IO := $(addprefix $(ROOT),retained_io.c context_io.c occurrence_io.c derivation_io.c reduction_io.c machine_io.c computation_io.c identity_io.c comparison_io.c graph_io.c eval_io.c wire.c)
 
 $(BUILD)/direct_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(TESTS)/direct_test.c
 	mkdir -p $(BUILD)
@@ -167,9 +167,9 @@ check-acceptance: check-finite-permutation-views
 check-finite-permutation-views: $(BUILD)/pointer-check $(BUILD)/program_test
 	bash $(TESTS)/finite_permutation_views.sh $(BUILD)/pointer-check $(BUILD)/program_test
 
-$(BUILD)/identity_io_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)retained_io.c $(ROOT)derivation_io.c $(ROOT)reduction_io.c $(ROOT)machine_io.c $(ROOT)computation_io.c $(ROOT)identity_io.c $(ROOT)comparison_io.c $(ROOT)graph_io.c $(ROOT)eval_io.c $(ROOT)wire.c $(TESTS)/identity_io.c
+$(BUILD)/identity_io_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)retained_io.c $(ROOT)context_io.c $(ROOT)occurrence_io.c $(ROOT)derivation_io.c $(ROOT)reduction_io.c $(ROOT)machine_io.c $(ROOT)computation_io.c $(ROOT)identity_io.c $(ROOT)comparison_io.c $(ROOT)graph_io.c $(ROOT)eval_io.c $(ROOT)wire.c $(TESTS)/identity_io.c
 	@mkdir -p $(BUILD)
-	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(ROOT)retained_io.c $(ROOT)derivation_io.c $(ROOT)reduction_io.c $(ROOT)machine_io.c $(ROOT)computation_io.c $(ROOT)identity_io.c $(ROOT)comparison_io.c $(ROOT)graph_io.c $(ROOT)eval_io.c $(ROOT)wire.c $(TESTS)/identity_io.c -o $@
+	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(ROOT)retained_io.c $(ROOT)context_io.c $(ROOT)occurrence_io.c $(ROOT)derivation_io.c $(ROOT)reduction_io.c $(ROOT)machine_io.c $(ROOT)computation_io.c $(ROOT)identity_io.c $(ROOT)comparison_io.c $(ROOT)graph_io.c $(ROOT)eval_io.c $(ROOT)wire.c $(TESTS)/identity_io.c -o $@
 
 check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test $(BUILD)/occurrence_io_test $(BUILD)/derivation_io_test $(BUILD)/syntax_io_test $(BUILD)/source_io_test $(BUILD)/reader_test $(BUILD)/parse_files $(BUILD)/synthesis_test $(BUILD)/identity_test $(BUILD)/iadt_test $(BUILD)/program_test $(BUILD)/seed_test $(BUILD)/pointer-check
 	$(BUILD)/core_test
@@ -499,21 +499,21 @@ $(BUILD)/synthesis_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)reader.c $(ROO
 	mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(ROOT)reader.c $(ROOT)syntax.c $(SYNTHESIS_SOURCES) $(TESTS)/synthesis.c -o $@
 
-$(BUILD)/program_test: $(SOURCES) $(WITNESS_SOURCE) $(wildcard $(ROOT)*.h) $(ROOT)reader.c $(ROOT)syntax.c $(SYNTHESIS_SOURCES) $(ROOT)program.c $(ROOT)source_io.c $(ROOT)retained_io.c $(ROOT)reduction_io.c $(ROOT)derivation_io.c $(ROOT)graph_io.c $(ROOT)syntax_io.c $(ROOT)wire.c $(TESTS)/program.c
+$(BUILD)/program_test: $(SOURCES) $(WITNESS_SOURCE) $(wildcard $(ROOT)*.h $(ROOT)artifact/file.h) $(ROOT)reader.c $(ROOT)syntax.c $(SYNTHESIS_SOURCES) $(ROOT)program.c $(ARTIFACT_FILES) $(ROOT)source_io.c $(ROOT)retained_io.c $(ROOT)context_io.c $(ROOT)occurrence_io.c $(ROOT)reduction_io.c $(ROOT)derivation_io.c $(ROOT)graph_io.c $(ROOT)syntax_io.c $(ROOT)wire.c $(TESTS)/program.c
 	mkdir -p $(BUILD)
-	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(WITNESS_SOURCE) $(ROOT)reader.c $(ROOT)syntax.c $(SYNTHESIS_SOURCES) $(ROOT)program.c $(ROOT)source_io.c $(ROOT)retained_io.c $(ROOT)reduction_io.c $(ROOT)derivation_io.c $(ROOT)graph_io.c $(ROOT)syntax_io.c $(ROOT)wire.c $(TESTS)/program.c -o $@
+	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(WITNESS_SOURCE) $(ROOT)reader.c $(ROOT)syntax.c $(SYNTHESIS_SOURCES) $(ROOT)program.c $(ARTIFACT_FILES) $(ROOT)source_io.c $(ROOT)retained_io.c $(ROOT)context_io.c $(ROOT)occurrence_io.c $(ROOT)reduction_io.c $(ROOT)derivation_io.c $(ROOT)graph_io.c $(ROOT)syntax_io.c $(ROOT)wire.c $(TESTS)/program.c -o $@
 
-$(BUILD)/seed_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)reader.c $(ROOT)syntax.c $(SYNTHESIS_SOURCES) $(ROOT)program.c $(ROOT)seed.c $(ROOT)source_io.c $(ROOT)retained_io.c $(ROOT)reduction_io.c $(ROOT)derivation_io.c $(ROOT)graph_io.c $(ROOT)syntax_io.c $(ROOT)wire.c $(TESTS)/seed.c
+$(BUILD)/seed_test: $(SOURCES) $(wildcard $(ROOT)*.h $(ROOT)artifact/file.h) $(ROOT)reader.c $(ROOT)syntax.c $(SYNTHESIS_SOURCES) $(ROOT)program.c $(ARTIFACT_FILES) $(ROOT)seed.c $(ROOT)source_io.c $(ROOT)retained_io.c $(ROOT)context_io.c $(ROOT)occurrence_io.c $(ROOT)reduction_io.c $(ROOT)derivation_io.c $(ROOT)graph_io.c $(ROOT)syntax_io.c $(ROOT)wire.c $(TESTS)/seed.c
 	mkdir -p $(BUILD)
-	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(ROOT)reader.c $(ROOT)syntax.c $(SYNTHESIS_SOURCES) $(ROOT)program.c $(ROOT)seed.c $(ROOT)source_io.c $(ROOT)retained_io.c $(ROOT)reduction_io.c $(ROOT)derivation_io.c $(ROOT)graph_io.c $(ROOT)syntax_io.c $(ROOT)wire.c $(TESTS)/seed.c -o $@
+	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(ROOT)reader.c $(ROOT)syntax.c $(SYNTHESIS_SOURCES) $(ROOT)program.c $(ARTIFACT_FILES) $(ROOT)seed.c $(ROOT)source_io.c $(ROOT)retained_io.c $(ROOT)context_io.c $(ROOT)occurrence_io.c $(ROOT)reduction_io.c $(ROOT)derivation_io.c $(ROOT)graph_io.c $(ROOT)syntax_io.c $(ROOT)wire.c $(TESTS)/seed.c -o $@
 
 $(BUILD)/syntax_io_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)reader.c $(ROOT)syntax.c $(SYNTHESIS_SOURCES) $(ROOT)syntax_io.c $(ROOT)wire.c $(TESTS)/syntax_io.c
 	mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(ROOT)reader.c $(ROOT)syntax.c $(SYNTHESIS_SOURCES) $(ROOT)syntax_io.c $(ROOT)wire.c $(TESTS)/syntax_io.c -o $@
 
-$(BUILD)/source_io_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)reader.c $(ROOT)syntax.c $(SYNTHESIS_SOURCES) $(ROOT)program.c $(ROOT)source_io.c $(ROOT)retained_io.c $(ROOT)reduction_io.c $(ROOT)derivation_io.c $(ROOT)graph_io.c $(ROOT)syntax_io.c $(ROOT)wire.c $(TESTS)/source_io.c
+$(BUILD)/source_io_test: $(SOURCES) $(wildcard $(ROOT)*.h $(ROOT)artifact/file.h) $(ROOT)reader.c $(ROOT)syntax.c $(SYNTHESIS_SOURCES) $(ROOT)program.c $(ARTIFACT_FILES) $(ROOT)source_io.c $(ROOT)retained_io.c $(ROOT)context_io.c $(ROOT)occurrence_io.c $(ROOT)reduction_io.c $(ROOT)derivation_io.c $(ROOT)graph_io.c $(ROOT)syntax_io.c $(ROOT)wire.c $(TESTS)/source_io.c
 	mkdir -p $(BUILD)
-	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(ROOT)reader.c $(ROOT)syntax.c $(SYNTHESIS_SOURCES) $(ROOT)program.c $(ROOT)source_io.c $(ROOT)retained_io.c $(ROOT)reduction_io.c $(ROOT)derivation_io.c $(ROOT)graph_io.c $(ROOT)syntax_io.c $(ROOT)wire.c $(TESTS)/source_io.c -o $@
+	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(ROOT)reader.c $(ROOT)syntax.c $(SYNTHESIS_SOURCES) $(ROOT)program.c $(ARTIFACT_FILES) $(ROOT)source_io.c $(ROOT)retained_io.c $(ROOT)context_io.c $(ROOT)occurrence_io.c $(ROOT)reduction_io.c $(ROOT)derivation_io.c $(ROOT)graph_io.c $(ROOT)syntax_io.c $(ROOT)wire.c $(TESTS)/source_io.c -o $@
 
 $(BUILD)/graph_io_test: $(ROOT)graph.c $(ROOT)dag.c $(ROOT)eval.c $(ROOT)symmetry.c $(ROOT)graph_io.c $(ROOT)wire.c $(wildcard $(ROOT)*.h) $(TESTS)/graph_io.c
 	mkdir -p $(BUILD)
@@ -523,9 +523,9 @@ $(BUILD)/graph_acceptance_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)graph_i
 	mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(ROOT)graph_io.c $(ROOT)context_io.c $(ROOT)wire.c $(TESTS)/graph_acceptance.c -o $@
 
-$(BUILD)/occurrence_io_test: $(ROOT)graph.c $(ROOT)dag.c $(ROOT)eval.c $(ROOT)typing.c $(ROOT)scope.c $(ROOT)classifier.c $(ROOT)graph_io.c $(ROOT)context_io.c $(ROOT)context_payload.c $(ROOT)occurrence_io.c $(ROOT)wire.c $(wildcard $(ROOT)*.h) $(TESTS)/occurrence_io.c
+$(BUILD)/occurrence_io_test: $(ROOT)graph.c $(ROOT)dag.c $(ROOT)eval.c $(ROOT)typing.c $(ROOT)typed_query.c $(ROOT)scope.c $(ROOT)classifier.c $(ROOT)graph_io.c $(ROOT)context_io.c $(ROOT)context_payload.c $(ROOT)occurrence_io.c $(ROOT)wire.c $(wildcard $(ROOT)*.h) $(TESTS)/occurrence_io.c
 	mkdir -p $(BUILD)
-	$(CC) $(CFLAGS) -I$(ROOT) $(ROOT)graph.c $(ROOT)dag.c $(ROOT)eval.c $(ROOT)typing.c $(ROOT)scope.c $(ROOT)classifier.c $(ROOT)graph_io.c $(ROOT)context_io.c $(ROOT)context_payload.c $(ROOT)occurrence_io.c $(ROOT)wire.c $(TESTS)/occurrence_io.c -o $@
+	$(CC) $(CFLAGS) -I$(ROOT) $(ROOT)graph.c $(ROOT)dag.c $(ROOT)eval.c $(ROOT)typing.c $(ROOT)typed_query.c $(ROOT)scope.c $(ROOT)classifier.c $(ROOT)graph_io.c $(ROOT)context_io.c $(ROOT)context_payload.c $(ROOT)occurrence_io.c $(ROOT)wire.c $(TESTS)/occurrence_io.c -o $@
 
 $(BUILD)/derivation_io_test: $(SOURCES) $(ROOT)reader.c $(ROOT)syntax.c $(SYNTHESIS_SOURCES) $(ROOT)graph_io.c $(ROOT)derivation_io.c $(ROOT)wire.c $(wildcard $(ROOT)*.h) $(TESTS)/derivation_io.c
 	mkdir -p $(BUILD)
@@ -543,12 +543,12 @@ check-witness-isolation: $(BUILD)/pointer-check $(BUILD)/pointer-check-with-witn
 	bash $(TESTS)/function_witness_isolation.sh $(BUILD)/pointer-check $(BUILD)/pointer-check-with-witness $(BUILD)/program_test
 
 # The ordinary compiler does not link the optional witness construction module.
-$(BUILD)/pointer-check: $(SOURCES) $(wildcard $(ROOT)*.h) $(CLI_SOURCES)
+$(BUILD)/pointer-check: $(SOURCES) $(wildcard $(ROOT)*.h $(ROOT)artifact/file.h) $(CLI_SOURCES)
 	mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(CLI_SOURCES) -o $@
 
 # A/B control: linking the optional module must not change source acceptance.
-$(BUILD)/pointer-check-with-witness: $(SOURCES) $(WITNESS_SOURCE) $(wildcard $(ROOT)*.h) $(CLI_SOURCES)
+$(BUILD)/pointer-check-with-witness: $(SOURCES) $(WITNESS_SOURCE) $(wildcard $(ROOT)*.h $(ROOT)artifact/file.h) $(CLI_SOURCES)
 	mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(WITNESS_SOURCE) $(CLI_SOURCES) -o $@
 

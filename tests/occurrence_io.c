@@ -135,7 +135,7 @@ static void write_input(FILE *file, struct pg_typing *typing)
 	assert(pg_occurrences_read(other, typing, 0, 0, NULL, NULL, &count, &loaded) == 0 && count == 0);
 	assert(fclose(other) == 0);
 	other = tmpfile();
-	assert(other && fwrite("APGOCC7", 1, 8, other) == 8);
+	assert(other && fwrite("APGOCC8", 1, 8, other) == 8);
 	assert(!pg_wire_write_u64(other, 1) && !pg_wire_write_u64(other, 1));
 	assert(fputc(0, other) != EOF && fputc(PG_JUDGEMENT_INPUT, other) != EOF);
 	assert(!pg_wire_write_u64(other, 1) && !pg_wire_write_u64(other, 1));
@@ -256,7 +256,7 @@ static void read_input(FILE *file, struct pg_typing *typing)
 	assert(roots[4]->map->source == roots[4]->origin->context);
 	assert(roots[4]->map->destination == roots[4]->context);
 	assert(roots[4]->map->count == 1 && roots[4]->map->images[0] == roots[1]->operands[0]);
-	assert(pg_context_map_bindings(roots[4]->map)[0].binder == roots[4]->origin->context->binder);
+	assert(pg_binding_input(pg_context_map_bindings(roots[4]->map), 0).binder == roots[4]->origin->context->binder);
 	assert(roots[8]->origin == roots[0]->operands[0]);
 	assert(roots[8]->classifier != roots[8]->map->images[0]->classifier);
 	struct pg_occurrence_input *input = pg_occurrence_input_request(typing, roots[8], 0);

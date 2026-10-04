@@ -5,8 +5,8 @@
 
 #include <string.h>
 
-static const char magic[8] = "APGOCC7";
-static const char scoped_magic[8] = "APGSCP1";
+static const char magic[8] = "APGOCC8";
+static const char scoped_magic[8] = "APGSCP2";
 
 static int scope_operand(void *unused, const void *key, size_t index, const void **child)
 {
@@ -54,7 +54,7 @@ static int operand(void *unused, const void *key, size_t index, const void **chi
 
 static int write_dag(FILE *file, size_t count, const struct pg_occurrence *const *roots,
 	int scoped, const struct pg_scope *const *scopes,
-	const char *(*name)(void *, const struct pg_object *), void *owner)
+	const struct pg_graph_codec *codec, void *owner)
 {
 	if (!file || (count && !roots)) return -1;
 	struct pg_graph arena = {0};
@@ -76,22 +76,26 @@ static int write_dag(FILE *file, size_t count, const struct pg_occurrence *const
 	if (size > SIZE_MAX / sizeof(void *) / 3) goto done;
 	if (scope_dag.count > SIZE_MAX / sizeof(void *) - context_count) goto done;
 	context_count += scope_dag.count;
-	size_t term_count = 3 * size;
+	size_t term_count = size, induction_terms = 0;
 	for (const struct pg_dag_node *r = dag.first; r; r = r->next) {
 		const struct pg_occurrence *o = r->key;
+		term_count += (o->annotation != NULL) + (o->classifier != NULL);
 		if (o->map_count > SIZE_MAX / sizeof(void *) - context_count) goto done;
 		context_count += o->map_count;
 		if (o->induction) {
 			if (o->induction->count > SIZE_MAX / sizeof(void *) - context_count) goto done;
-			if (term_count > SIZE_MAX / sizeof(void *) - 3) goto done;
+			if (induction_terms > SIZE_MAX / sizeof(void *) - 3) goto done;
 			context_count += o->induction->count;
-			term_count += 3;
+			induction_terms += 3;
 		}
 	}
+	size_t header_terms = term_count;
+	if (induction_terms > SIZE_MAX / sizeof(void *) - term_count) goto done;
+	term_count += induction_terms;
 	const struct pg_context **contexts = pg_alloc(&arena, context_count * sizeof(*contexts));
 	const struct pg_term **terms = pg_alloc(&arena, term_count * sizeof(*terms));
 	if (!contexts || !terms) goto done;
-	size_t next_context = size + scope_dag.count, next_term = 3 * size;
+	size_t next_context = size + scope_dag.count, next_header = 0, next_term = header_terms;
 	if (fwrite(scoped ? scoped_magic : magic, 1, 8, file) != 8 || pg_wire_write_u64(file, size) || pg_wire_write_u64(file, count)) goto done;
 	if (scoped) {
 		if (pg_wire_write_u64(file, scope_dag.count)) goto done;
@@ -112,9 +116,9 @@ static int write_dag(FILE *file, size_t count, const struct pg_occurrence *const
 	for (const struct pg_dag_node *r = dag.first; r; r = r->next) {
 		const struct pg_occurrence *o = r->key;
 		contexts[r->id - 1] = o->context;
-		terms[3 * (r->id - 1)] = o->core;
-		terms[3 * (r->id - 1) + 1] = o->annotation ? o->annotation : o->core;
-		terms[3 * (r->id - 1) + 2] = o->classifier ? o->classifier : o->core;
+		terms[next_header++] = o->core;
+		if (o->annotation) terms[next_header++] = o->annotation;
+		if (o->classifier) terms[next_header++] = o->classifier;
 		int flags = (o->annotation != NULL) | ((o->classifier != NULL) << 1) |
 			((o->map != NULL) << 2) | ((o->origin && !o->map) << 3) | ((o->type != NULL) << 4) |
 			((o->induction != NULL) << 5);
@@ -149,7 +153,7 @@ static int write_dag(FILE *file, size_t count, const struct pg_occurrence *const
 		const struct pg_dag_node *r = pg_dag_find(&dag, roots[i]);
 		if (!r || pg_wire_write_u64(file, r->id)) goto done;
 	}
-	status = pg_contexts_write(file, context_count, contexts, term_count, terms, name, owner);
+	status = pg_contexts_write_descriptors(file, context_count, contexts, term_count, terms, codec, owner);
 done:
 	pg_dag_destroy(&scope_dag);
 	pg_dag_destroy(&dag);
@@ -160,14 +164,29 @@ done:
 int pg_occurrences_write(FILE *file, size_t count, const struct pg_occurrence *const *roots,
 	const char *(*name)(void *, const struct pg_object *), void *owner)
 {
-	return write_dag(file, count, roots, 0, NULL, name, owner);
+	const struct pg_graph_codec codec = {.name = name};
+	return pg_occurrences_write_descriptors(file, count, roots, &codec, owner);
+}
+
+int pg_occurrences_write_descriptors(FILE *file, size_t count, const struct pg_occurrence *const *roots,
+	const struct pg_graph_codec *codec, void *owner)
+{
+	return write_dag(file, count, roots, 0, NULL, codec, owner);
 }
 
 int pg_scoped_occurrences_write(FILE *file, size_t count,
 	const struct pg_scope *const *scopes, const struct pg_occurrence *const *roots,
 	const char *(*name)(void *, const struct pg_object *), void *owner)
 {
-	return write_dag(file, count, roots, 1, scopes, name, owner);
+	const struct pg_graph_codec codec = {.name = name};
+	return pg_scoped_occurrences_write_descriptors(file, count, scopes, roots, &codec, owner);
+}
+
+int pg_scoped_occurrences_write_descriptors(FILE *file, size_t count,
+	const struct pg_scope *const *scopes, const struct pg_occurrence *const *roots,
+	const struct pg_graph_codec *codec, void *owner)
+{
+	return write_dag(file, count, roots, 1, scopes, codec, owner);
 }
 
 struct input {
@@ -179,7 +198,7 @@ struct input {
 };
 
 static int read_dag(FILE *file, struct pg_typing *typing, size_t limit, size_t name_limit,
-	const struct pg_object *(*resolve)(void *, const char *), void *owner,
+	const struct pg_graph_codec *codec, void *owner,
 	size_t *count, const struct pg_scope *const **scopes, const struct pg_occurrence *const **roots, struct pg_graph *scratch)
 {
 	if (!file || !typing || !typing->occurrences.capacity || !count || !roots) return -1;
@@ -187,12 +206,12 @@ static int read_dag(FILE *file, struct pg_typing *typing, size_t limit, size_t n
 	uint64_t n, nr;
 	if (fread(header, 1, 8, file) != 8 || memcmp(header, scopes ? scoped_magic : magic, 8)) return -1;
 	if (pg_wire_read_u64(file, &n) || pg_wire_read_u64(file, &nr)) return -1;
-	if (n > limit || nr > limit - n || limit > SIZE_MAX / sizeof(struct input)) return -1;
+	if (n > limit || nr > limit - n) return -1;
 	if (n > SIZE_MAX / 3) return -1;
 	struct pg_graph *graph = typing->graph;
-	struct input *inputs = pg_alloc(scratch, (size_t)n * sizeof(*inputs));
-	uint64_t *ids = pg_alloc(scratch, (size_t)nr * sizeof(*ids));
-	const struct pg_occurrence **all = pg_alloc(scratch, (size_t)n * sizeof(*all));
+	struct input *inputs = pg_wire_array(scratch, n, sizeof(*inputs));
+	uint64_t *ids = pg_wire_array(scratch, nr, sizeof(*ids));
+	const struct pg_occurrence **all = pg_wire_array(scratch, n, sizeof(*all));
 	if (!inputs || !ids || !all) return -1;
 	size_t available = limit - (size_t)n - (size_t)nr, max_arity = 0, max_maps = 0, context_count = (size_t)n;
 	uint64_t ns = 0, *scope_ids = NULL;
@@ -201,7 +220,7 @@ static int read_dag(FILE *file, struct pg_typing *typing, size_t limit, size_t n
 		available -= 3 * (size_t)ns;
 		if (nr > available) return -1;
 		available -= (size_t)nr;
-		scope_ids = pg_alloc(scratch, (3 * (size_t)ns + (size_t)nr) * sizeof(*scope_ids));
+		scope_ids = pg_wire_array(scratch, 3 * ns + nr, sizeof(*scope_ids));
 		if (!scope_ids) return -1;
 		for (size_t i = 0; i < ns; ++i) {
 			if (pg_wire_read_u64(file, &scope_ids[3 * i]) || scope_ids[3 * i] > i) return -1;
@@ -212,13 +231,14 @@ static int read_dag(FILE *file, struct pg_typing *typing, size_t limit, size_t n
 			if (pg_wire_read_u64(file, &scope_ids[3 * ns + i]) || scope_ids[3 * ns + i] > ns) return -1;
 		context_count += (size_t)ns;
 	}
-	size_t term_count = 3 * (size_t)n;
+	size_t term_count = (size_t)n, induction_terms = 0;
 	for (size_t i = 0; i < n; ++i) {
 		inputs[i].flags = fgetc(file);
 		inputs[i].judgement = fgetc(file);
 		uint64_t arity, selection;
 		if (inputs[i].flags < 0 || inputs[i].flags > 63 || (inputs[i].flags & 12) == 12) return -1;
 		if ((inputs[i].flags & 32) && (inputs[i].flags & 12)) return -1;
+		term_count += !!(inputs[i].flags & 1) + !!(inputs[i].flags & 2);
 		if (pg_wire_read_u64(file, &arity) || arity > available) return -1;
 		if (pg_wire_read_u64(file, &selection) || selection > SIZE_MAX) return -1;
 		if (selection && !(inputs[i].flags & 8)) return -1;
@@ -226,7 +246,7 @@ static int read_dag(FILE *file, struct pg_typing *typing, size_t limit, size_t n
 		available -= (size_t)arity;
 		inputs[i].count = (size_t)arity;
 		if (arity > max_arity) max_arity = (size_t)arity;
-		inputs[i].operands = pg_alloc(scratch, (size_t)arity * sizeof(uint64_t));
+		inputs[i].operands = pg_wire_array(scratch, arity, sizeof(uint64_t));
 		if (!inputs[i].operands) return -1;
 		for (size_t j = 0; j < arity; ++j) {
 			uint64_t *id = &inputs[i].operands[j];
@@ -238,7 +258,7 @@ static int read_dag(FILE *file, struct pg_typing *typing, size_t limit, size_t n
 		context_count += (size_t)maps;
 		inputs[i].map_count = (size_t)maps;
 		if (maps > max_maps) max_maps = (size_t)maps;
-		inputs[i].map_sizes = pg_alloc(scratch, (size_t)maps * sizeof(size_t));
+		inputs[i].map_sizes = pg_wire_array(scratch, maps, sizeof(size_t));
 		if (!inputs[i].map_sizes) return -1;
 		size_t structural = (size_t)arity;
 		for (size_t j = 0; j < maps; ++j) {
@@ -263,27 +283,35 @@ static int read_dag(FILE *file, struct pg_typing *typing, size_t limit, size_t n
 			available -= (size_t)clauses;
 			inputs[i].clause_count = (size_t)clauses;
 			context_count += (size_t)clauses;
-			if (term_count > SIZE_MAX - 3) return -1;
-			term_count += 3;
+			if (induction_terms > SIZE_MAX - 3) return -1;
+			induction_terms += 3;
 		}
 	}
+	size_t header_terms = term_count;
+	if (induction_terms > SIZE_MAX - term_count) return -1;
+	term_count += induction_terms;
 	for (size_t i = 0; i < nr; ++i)
 		if (pg_wire_read_u64(file, &ids[i]) || !ids[i] || ids[i] > n) return -1;
 	size_t nc, nt;
 	const struct pg_context *const *contexts;
 	const struct pg_term *const *terms;
-	if (pg_contexts_read(file, typing, limit, name_limit, resolve, owner, &nc, &contexts, &nt, &terms)) return -1;
+	if (pg_contexts_read_descriptors(file, typing, limit, name_limit, codec, owner, &nc, &contexts, &nt, &terms)) return -1;
 	if (nc != context_count || nt != term_count) return -1;
-	const struct pg_occurrence **operands = pg_alloc(scratch, max_arity * sizeof(*operands));
-	const struct pg_context_map **maps = pg_alloc(scratch, max_maps * sizeof(*maps));
+	const struct pg_occurrence **operands = pg_wire_array(scratch, max_arity, sizeof(*operands));
+	const struct pg_context_map **maps = pg_wire_array(scratch, max_maps, sizeof(*maps));
 	if (!operands || !maps) return -1;
-	size_t next_context = (size_t)n + (size_t)ns, next_term = 3 * (size_t)n;
+	size_t next_context = (size_t)n + (size_t)ns, next_header = 0, next_term = header_terms;
 	for (size_t i = 0; i < n; ++i) {
 		for (size_t j = 0; j < inputs[i].count; ++j) operands[j] = all[inputs[i].operands[j] - 1];
 		size_t arity = inputs[i].structural;
+		const struct pg_term *core = terms[next_header++];
+		size_t annotation = next_header;
+		next_header += !!(inputs[i].flags & 1);
+		size_t classifier = next_header;
+		next_header += !!(inputs[i].flags & 2);
 		struct pg_occurrence header = {.judgement = inputs[i].judgement, .context = contexts[i],
-			.core = terms[3 * i], .classifier = inputs[i].flags & 2 ? terms[3 * i + 2] : NULL,
-			.annotation = inputs[i].flags & 1 ? terms[3 * i + 1] : NULL,
+			.core = core, .classifier = inputs[i].flags & 2 ? terms[classifier] : NULL,
+			.annotation = inputs[i].flags & 1 ? terms[annotation] : NULL,
 			.operand_count = arity, .map_count = inputs[i].map_count};
 		const struct pg_occurrence *const *children = operands;
 		if (inputs[i].flags & 4) {
@@ -323,12 +351,12 @@ static int read_dag(FILE *file, struct pg_typing *typing, size_t limit, size_t n
 		all[i] = pg_occurrence_intern(typing, &header, children, maps);
 		if (!all[i]) return -1;
 	}
-	const struct pg_occurrence **result = pg_alloc(graph, (size_t)nr * sizeof(*result));
+	const struct pg_occurrence **result = pg_wire_array(graph, nr, sizeof(*result));
 	if (!result) return -1;
 	for (size_t i = 0; i < nr; ++i) result[i] = all[ids[i] - 1];
 	if (scopes) {
-		const struct pg_scope **all_scopes = pg_alloc(scratch, (size_t)ns * sizeof(*all_scopes));
-		const struct pg_scope **selected = pg_alloc(graph, (size_t)nr * sizeof(*selected));
+		const struct pg_scope **all_scopes = pg_wire_array(scratch, ns, sizeof(*all_scopes));
+		const struct pg_scope **selected = pg_wire_array(graph, nr, sizeof(*selected));
 		if (!all_scopes || !selected) return -1;
 		for (size_t i = 0; i < ns; ++i) {
 			uint64_t parent = scope_ids[3 * i], indices = scope_ids[3 * i + 1];
@@ -353,9 +381,17 @@ int pg_occurrences_read(FILE *file, struct pg_typing *typing, size_t limit, size
 	const struct pg_object *(*resolve)(void *, const char *), void *owner,
 	size_t *count, const struct pg_occurrence *const **roots)
 {
+	const struct pg_graph_codec codec = {.resolve = resolve};
+	return pg_occurrences_read_descriptors(file, typing, limit, name_limit, &codec, owner, count, roots);
+}
+
+int pg_occurrences_read_descriptors(FILE *file, struct pg_typing *typing, size_t limit, size_t name_limit,
+	const struct pg_graph_codec *codec, void *owner,
+	size_t *count, const struct pg_occurrence *const **roots)
+{
 	/* Wire IDs and assembly arrays are not part of the retained typed graph. */
 	struct pg_graph scratch = {0};
-	int status = read_dag(file, typing, limit, name_limit, resolve, owner, count, NULL, roots, &scratch);
+	int status = read_dag(file, typing, limit, name_limit, codec, owner, count, NULL, roots, &scratch);
 	pg_graph_destroy(&scratch);
 	return status;
 }
@@ -364,9 +400,17 @@ int pg_scoped_occurrences_read(FILE *file, struct pg_typing *typing, size_t limi
 	const struct pg_object *(*resolve)(void *, const char *), void *owner,
 	size_t *count, const struct pg_scope *const **scopes, const struct pg_occurrence *const **roots)
 {
+	const struct pg_graph_codec codec = {.resolve = resolve};
+	return pg_scoped_occurrences_read_descriptors(file, typing, limit, name_limit, &codec, owner, count, scopes, roots);
+}
+
+int pg_scoped_occurrences_read_descriptors(FILE *file, struct pg_typing *typing, size_t limit, size_t name_limit,
+	const struct pg_graph_codec *codec, void *owner,
+	size_t *count, const struct pg_scope *const **scopes, const struct pg_occurrence *const **roots)
+{
 	if (!scopes) return -1;
 	struct pg_graph scratch = {0};
-	int status = read_dag(file, typing, limit, name_limit, resolve, owner, count, scopes, roots, &scratch);
+	int status = read_dag(file, typing, limit, name_limit, codec, owner, count, scopes, roots, &scratch);
 	pg_graph_destroy(&scratch);
 	return status;
 }

@@ -1,7 +1,7 @@
 # Parallel Development: Inquiry Desk, Merge and Workers
 
 Date: 2026-10-03
-Status: Merge owns Main. Three original implementation owners acknowledged the human critical-path priority: actual Acc QuickSort C mockup due2026-10-04T21:16:56Z, deterministic Source codec/frontier, dominant evaluator allocation deletion with matched peak RSS/time. E25 already-running review finished/prototype Mainca6551db; C32 tested snapshot parked. All known byte/strict failures remain; four bounded owners stay complete. No Goal reset or accepted promotion.
+Status: Merge owns Main and the explicitly authorized accepted Job migration. Final compact-default coverage is verified, publication follows. C33 actual Acc QuickSort mockup is published on task588b2cb and Root O2/SAN current-producer checks pass; C32 stays parked. C34 exact15/raw332 verified; current qualification pending. Job frontier and Performance order/frame trials remain private. Full strict/frontier/actual-cost criteria remain open; four bounded owners stay stopped. No Goal reset.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `fd45c42`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -2575,6 +2575,12 @@ the exact Bend2 implementation before choosing commands or citing claims.
 
 ### Subjective (User)
 
+2026-10-04 09:42 UTC, English translation of explicit user authorization via
+inquiry desk `019ebfae`: "Job may now enter accepted code. Migrate it; replace
+the old broadly expanded Job with the current prototype version." This approves
+accepted-source promotion of the Job refactor, superseding the earlier
+prototype-only boundary for that work. It does not approve unrelated trials.
+
 2026-10-04 09:19 UTC, English paraphrase of the latest explicit human
 correction relayed by the inquiry desk: all three active implementation
 sessions repeat small fixes instead of attacking their main problem; this is
@@ -2830,6 +2836,21 @@ producer. The same three strict reload failures remain failed and unwaived in
 the [partition report](../src/prototype/solver_inputs/joint_verification/combined-partitions.tsv).
 
 ### Assessment
+
+2026-10-04, Root promotion decision within explicit adopted Job scope: use
+qualified E25 sourcea87cba42 as the comparison/reference, select only reviewed
+Job decomposition/direct-input ownership and necessary Evidence/query/I/O
+dependencies. Preserve unowned local edits; exclude HOLD Performance/private
+E26/E27 and unrelated Surface changes. Resolve dependency closure in an
+isolated integration worktree, verify default build/affected/regression behavior,
+then push accepted Main. Fresh old/new attribution supersedes the initial
+materialized-default choice: compact CLI/REPL saves remain default (1,369,677
+bytes versus old1,365,999, Core21/21); the larger typed-retention profile is
+explicit. Necessary Job dependency closure is separable from this save policy.
+Verify both profiles and retain materialized20,728,552-byte growth as open work.
+Preserve known strict3 parent failures and report old
+source_work/shared-dispatch removal with actual per-file changes. These are
+Root implementation/review decisions, not additional human requirements.
 
 2026-10-04, Root E24 bounded prototype integration: remove non-nominal schema
 scratch receipt-pointer array/copyloop; existing synchronous pg_evidence_inputs

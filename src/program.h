@@ -15,8 +15,6 @@ struct pg_program {
 	struct pg_synthesis synthesis;
 	/* Own imported immutable effect equations; ordinary Solve computes them. */
 	struct pg_effect_inference imported_effects;
-	/* Graph-owned raw image records, not accepted cache entries or typing. */
-	const struct pg_reduction_archive *retained_reductions;
 	struct pg_parser parser;
 	/* Applies to subsequently parsed source, including imports and REPL input.
 	 * Images already hold parsed syntax; this is not a kernel acceptance flag. */
@@ -27,8 +25,10 @@ struct pg_program {
 	struct pg_synthesis_job *root;
 };
 
-/* Initialize the same stores without a source/root. Image loading can populate
- * this graph before scheduling the ordinary synthesis root. */
+/* Initialize the same stores and an empty lexical scope, without host names
+ * or runnable prelude work. Image loading restores its own lexical inputs. */
+struct pg_program *pg_program_allocate_empty(enum pg_definition_policy policy);
+/* Add the standard intrinsic namespace for subsequent source parsing. */
 struct pg_program *pg_program_allocate(enum pg_definition_policy policy);
 /* Copies the input and parses without advancing synthesis. NULL indicates
  * initialization failure. Syntax errors return an owned program with a NULL

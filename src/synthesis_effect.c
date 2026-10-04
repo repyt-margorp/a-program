@@ -1,62 +1,57 @@
 #include "synthesis_effect.h"
+#include "synthesis_source.h"
 #include "synthesis_work.h"
 #include "effect_inference.h"
+#include "dag.h"
 
 #include <stdlib.h>
 
-struct inference_state { int waiting; };
-struct contribution_state { struct pg_synthesis_job *row; };
-struct row_state { struct pg_synthesis_job *children[2]; };
+struct contribution_state { struct pg_dag *traversal; int rejected; };
 struct substitution_state {
 	size_t next;
-	struct pg_binding_value *bindings;
 	struct pg_substitution *work;
 	const struct pg_term *result;
 };
+struct substitution_inputs {
+	const struct pg_term *term;
+	struct pg_effect_inference *work;
+	const struct pg_effect_equation *const *equations;
+};
 
-static void inference_step(struct pg_synthesis *, struct pg_synthesis_job *);
 static void contribution_step(struct pg_synthesis *, struct pg_synthesis_job *);
 static void row_step(struct pg_synthesis *, struct pg_synthesis_job *);
+static void contribution_destroy(struct pg_synthesis_job *);
+static void contribution_completed(struct pg_synthesis *, struct pg_synthesis_job *, int);
+static void contribute_row_step(struct pg_synthesis *, struct pg_synthesis_job *, const struct pg_term *);
 static void substitution_step(struct pg_synthesis *, struct pg_synthesis_job *);
-static void substitution_destroy(struct pg_synthesis_job *);
 
-static const struct pg_synthesis_work_class inference_class = {
-	.size = sizeof(struct inference_state), .advance = inference_step};
 static const struct pg_synthesis_work_class contribution_class = {
-	.size = sizeof(struct contribution_state), .advance = contribution_step};
+	.pending = {&pg_synthesis_pending_ops},
+	.size = sizeof(struct contribution_state), .advance = contribution_step,
+	.destroy = contribution_destroy, .completed = contribution_completed};
 static const struct pg_synthesis_work_class row_class = {
-	.size = sizeof(struct row_state), .advance = row_step};
+	.pending = {&pg_synthesis_pending_ops},
+	.size = sizeof(struct contribution_state), .advance = row_step,
+	.destroy = contribution_destroy, .completed = contribution_completed};
 static const struct pg_synthesis_work_class substitution_class = {
-	.size = sizeof(struct substitution_state), .advance = substitution_step, .destroy = substitution_destroy};
-
-struct pg_effect_inference *pg_synthesis_effect_worker(const struct pg_synthesis_job *job)
-{
-	return pg_synthesis_work_state(job, &inference_class) ? (void *)pg_synthesis_work_input(job, 0) : NULL;
-}
-
-struct pg_synthesis_job *pg_synthesis_effect_inference(struct pg_synthesis *synthesis,
-	struct pg_effect_inference *work)
-{
-	if (!work || work->rows != synthesis->typing->graph) return NULL;
-	const void *inputs[] = {work};
-	struct pg_synthesis_job *job = pg_synthesis_work_request(synthesis, &inference_class, 1, inputs);
-	struct inference_state *state = pg_synthesis_work_state(job, &inference_class);
-	if (state && state->waiting && (work->sealed || work->failed)) {
-		state->waiting = 0;
-		pg_synthesis_enqueue(synthesis, job);
-	}
-	return job;
-}
+	.pending = {&pg_synthesis_pending_ops},
+	.size = sizeof(struct substitution_state), .advance = substitution_step};
 
 struct pg_synthesis_job *pg_synthesis_effect_contribution(struct pg_synthesis *synthesis,
 	struct pg_effect_inference *work, struct pg_effect_equation *target,
-	const struct pg_effect_row *mask, struct pg_synthesis_job *formation)
+	const struct pg_effect_row *mask, struct pg_pending *formation)
 {
 	if (!work || work->rows != synthesis->typing->graph || !mask) return NULL;
 	if (!pg_effect_equation_parameter(work, target)) return NULL;
-	struct pg_synthesis_job *structure = pg_synthesis_type_structure(synthesis, formation);
-	if (!structure) return NULL;
-	const void *inputs[] = {work, target, mask, structure};
+	struct pg_synthesis_structure structure = pg_synthesis_type_structure_input(synthesis, (struct pg_synthesis_input){.pending = formation});
+	if (structure.term) {
+		const struct pg_term *row, *value;
+		enum pg_totality totality;
+		if (!pg_computation_type_spine_view(structure.term, &totality, &row, &value)) return NULL;
+		return pg_synthesis_row_contribution(synthesis, work, target, mask, row);
+	}
+	if (!structure.pending) return NULL;
+	const void *inputs[] = {work, target, mask, structure.pending};
 	return pg_synthesis_work_request(synthesis, &contribution_class, 4, inputs);
 }
 
@@ -70,39 +65,28 @@ struct pg_synthesis_job *pg_synthesis_row_contribution(struct pg_synthesis *synt
 	return pg_synthesis_work_request(synthesis, &row_class, 4, inputs);
 }
 
+static const void *substitution_operand(const void *owner, size_t i)
+{
+	const struct substitution_inputs *inputs = owner;
+	return !i ? (const void *)inputs->term : i == 1 ? (const void *)inputs->work : inputs->equations[i - 2];
+}
+
 struct pg_synthesis_job *pg_synthesis_effect_substitution(struct pg_synthesis *synthesis,
 	const struct pg_term *term, struct pg_effect_inference *work, size_t count,
 	const struct pg_effect_equation *const *equations)
 {
 	if (!term || (count && !equations) || count > SIZE_MAX / sizeof(void *) - 2) return NULL;
-	struct pg_synthesis_job *effects = pg_synthesis_effect_inference(synthesis, work);
-	if (!effects) return NULL;
+	if (!work || work->rows != synthesis->typing->graph) return NULL;
 	for (size_t i = 0; i < count; ++i)
 		if (!pg_effect_equation_parameter(work, equations[i])) return NULL;
-	struct pg_graph temporary = {0};
-	const void **inputs = pg_alloc(&temporary, (count + 2) * sizeof(*inputs));
-	if (!inputs) { pg_graph_destroy(&temporary); return NULL; }
-	inputs[0] = term; inputs[1] = effects;
-	for (size_t i = 0; i < count; ++i) inputs[i + 2] = equations[i];
-	struct pg_synthesis_job *job = pg_synthesis_work_request(synthesis, &substitution_class, count + 2, inputs);
-	pg_graph_destroy(&temporary);
-	return job;
+	const struct substitution_inputs inputs = {term, work, equations};
+	return pg_synthesis_work_request_key(synthesis, &substitution_class, count + 2, &inputs, substitution_operand);
 }
 
 const struct pg_term *pg_synthesis_effect_substitution_result(const struct pg_synthesis_job *job)
 {
 	const struct substitution_state *state = pg_synthesis_work_state(job, &substitution_class);
 	return state && pg_synthesis_status(job) == PG_SYNTHESIS_DONE ? state->result : NULL;
-}
-
-static void inference_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
-{
-	struct pg_effect_inference *work = pg_synthesis_effect_worker(job);
-	struct inference_state *state = pg_synthesis_work_state(job, &inference_class);
-	if (!work->sealed && !work->failed) { state->waiting = 1; return; }
-	int status = pg_effect_inference_advance(work, 1);
-	if (!status) pg_synthesis_enqueue(synthesis, job);
-	else pg_synthesis_finish(synthesis, job, status > 0 ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
 }
 
 /* Registration must finish before row solving. Completed requests remain
@@ -123,69 +107,100 @@ static void contribution_step(struct pg_synthesis *synthesis, struct pg_synthesi
 	if (pg_synthesis_await(synthesis, job, structure)) return;
 	const struct pg_term *row, *value;
 	enum pg_totality totality;
-	if (!pg_computation_type_spine_view(pg_synthesis_type_structure_result(structure), &totality, &row, &value)) {
+	if (!pg_computation_type_spine_view(pg_synthesis_type_structure_result((struct pg_synthesis_structure){.pending = structure}), &totality, &row, &value)) {
 		pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
 	}
-	struct contribution_state *state = pg_synthesis_work_state(job, &contribution_class);
-	if (!state->row) state->row = pg_synthesis_row_contribution(synthesis, work,
-		(void *)pg_synthesis_work_input(job, 1), pg_synthesis_work_input(job, 2), row);
-	if (pg_synthesis_await(synthesis, job, state->row)) return;
-	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_DONE);
+	contribute_row_step(synthesis, job, row);
+}
+
+static void contribution_destroy(struct pg_synthesis_job *job)
+{
+	struct contribution_state *state = pg_synthesis_work_state(job, pg_synthesis_work_role(job));
+	if (state->traversal) {
+		pg_dag_destroy(state->traversal);
+		free(state->traversal);
+		state->traversal = NULL;
+	}
+}
+
+static void contribution_completed(struct pg_synthesis *synthesis, struct pg_synthesis_job *job, int first)
+{
+	(void)synthesis; (void)first;
+	contribution_destroy(job);
+}
+
+static int contribution_child(void *owner, const void *key, size_t index, const void **child)
+{
+	struct pg_synthesis_job *job = owner;
+	const struct pg_term *left, *right;
+	if (pg_effect_join_view(key, &left, &right)) {
+		if (index >= 2) return 0;
+		*child = index ? right : left;
+		return 1;
+	}
+	struct pg_effect_inference *work = (void *)job->inputs[0];
+	if (pg_effect_contribution(work, key, job->inputs[2], (void *)job->inputs[1])) {
+		struct contribution_state *state = pg_synthesis_work_state(job, pg_synthesis_work_role(job));
+		state->rejected = !work->failed;
+		return -1;
+	}
+	return 0;
+}
+
+static void contribute_row_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
+	const struct pg_term *row)
+{
+	struct contribution_state *state = pg_synthesis_work_state(job, pg_synthesis_work_role(job));
+	if (!state->traversal) {
+		const struct pg_term *left, *right;
+		if (!pg_effect_join_view(row, &left, &right)) {
+			struct pg_effect_inference *work = (void *)job->inputs[0];
+			int status = pg_effect_contribution(work, row, job->inputs[2], (void *)job->inputs[1]);
+			pg_synthesis_finish(synthesis, job, !status ? PG_SYNTHESIS_DONE
+				: work->failed ? PG_SYNTHESIS_ERROR : PG_SYNTHESIS_REJECTED);
+			return;
+		}
+		state->traversal = malloc(sizeof(*state->traversal));
+		if (!state->traversal || pg_dag_init(state->traversal, contribution_child, job)) {
+			pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
+		}
+	}
+	int status = pg_dag_advance(state->traversal, row, 1);
+	if (!status) { pg_synthesis_enqueue(synthesis, job); return; }
+	pg_synthesis_finish(synthesis, job, status > 0 ? PG_SYNTHESIS_DONE
+		: state->rejected ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_ERROR);
 }
 
 static void row_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
-	struct pg_effect_inference *work = (void *)pg_synthesis_work_input(job, 0);
-	struct pg_effect_equation *target = (void *)pg_synthesis_work_input(job, 1);
-	const struct pg_effect_row *mask = pg_synthesis_work_input(job, 2);
-	const struct pg_term *row = pg_synthesis_work_input(job, 3), *left, *right;
-	if (!open_equation(synthesis, job, work)) return;
-	if (!pg_effect_join_view(row, &left, &right)) {
-		int status = pg_effect_contribution(work, row, mask, target);
-		pg_synthesis_finish(synthesis, job, !status ? PG_SYNTHESIS_DONE
-			: work->failed ? PG_SYNTHESIS_ERROR : PG_SYNTHESIS_REJECTED);
-		return;
-	}
-	struct row_state *state = pg_synthesis_work_state(job, &row_class);
-	if (!state->children[0]) {
-		state->children[0] = pg_synthesis_row_contribution(synthesis, work, target, mask, left);
-		state->children[1] = pg_synthesis_row_contribution(synthesis, work, target, mask, right);
-	}
-	for (size_t i = 0; i < 2; ++i)
-		if (pg_synthesis_await(synthesis, job, state->children[i])) return;
-	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_DONE);
+	if (!open_equation(synthesis, job, (void *)job->inputs[0])) return;
+	contribute_row_step(synthesis, job, job->inputs[3]);
 }
 
-static void substitution_destroy(struct pg_synthesis_job *job)
+static struct pg_binding_value substitution_binding(const void *owner, size_t i)
 {
-	struct substitution_state *state = pg_synthesis_work_state(job, &substitution_class);
-	free(state->bindings);
+	const struct pg_synthesis_job *job = owner;
+	struct pg_effect_inference *inference = (void *)job->inputs[1];
+	const struct pg_effect_equation *equation = job->inputs[i + 2];
+	return (struct pg_binding_value){pg_effect_equation_parameter(inference, equation),
+		pg_effect_reference(inference->rows, pg_effect_inference_result(inference, equation))};
 }
 
 static void substitution_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
-	struct pg_synthesis_job *effects = (void *)pg_synthesis_work_input(job, 1);
-	if (pg_synthesis_await(synthesis, job, effects)) return;
-	struct pg_effect_inference *inference = pg_synthesis_effect_worker(effects);
+	struct pg_effect_inference *inference = (void *)pg_synthesis_work_input(job, 1);
+	if (pg_synthesis_await_effects(synthesis, job, inference)) return;
 	size_t count = pg_synthesis_work_input_count(job) - 2;
 	struct substitution_state *state = pg_synthesis_work_state(job, &substitution_class);
-	if (!state->bindings && !state->work && count) {
-		if (count > SIZE_MAX / sizeof(*state->bindings)) goto error;
-		state->bindings = malloc(count * sizeof(*state->bindings));
-		if (!state->bindings) goto error;
-	}
 	if (state->next < count) {
-		const struct pg_effect_equation *equation = pg_synthesis_work_input(job, state->next + 2);
-		const struct pg_effect_row *row = pg_effect_inference_result(inference, equation);
-		const struct pg_term *value = pg_effect_reference(synthesis->typing->graph, row);
-		if (!value) goto error;
-		state->bindings[state->next++] = (struct pg_binding_value){pg_effect_equation_parameter(inference, equation), value};
+		if (!substitution_binding(job, state->next).value) goto error;
+		++state->next;
 		pg_synthesis_enqueue(synthesis, job);
 		return;
 	}
 	if (!state->work) {
-		state->work = pg_substitution_request(&synthesis->typing->substitutions, pg_synthesis_work_input(job, 0), count, state->bindings);
-		free(state->bindings); state->bindings = NULL;
+		state->work = pg_substitution_request(&synthesis->typing->substitutions, pg_synthesis_work_input(job, 0), count,
+			(struct pg_binding_inputs){.owner = job, .at = substitution_binding});
 		if (!state->work) goto error;
 	}
 	enum pg_substitution_status status = pg_substitution_advance(state->work, 1);

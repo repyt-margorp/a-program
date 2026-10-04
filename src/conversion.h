@@ -38,11 +38,15 @@ const struct pg_term *pg_conversion_right(const struct pg_conversion_certificate
 /* Congruence of simultaneous substitution along already certified pure
  * reductions. A NULL image receipt means an unchanged image. Endpoints are
  * checked modulo alpha against the two instances; no evaluator or PropEq is
- * consulted. Imported conversions still undergo ordinary checking. */
+ * consulted. Imported conversions still undergo ordinary checking.
+ * The stable synchronous reader and its owner are never retained. */
+struct pg_reduced_binding {
+	struct pg_binding_value binding;
+	const struct pg_reduction_certificate *reduction;
+};
 const struct pg_conversion_certificate *pg_conversion_substitution(
 	struct pg_substitution_work *work, const struct pg_term *left,
 	const struct pg_term *right, const struct pg_term *body, size_t count,
-	const struct pg_binding_value *bindings,
-	const struct pg_reduction_certificate *const *reductions);
+	const void *owner, struct pg_reduced_binding (*input)(const void *, size_t));
 
 #endif

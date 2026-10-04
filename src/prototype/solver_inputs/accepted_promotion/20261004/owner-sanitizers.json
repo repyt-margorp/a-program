@@ -1,0 +1,22 @@
+[
+  {
+    "test": "core",
+    "exit": 0
+  },
+  {
+    "test": "synthesis",
+    "exit": 0
+  },
+  {
+    "test": "source-io",
+    "exit": 0
+  },
+  {
+    "test": "source-normalization",
+    "exit": 0
+  },
+  {
+    "test": "iadt",
+    "exit": 0
+  }
+]

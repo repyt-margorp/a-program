@@ -1,7 +1,7 @@
 # Job/Evidence Implementation Handoff
 
 Date: 2026-10-03
-Status: bounded E1-E4/E6-E23 prototypes verified/Main integrated; E24 private broad pending, SE1-SE5 unfinished.
+Status: reviewed Job accepted migration verified; private frontier trials and full SE1-SE5 unfinished.
 Branch: `parallel/job-evidence-20261003`.
 Producer checkpoint: `64df10dfb6caf69226cebb401b88714541334768`.
 Related: [coordination](2026-10-03-PARALLEL-CORE-BACKEND-PERFORMANCE-PLAN.md),
@@ -15,6 +15,12 @@ Related: [coordination](2026-10-03-PARALLEL-CORE-BACKEND-PERFORMANCE-PLAN.md),
 ## 1. Single Implementation Owner
 
 ### Subjective (User)
+
+2026-10-04 09:42 UTC, English translation of explicit user authorization via
+inquiry desk `019ebfae`: "Job may now enter accepted code. Migrate it; replace
+the old broadly expanded Job with the current prototype version." This approves
+accepted-source promotion of the Job refactor, superseding the earlier
+prototype-only boundary for that work. It does not approve unrelated trials.
 
 2026-10-04, English translation of human workflow clarification relayed by
 inquiry desk019ebfae-06be-7b71-974a-b97505daed4a after C24 publication:
@@ -78,6 +84,18 @@ Earlier workflow requirements: independent worktrees, `/goal`, `6.1 Sol` at
 only Core merges Main. Prototype integration is not accepted-source promotion.
 
 ### Objective (Code)
+
+2026-10-04, Root accepted migration uses qualified comparison sourcea87cba42,
+with necessary Job/Evidence/query/Source dependency closure and accepted Surface
+policy retained. Runtime120930997b6 passes final CLI/profile checks and combined
+acceptance coverage; broad harness exit2/corrected image-CLI0 are explicit.
+Earlier runtime9f5ba63c regression/codecs/host/execution and five owner sanitizer
+groups pass; changed CLI passes18 sanitizer controls. Finite
+permutation required a bounded test allowance; old-to-new artifact growth and
+the unwaived strict3 failures are recorded in the
+[promotion receipt](../src/prototype/solver_inputs/accepted_promotion/20261004/review.json).
+Original Job HEAD/staged entries and unowned accepted-source changes are preserved.
+Index stat-cache refresh during progress inspection is recorded in the receipt.
 
 2026-10-04, E23 READY675501ba exact33/a19b595a/transporte9faf892 verified,
 source156/actual471/raw28/control7/canonical2/public52/all35-fourcuts exact.
@@ -200,6 +218,14 @@ definition checks, failures and real quotation proofs must remain correct.
 This is a candidate deletion, not user approval of a solution or the full Goal.
 
 ### Assessment
+
+2026-10-04, Root adopts the reviewed Job refactor under the explicit human
+promotion authorization. The initial materialized-default choice is superseded:
+keep compact inputs for default CLI/REPL saves and expose typed retention
+explicitly. Default finite-permutation bytes stay 1,369,677 versus old1,365,999;
+the 20,728,552-byte materialized profile is not a memory improvement. Surface, held Performance,
+artifact checkpoint modules and current first-dispatch frontier WIP remain
+prototype work. Adoption does not complete SE1-SE5 or the active worker Goal.
 
 2026-10-04, Root E23 bounded integration decision: delay permanent Source
 transport allocation until caller jobs[] membership/uniqueness passes. Runtime

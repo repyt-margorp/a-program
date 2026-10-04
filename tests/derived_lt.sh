@@ -70,32 +70,28 @@ for variant in frozen derived frozen-tail-first derived-tail-first; do
 			"$directory/provider.p" "$directory/proof.p" "${pair%:*}" "${pair#*:}"
 	done
 
-	for mode in ordinary retained; do
-		options=()
-		if [[ $mode == retained ]]; then options+=(--retain-reductions); fi
-		for steps in 0 300000 10000000; do
-			expected=3
-			if [[ $steps == 10000000 ]]; then expected=0; fi
-			check_status "$expected" --steps "$steps" --legacy-intrinsic-dot --imports "$directory/provider.p" \
-				--save "$directory/saved.a" "${options[@]}" "$directory/proof.p"
-			check_status 3 --load --steps 0 --save "$directory/resaved.a" "${options[@]}" "$directory/saved.a"
-			grep -qx 'pending steps=0' "$directory/status"
-			cmp "$directory/saved.a" "$directory/resaved.a"
-			check_pair reverse_length two
-			check_pair duplicates_value duplicates_expected
-			check_pair duplicates_content duplicates_expected
-		done
-		for negative in "$root/fixtures/generic_sorted/boolean-wrong-"*.p; do
-			cat "$directory/proof.p" "$negative" > "$directory/invalid.p"
-			check_status 1 --legacy-intrinsic-dot --imports "$directory/provider.p" "$directory/invalid.p"
-			grep -q '^rejected steps=' "$directory/status"
-			check_status 3 --steps 300000 --legacy-intrinsic-dot --imports "$directory/provider.p" \
-				--save "$directory/invalid.a" "${options[@]}" "$directory/invalid.p"
-			check_status 3 --load --steps 0 --save "$directory/resaved.a" "${options[@]}" "$directory/invalid.a"
-			cmp "$directory/invalid.a" "$directory/resaved.a"
-			check_status 1 --load "$directory/resaved.a"
-			grep -q '^rejected steps=' "$directory/status"
-		done
+	for steps in 0 300000 10000000; do
+		expected=3
+		if [[ $steps == 10000000 ]]; then expected=0; fi
+		check_status "$expected" --steps "$steps" --legacy-intrinsic-dot --imports "$directory/provider.p" \
+			--save "$directory/saved.a" "$directory/proof.p"
+		check_status 3 --load --steps 0 --save "$directory/resaved.a" "$directory/saved.a"
+		grep -qx 'pending steps=0' "$directory/status"
+		cmp "$directory/saved.a" "$directory/resaved.a"
+		check_pair reverse_length two
+		check_pair duplicates_value duplicates_expected
+		check_pair duplicates_content duplicates_expected
+	done
+	for negative in "$root/fixtures/generic_sorted/boolean-wrong-"*.p; do
+		cat "$directory/proof.p" "$negative" > "$directory/invalid.p"
+		check_status 1 --legacy-intrinsic-dot --imports "$directory/provider.p" "$directory/invalid.p"
+		grep -q '^rejected steps=' "$directory/status"
+		check_status 3 --steps 300000 --legacy-intrinsic-dot --imports "$directory/provider.p" \
+			--save "$directory/invalid.a" "$directory/invalid.p"
+		check_status 3 --load --steps 0 --save "$directory/resaved.a" "$directory/invalid.a"
+		cmp "$directory/invalid.a" "$directory/resaved.a"
+		check_status 1 --load "$directory/resaved.a"
+		grep -q '^rejected steps=' "$directory/status"
 	done
 done
-printf '%s\n' 'derived LT: both providers and partition orders, universal Sorted/permutation witnesses, exact outputs, ordinary/retained partial images and invalid evidence passed'
+printf '%s\n' 'derived LT: both providers and partition orders, universal Sorted/permutation witnesses, exact outputs, semantic partial images and invalid evidence passed'

@@ -111,6 +111,14 @@ struct pg_binding_value {
 	const struct pg_object *binder;
 	const struct pg_term *value;
 };
+/* Stable synchronous input; a null reader selects a binding array. The view
+ * is never retained. Construction snapshots only the immutable environment. */
+struct pg_binding_inputs {
+	const void *owner;
+	struct pg_binding_value (*at)(const void *, size_t);
+	size_t first;
+};
+struct pg_binding_value pg_binding_input(struct pg_binding_inputs inputs, size_t i);
 struct pg_substitution_state;
 struct pg_substitution { struct pg_substitution_state *state; };
 enum pg_substitution_status { PG_SUBSTITUTION_PENDING, PG_SUBSTITUTION_DONE, PG_SUBSTITUTION_ERROR };
@@ -149,9 +157,9 @@ struct pg_substitution_work {
 int pg_substitution_work_init(struct pg_substitution_work *work, struct pg_graph *graph);
 void pg_substitution_work_destroy(struct pg_substitution_work *work);
 struct pg_substitution *pg_substitution_request(struct pg_substitution_work *work,
-	const struct pg_term *term, size_t count, const struct pg_binding_value *bindings);
+	const struct pg_term *term, size_t count, struct pg_binding_inputs bindings);
 const struct pg_term *pg_substitution_compute(struct pg_substitution_work *work,
-	const struct pg_term *term, size_t count, const struct pg_binding_value *bindings);
+	const struct pg_term *term, size_t count, struct pg_binding_inputs bindings);
 
 /* Immutable pure policies outlive their jobs. Core does not decide which
  * policies are admissible as conversion evidence; that is the checker's job.

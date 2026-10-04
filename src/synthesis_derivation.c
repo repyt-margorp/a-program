@@ -5,8 +5,8 @@
 #include "effect_inference.h"
 #include "computation.h"
 #include "dag.h"
+#include "derivation_io.h"
 
-#include <stdlib.h>
 #include <string.h>
 
 /* Only endpoint-bearing rules need comparison/reduction progress. Premises
@@ -22,44 +22,18 @@ struct derivation_work {
 	size_t next;
 	struct derivation_computation *computation;
 };
-struct derivation_input_work {
-	size_t next;
-	struct pg_synthesis_job *rule;
-};
-
 static void derivation_step(struct pg_synthesis *, struct pg_synthesis_job *);
-static void derivation_input_step(struct pg_synthesis *, struct pg_synthesis_job *);
 static void derivation_destroy(struct pg_synthesis_job *);
 static struct pg_synthesis_projection derivation_projection(const struct pg_synthesis_job *);
-static struct pg_synthesis_projection input_projection(const struct pg_synthesis_job *);
 
-static void evidence_ready(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
-{
-	(void)synthesis;
-	job->result = job->inputs[0];
-	job->status = PG_SYNTHESIS_DONE;
-}
-
-static const struct pg_synthesis_work_class EVIDENCE_JOB[1] = {{
-	.start = evidence_ready, .advance = evidence_ready}};
 static const struct pg_synthesis_work_class DERIVATION_JOB[1] = {{
+	.pending = {&pg_synthesis_pending_ops},
 	.size = sizeof(struct derivation_work), .advance = derivation_step,
 	.destroy = derivation_destroy, .project = derivation_projection}};
-static const struct pg_synthesis_work_class DERIVATION_INPUT_JOB[1] = {{
-	.size = sizeof(struct derivation_input_work), .advance = derivation_input_step,
-	.project = input_projection}};
-
 static void derivation_destroy(struct pg_synthesis_job *job)
 {
 	struct derivation_work *local = pg_synthesis_work_state(job, DERIVATION_JOB);
 	if (local->computation) pg_comparison_destroy(&local->computation->endpoint);
-}
-
-static struct pg_synthesis_projection input_projection(const struct pg_synthesis_job *job)
-{
-	const struct derivation_input_work *local = pg_synthesis_work_state(job, DERIVATION_INPUT_JOB);
-	return (struct pg_synthesis_projection){.rule = local->rule,
-		.preparing = !local->rule, .value_kind = -1};
 }
 
 static struct pg_synthesis_projection derivation_projection(const struct pg_synthesis_job *job)
@@ -76,11 +50,6 @@ static struct pg_synthesis_projection derivation_projection(const struct pg_synt
 	default: break;
 	}
 	return result;
-}
-
-const struct pg_evidence *pg_synthesis_evidence_input(const struct pg_synthesis_job *job)
-{
-	return job && job->role == EVIDENCE_JOB ? job->inputs[0] : NULL;
 }
 
 enum { RULE_KEY_FIELDS = 18 };
@@ -103,11 +72,11 @@ static void rule_key(const struct pg_derivation_input *input, uint64_t *key)
 
 struct rule_input {
 	struct pg_index_entry index;
-	const struct pg_derivation_input *header;
+	_Alignas(struct pg_derivation_input) unsigned char header[];
 };
 
-static const struct pg_derivation_input *intern_rule_input(struct pg_synthesis *synthesis,
-	const struct pg_derivation_input *input)
+static const struct pg_derivation_input *rule_header(struct pg_synthesis *synthesis,
+	const struct pg_derivation_input *input, int create)
 {
 	uint64_t key[RULE_KEY_FIELDS], hash = UINT64_C(1469598103934665603);
 	rule_key(input, key);
@@ -115,24 +84,150 @@ static const struct pg_derivation_input *intern_rule_input(struct pg_synthesis *
 	for (struct pg_index_entry *p = pg_index_candidates(&synthesis->rule_inputs, hash); p; p = p->next) {
 		if (p->hash != hash) continue;
 		const struct rule_input *candidate = (const void *)p;
+		const struct pg_derivation_input *header = (const void *)candidate->header;
 		uint64_t fields[RULE_KEY_FIELDS];
-		rule_key(candidate->header, fields);
-		if (!memcmp(key, fields, sizeof(key))) return candidate->header;
+		rule_key(header, fields);
+		if (!memcmp(key, fields, sizeof(key))) return header;
 	}
-	struct rule_input *entry = pg_alloc(synthesis->typing->graph, sizeof(*entry));
-	struct pg_derivation_input *header = pg_alloc(synthesis->typing->graph, sizeof(*header));
-	if (!entry || !header) return NULL;
+	if (!create) return NULL;
+	struct rule_input *entry = pg_alloc(synthesis->typing->graph, sizeof(*entry) + sizeof(*input));
+	if (!entry) return NULL;
+	struct pg_derivation_input *header = (void *)entry->header;
 	*header = *input;
-	entry->header = header;
 	return pg_index_insert(&synthesis->rule_inputs, &entry->index, hash) ? NULL : header;
 }
 
-struct pg_synthesis_job *pg_synthesis_evidence(struct pg_synthesis *synthesis,
-	const struct pg_evidence *proof)
+struct rule_request_key {
+	const void *header[3];
+	const void *owner;
+	struct pg_synthesis_input (*premise)(const void *, size_t);
+};
+
+static struct pg_synthesis_input array_premise(const void *owner, size_t i)
 {
-	if (!pg_evidence_owned_by(proof, synthesis->typing)) return NULL;
-	const void *inputs[] = {proof};
-	return pg_synthesis_work_request(synthesis, EVIDENCE_JOB, 1, inputs);
+	return ((const struct pg_synthesis_input *)owner)[i];
+}
+
+static const void *rule_request_operand(const void *owner, size_t i)
+{
+	const struct rule_request_key *key = owner;
+	if (i < 3) return key->header[i];
+	struct pg_synthesis_input input = key->premise(key->owner, (i - 3) / 2);
+	return (i - 3) % 2 ? (const void *)input.pending : input.checked;
+}
+
+static struct pg_synthesis_job *rule_request(struct pg_synthesis *synthesis,
+	const struct pg_derivation_input *input, struct rule_request_key key,
+	struct pg_effect_inference *work, const struct pg_effect_equation *equation)
+{
+	if (!synthesis || !input || (input->count && !key.premise)) return NULL;
+	if (input->effect_parameter) return NULL;
+	if (input->count > (SIZE_MAX / sizeof(void *) - 3) / 2) return NULL;
+	if (work || equation) {
+		if (!work || !equation || input->parameters.effects) return NULL;
+		if (input->rule != PG_RETURN_TYPE_FORM) return NULL;
+		if (!pg_effect_equation_parameter(work, equation)) return NULL;
+		if (work->rows != synthesis->typing->graph) return NULL;
+	}
+	for (size_t i = 0; i < input->count; ++i)
+		if (!pg_synthesis_input_owned(synthesis, key.premise(key.owner, i))) return NULL;
+	input = rule_header(synthesis, input, 1);
+	if (!input) return NULL;
+	key.header[0] = input; key.header[1] = work; key.header[2] = equation;
+	return pg_synthesis_work_request_key(synthesis, DERIVATION_JOB, 3 + 2 * input->count, &key, rule_request_operand);
+}
+
+struct pg_synthesis_job *pg_synthesis_rule_inputs(struct pg_synthesis *synthesis,
+	const struct pg_derivation_input *input, const struct pg_synthesis_input *premises,
+	struct pg_effect_inference *work, const struct pg_effect_equation *equation)
+{
+	if (input && input->count && !premises) return NULL;
+	return rule_request(synthesis, input,
+		(struct rule_request_key){.owner = premises, .premise = array_premise}, work, equation);
+}
+
+struct pg_synthesis_job *pg_synthesis_plain_rule_inputs(struct pg_synthesis *synthesis,
+	enum pg_evidence_rule rule, const struct pg_object *binder, size_t count,
+	const struct pg_synthesis_input *premises)
+{
+	struct pg_derivation_input input = {.rule = rule, .parameters.binder = binder, .count = count};
+	return pg_synthesis_rule_inputs(synthesis, &input, premises, NULL, NULL);
+}
+
+struct pg_synthesis_input pg_synthesis_reindex_input(struct pg_synthesis *synthesis,
+	struct pg_synthesis_input substitution, struct pg_synthesis_input proof)
+{
+	if (!pg_synthesis_input_owned(synthesis, substitution)) return (struct pg_synthesis_input){0};
+	if (!pg_synthesis_input_owned(synthesis, proof)) return (struct pg_synthesis_input){0};
+	struct pg_synthesis_input premises[] = {substitution, proof};
+	struct pg_derivation_input input = {.rule = PG_REINDEX, .count = 2};
+	if (substitution.checked && proof.checked) {
+		const struct pg_evidence *result = pg_reindex_receipt(synthesis->typing, substitution.checked, proof.checked);
+		if (result) {
+			const struct pg_derivation_input *header = rule_header(synthesis, &input, 0);
+			const void *key[] = {header, NULL, NULL, substitution.checked, NULL, proof.checked, NULL};
+			struct pg_synthesis_job *existing = header ? pg_synthesis_work_find(synthesis, DERIVATION_JOB, 7, key) : NULL;
+			return existing ? (struct pg_synthesis_input){.pending = pg_synthesis_pending(existing)} : (struct pg_synthesis_input){.checked = result};
+		}
+	}
+	return (struct pg_synthesis_input){.pending = pg_synthesis_pending(
+		pg_synthesis_rule_inputs(synthesis, &input, premises, NULL, NULL))};
+}
+
+static int import_premise(void *unused, const void *key, size_t i, const void **child)
+{
+	(void)unused;
+	const struct pg_derivation_input *input = key;
+	if (i == input->count) return 0;
+	*child = input->premises[i];
+	return *child ? 1 : -1;
+}
+
+struct imported_inputs {
+	const struct pg_dag *dag;
+	struct pg_synthesis_job *const *jobs;
+	const struct pg_derivation_input *input;
+};
+
+static struct pg_synthesis_input imported_input(const void *owner, size_t i)
+{
+	const struct imported_inputs *inputs = owner;
+	const struct pg_dag_node *node = pg_dag_find(inputs->dag, inputs->input->premises[i]);
+	return (struct pg_synthesis_input){.pending = pg_synthesis_pending(inputs->jobs[node->id - 1])};
+}
+
+int pg_synthesis_import_rules(struct pg_synthesis *s, size_t count,
+	const struct pg_derivation_input *const *inputs, struct pg_effect_inference *effects,
+	struct pg_synthesis_job **selected)
+{
+	if (!s || (count && (!selected || !inputs)) || count > SIZE_MAX / sizeof(void *)) return -1;
+	if (!count) return 0;
+	struct pg_dag dag;
+	if (pg_dag_init(&dag, import_premise, NULL)) return -1;
+	int status = -1;
+	for (size_t i = 0; i < count; ++i) if (!inputs[i] || pg_dag_add(&dag, inputs[i])) goto done;
+	if (dag.count > SIZE_MAX / sizeof(void *)) goto done;
+	struct pg_synthesis_job **jobs = pg_alloc(&dag.storage, dag.count * sizeof(*jobs));
+	if (!jobs) goto done;
+	for (const struct pg_dag_node *node = dag.first; node; node = node->next) {
+		const struct pg_derivation_input *input = node->key;
+		struct pg_derivation_input header = *input;
+		struct pg_effect_equation *equation = NULL;
+		if (header.effect_parameter) {
+			equation = pg_effect_equation_find(effects, header.effect_parameter);
+			header.effect_parameter = NULL;
+		}
+		const struct imported_inputs operands = {&dag, jobs, input};
+		jobs[node->id - 1] = input->effect_parameter && !equation ? NULL
+			: rule_request(s, &header, (struct rule_request_key){.owner = &operands,
+				.premise = imported_input}, equation ? effects : NULL, equation);
+		if (!jobs[node->id - 1]) goto done;
+	}
+	for (size_t i = 0; i < count; ++i) selected[i] = jobs[pg_dag_find(&dag, inputs[i])->id - 1];
+	status = 0;
+done:
+	pg_dag_destroy(&dag);
+	return status;
 }
 
 struct pg_synthesis_job *pg_synthesis_derivation(struct pg_synthesis *synthesis,
@@ -144,40 +239,8 @@ struct pg_synthesis_job *pg_synthesis_derivation(struct pg_synthesis *synthesis,
 struct pg_synthesis_job *pg_synthesis_derivation_inference(struct pg_synthesis *synthesis,
 	const struct pg_derivation_input *input, struct pg_effect_inference *work)
 {
-	if (!input) return NULL;
-	const void *inputs[] = {input, work};
-	return pg_synthesis_work_request(synthesis, DERIVATION_INPUT_JOB, 2, inputs);
-}
-
-struct pg_synthesis_job *pg_synthesis_rule(struct pg_synthesis *synthesis,
-	const struct pg_derivation_input *input, struct pg_synthesis_job *const *premises,
-	struct pg_effect_inference *work, const struct pg_effect_equation *equation)
-{
-	if (!input || (input->count && !premises)) return NULL;
-	if (input->effect_parameter) return NULL;
-	if (input->count > SIZE_MAX / sizeof(void *) - 3) return NULL;
-	struct pg_synthesis_job *effects = NULL;
-	if (work || equation) {
-		if (!work || !equation || input->parameters.effects) return NULL;
-		if (input->rule != PG_RETURN_TYPE_FORM) return NULL;
-		if (!pg_effect_equation_parameter(work, equation)) return NULL;
-		effects = pg_synthesis_effect_inference(synthesis, work);
-		if (!effects) return NULL;
-	}
-	for (size_t i = 0; i < input->count; ++i)
-		if (!premises[i] || premises[i]->owner != synthesis->owner_key) return NULL;
-	input = intern_rule_input(synthesis, input);
-	if (!input) return NULL;
-	const void *inputs[] = {input, effects, equation};
-	return pg_synthesis_work_request_inputs(synthesis, DERIVATION_JOB, 3, inputs, input->count, premises);
-}
-
-struct pg_synthesis_job *pg_synthesis_plain_rule(struct pg_synthesis *synthesis,
-	enum pg_evidence_rule rule, const struct pg_object *binder, size_t count,
-	struct pg_synthesis_job *const *premises)
-{
-	struct pg_derivation_input input = {.rule = rule, .parameters.binder = binder, .count = count};
-	return pg_synthesis_rule(synthesis, &input, premises, NULL, NULL);
+	struct pg_synthesis_job *result;
+	return pg_synthesis_import_rules(synthesis, 1, &input, work, &result) ? NULL : result;
 }
 
 static int derivation_endpoint(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
@@ -199,25 +262,67 @@ static int derivation_endpoint(struct pg_synthesis *synthesis, struct pg_synthes
 
 const struct pg_derivation_input *pg_synthesis_plain_derivation(const struct pg_synthesis_job *job)
 {
-	return job && job->role == DERIVATION_JOB ? job->inputs[0] : NULL;
+	return job && pg_synthesis_work_role(job) == DERIVATION_JOB ? job->inputs[0] : NULL;
 }
 
-struct pg_synthesis_job *pg_synthesis_rule_premise(struct pg_synthesis *synthesis,
+int pg_synthesis_rule_header_matches(const struct pg_synthesis_job *job,
+	const struct pg_derivation_input *input)
+{
+	const struct pg_derivation_input *actual = pg_synthesis_plain_derivation(job);
+	if (!actual || !input) return 0;
+	uint64_t expected[RULE_KEY_FIELDS], found[RULE_KEY_FIELDS];
+	rule_key(input, expected);
+	rule_key(actual, found);
+	return !memcmp(expected, found, sizeof(expected));
+}
+
+int pg_synthesis_rule_frontier(const struct pg_synthesis *synthesis,
+	const struct pg_synthesis_job *job, size_t *next)
+{
+	if (!synthesis || !job || !next || job->pending.owner != synthesis->owner_key || pg_synthesis_work_role(job) != DERIVATION_JOB) return -1;
+	const struct derivation_work *local = pg_synthesis_work_state(job, DERIVATION_JOB);
+	if (job->status != PG_SYNTHESIS_PENDING || local->computation) return 0;
+	const struct pg_derivation_input *input = job->inputs[0];
+	/* The premise cursor cannot transport the action's substitution cursor. */
+	if (input->rule == PG_REINDEX && local->next == input->count) return 0;
+	*next = local->next;
+	return 1;
+}
+
+int pg_synthesis_rule_resume(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *job, size_t next)
+{
+	size_t previous;
+	if (pg_synthesis_rule_frontier(synthesis, job, &previous) != 1 || previous) return -1;
+	const struct pg_derivation_input *input = job->inputs[0];
+	if (next > input->count) return -1;
+	if (input->rule == PG_REINDEX && next == input->count) return -1;
+	for (size_t i = 0; i < next; ++i) {
+		struct pg_synthesis_input premise = pg_synthesis_work_dependency(job, 3 + 2 * i);
+		if (!pg_evidence_owned_by(pg_synthesis_input_result(premise), synthesis->typing)) return -1;
+	}
+	struct derivation_work *local = pg_synthesis_work_state(job, DERIVATION_JOB);
+	local->next = next;
+	return 0;
+}
+
+struct pg_synthesis_input pg_synthesis_rule_input(const struct pg_synthesis *synthesis,
 	const struct pg_synthesis_job *job, size_t index)
 {
-	if (!job || (job->role != DERIVATION_JOB && job->role != DERIVATION_INPUT_JOB)) return NULL;
+	(void)synthesis;
+	if (!job || pg_synthesis_work_role(job) != DERIVATION_JOB) return (struct pg_synthesis_input){0};
 	const struct pg_derivation_input *input = job->inputs[0];
-	if (index >= input->count) return NULL;
-	if (job->role == DERIVATION_INPUT_JOB)
-		return pg_synthesis_derivation_inference(synthesis, input->premises[index], (void *)job->inputs[1]);
-	return (void *)job->inputs[index + 3];
+	if (index >= input->count) return (struct pg_synthesis_input){0};
+	return pg_synthesis_work_dependency(job, 3 + 2 * index);
 }
 
 struct rule_export {
 	const struct pg_synthesis *synthesis;
-	struct pg_dag proofs, workers, raw;
+	struct pg_dag proofs, workers;
+	const struct pg_dag *jobs;
 	const struct pg_effect_inference *source_effects;
 	struct pg_effect_inference *effects;
+	const void **roots;
 	int status;
 };
 
@@ -230,34 +335,25 @@ static int export_proof_child(void *owner, const void *key, size_t index, const 
 	return status;
 }
 
-static int export_input_child(void *unused, const void *key, size_t index, const void **child)
-{
-	(void)unused;
-	const struct pg_derivation_input *input = key;
-	if (input->parameters.conversion || input->parameters.reduction) return -1;
-	if (index == input->count) return 0;
-	*child = input->premises[index];
-	return *child ? 1 : -1;
-}
-
 static int export_job_child(void *context, const void *key, size_t index, const void **child)
 {
 	struct rule_export *export = context;
-	const struct pg_synthesis_job *job = key;
-	if (job->owner != export->synthesis->owner_key) return -1;
-	if (job->role == DERIVATION_INPUT_JOB) {
-		if (pg_dag_add(&export->raw, job->inputs[0])) return -1;
+	struct pg_pending *pending = (void *)key;
+	if (!pg_synthesis_input_owned(export->synthesis, (struct pg_synthesis_input){.pending = pending})) return -1;
+	const struct pg_evidence *proof = pg_pending_result(pending);
+	if (proof) return pg_dag_add(&export->proofs, proof);
+	const struct pg_synthesis_job *job = pg_pending_job(pending);
+	if (job && pg_synthesis_work_role(job) == DERIVATION_JOB) {
+		const struct pg_derivation_input *input = job->inputs[0];
+		if (index < input->count) {
+			struct pg_synthesis_input premise = pg_synthesis_work_dependency(job, 3 + 2 * index);
+			if (premise.checked) return pg_dag_add(&export->proofs, premise.checked) ? -1 : 2;
+			*child = premise.pending;
+			return *child ? 1 : -1;
+		}
 		return job->inputs[1] ? pg_dag_add(&export->workers, job->inputs[1]) : 0;
 	}
-	if (job->role == DERIVATION_JOB) {
-		const struct pg_derivation_input *input = job->inputs[0];
-		if (index < input->count) { *child = job->inputs[index + 3]; return 1; }
-		const struct pg_synthesis_job *effects = job->inputs[1];
-		return effects ? pg_dag_add(&export->workers, pg_synthesis_effect_worker(effects)) : 0;
-	}
-	if (job->status == PG_SYNTHESIS_DONE && job->result)
-		return pg_dag_add(&export->proofs, job->result);
-	export->status = job->status == PG_SYNTHESIS_PENDING ? 1 : -1;
+	export->status = pg_synthesis_pending_status(pending) == PG_SYNTHESIS_PENDING ? 1 : -1;
 	return -1;
 }
 
@@ -279,36 +375,77 @@ static int export_dependency(void *context, const struct pg_effect_equation *sou
 		pg_effect_equation_find(export->effects, pg_effect_equation_parameter(export->source_effects, target)));
 }
 
-static struct pg_derivation_input *export_header(struct pg_graph *storage, const struct pg_derivation_input *header)
+static const void *export_key(const struct rule_export *export, struct pg_synthesis_input input)
 {
-	if (header->count > (SIZE_MAX - sizeof(*header)) / sizeof(void *)) return NULL;
-	struct pg_derivation_input *input = pg_alloc(storage, sizeof(*input) + header->count * sizeof(*input->premises));
-	if (input) *input = *header;
-	return input;
+	if (input.checked) return input.checked;
+	const struct pg_evidence *proof = pg_pending_result(input.pending);
+	if (proof) return pg_evidence_owned_by(proof, export->synthesis->typing) ? proof : NULL;
+	const struct pg_synthesis_job *job = pg_pending_job(input.pending);
+	return job && pg_synthesis_work_role(job) == DERIVATION_JOB ? input.pending : NULL;
+}
+
+static const void *export_root(const void *owner, size_t index)
+{
+	const struct rule_export *export = owner;
+	return export->roots[index];
+}
+
+static int export_view_header(const void *owner, const void *key, struct pg_derivation_input *header)
+{
+	const struct rule_export *export = owner;
+	if (pg_dag_find(&export->proofs, key)) return pg_derivation_input_header(key, header);
+	if (!pg_dag_find(export->jobs, key)) return -1;
+	const struct pg_synthesis_job *job = pg_pending_job((void *)key);
+	if (!job || pg_synthesis_work_role(job) != DERIVATION_JOB) return -1;
+	*header = *(const struct pg_derivation_input *)job->inputs[0];
+	const struct pg_effect_inference *worker = job->inputs[1];
+	if (worker) header->effect_parameter = pg_effect_equation_parameter(worker, job->inputs[2]);
+	return 0;
+}
+
+static int export_view_child(const void *owner, const void *key, size_t index, const void **child)
+{
+	const struct rule_export *export = owner;
+	if (pg_dag_find(&export->proofs, key)) {
+		const struct pg_evidence *proof = NULL;
+		int status = pg_derivation_input_dependency(export->synthesis->typing, key, index, &proof);
+		*child = proof;
+		return status;
+	}
+	if (!pg_dag_find(export->jobs, key)) return -1;
+	const struct pg_synthesis_job *job = pg_pending_job((void *)key);
+	if (!job || pg_synthesis_work_role(job) != DERIVATION_JOB) return -1;
+	const struct pg_derivation_input *input = job->inputs[0];
+	if (index > input->count) return -1;
+	if (index == input->count) return 0;
+	*child = export_key(export, pg_synthesis_work_dependency(job, 3 + 2 * index));
+	return *child ? 1 : -1;
 }
 
 int pg_synthesis_export_rule_closure(const struct pg_synthesis *synthesis,
-	struct pg_dag *roots, struct pg_graph *storage, struct pg_effect_inference *effects,
+	struct pg_dag *roots, const struct pg_dag *checked, struct pg_graph *storage, struct pg_effect_inference *effects,
 	int require_closed,
 	int (*observe)(void *, const struct pg_derivation_input *, const struct pg_effect_inference *),
-	void *owner, const struct pg_derivation_input *const **result)
+	void *owner, int (*emit)(void *, const struct pg_derivation_view *))
 {
-	if (!synthesis || !storage || !effects || !result || !roots || roots->child || roots->failed) {
-		if (effects) effects->failed = 1;
+	if (!synthesis || !storage || !effects || !emit || !roots || roots->child || roots->failed) {
+		if (effects) pg_effect_inference_fail(effects);
 		return -1;
 	}
 	if (effects->rows != storage || effects->sealed || effects->failed || effects->row_sources.count) {
-		effects->failed = 1;
+		pg_effect_inference_fail(effects);
 		return -1;
 	}
-	struct rule_export export = {.synthesis = synthesis, .effects = effects, .status = -1};
 	struct pg_dag jobs = {0};
+	struct rule_export export = {.synthesis = synthesis, .jobs = &jobs, .effects = effects, .status = -1};
 	if (pg_dag_init(&export.proofs, export_proof_child, &export) || pg_dag_init(&export.workers, NULL, NULL)
-		|| pg_dag_init(&export.raw, export_input_child, NULL)
 		|| pg_dag_init(&jobs, export_job_child, &export)) goto done;
-	const struct pg_dag_node *last_raw = NULL, *last_proof = NULL, *last_job = NULL, *last_worker = NULL;
+	const struct pg_dag_node *last_proof = NULL, *last_job = NULL, *last_worker = NULL;
 	for (const struct pg_dag_node *root = roots->first; root; root = root->next) {
-		if (pg_dag_add(&jobs, root->key)) goto done;
+		if (checked && pg_dag_find(checked, root->key)) {
+			if (!pg_evidence_owned_by(root->key, synthesis->typing)) goto done;
+			if (pg_dag_add(&export.proofs, root->key)) goto done;
+		} else if (pg_dag_add(&jobs, root->key)) goto done;
 		for (const struct pg_dag_node *node = last_worker ? last_worker->next : export.workers.first;
 			node; last_worker = node, node = node->next) {
 			export.source_effects = node->key;
@@ -317,9 +454,6 @@ int pg_synthesis_export_rule_closure(const struct pg_synthesis *synthesis,
 			if (observe && observe(owner, NULL, node->key)) goto done;
 		}
 		if (!observe) continue;
-		for (const struct pg_dag_node *node = last_raw ? last_raw->next : export.raw.first;
-			node; last_raw = node, node = node->next)
-			if (observe(owner, node->key, NULL)) goto done;
 		for (const struct pg_dag_node *node = last_proof ? last_proof->next : export.proofs.first;
 			node; last_proof = node, node = node->next) {
 			struct pg_derivation_input header;
@@ -327,128 +461,104 @@ int pg_synthesis_export_rule_closure(const struct pg_synthesis *synthesis,
 		}
 		for (const struct pg_dag_node *node = last_job ? last_job->next : jobs.first;
 			node; last_job = node, node = node->next) {
-			const struct pg_synthesis_job *job = node->key;
-			if (job->role != DERIVATION_JOB) continue;
+			if (pg_pending_result((void *)node->key)) continue;
+			const struct pg_synthesis_job *job = pg_pending_job((void *)node->key);
+			if (!job || pg_synthesis_work_role(job) != DERIVATION_JOB) continue;
 			struct pg_derivation_input header = *(const struct pg_derivation_input *)job->inputs[0];
-			const struct pg_synthesis_job *worker = job->inputs[1];
-			if (worker) header.effect_parameter = pg_effect_equation_parameter(pg_synthesis_effect_worker(worker), job->inputs[2]);
+			const struct pg_effect_inference *worker = job->inputs[1];
+			if (worker) header.effect_parameter = pg_effect_equation_parameter(worker, job->inputs[2]);
 			if (observe(owner, &header, NULL)) goto done;
 		}
 	}
 	if (roots->failed) goto done;
 	size_t count = roots->count;
-	if (jobs.count > SIZE_MAX / sizeof(void *) || export.proofs.count > SIZE_MAX / sizeof(void *)
-		|| export.raw.count > SIZE_MAX / sizeof(void *) || count > SIZE_MAX / sizeof(void *)) goto done;
-	const struct pg_derivation_input **proofs = pg_alloc(&jobs.storage, export.proofs.count * sizeof(*proofs));
-	const struct pg_derivation_input **inputs = pg_alloc(&jobs.storage, jobs.count * sizeof(*inputs));
-	const struct pg_derivation_input **selected = pg_alloc(storage, count * sizeof(*selected));
-	const struct pg_derivation_input **raw = pg_alloc(&jobs.storage, export.raw.count * sizeof(*raw));
-	if (!proofs || !inputs || !selected || !raw) goto done;
-	for (const struct pg_dag_node *node = export.raw.first; node; node = node->next) {
-		const struct pg_derivation_input *source = node->key;
-		struct pg_derivation_input *input = export_header(storage, source);
-		if (!input) goto done;
-		for (size_t i = 0; i < input->count; ++i)
-			input->premises[i] = raw[pg_dag_find(&export.raw, source->premises[i])->id - 1];
-		raw[node->id - 1] = input;
+	if (count > SIZE_MAX / sizeof(*export.roots)) goto done;
+	export.roots = pg_alloc(&jobs.storage, count * sizeof(*export.roots));
+	if (!export.roots) goto done;
+	for (const struct pg_dag_node *node = roots->first; node; node = node->next) {
+		struct pg_synthesis_input input = checked && pg_dag_find(checked, node->key)
+			? (struct pg_synthesis_input){.checked = node->key} : (struct pg_synthesis_input){.pending = (void *)node->key};
+		if (!(export.roots[node->id - 1] = export_key(&export, input))) goto done;
 	}
-	for (const struct pg_dag_node *node = export.proofs.first; node; node = node->next) {
-		struct pg_derivation_input header;
-		if (pg_derivation_input_header(node->key, &header)) goto done;
-		struct pg_derivation_input *input = export_header(storage, &header);
-		if (!input) goto done;
-		for (size_t i = 0; i < input->count; ++i) {
-			const struct pg_evidence *dependency;
-			if (pg_derivation_input_dependency(synthesis->typing, node->key, i, &dependency) != 1) goto done;
-			const struct pg_dag_node *premise = pg_dag_find(&export.proofs, dependency);
-			input->premises[i] = proofs[premise->id - 1];
-		}
-		proofs[node->id - 1] = input;
-	}
-	for (const struct pg_dag_node *node = jobs.first; node; node = node->next) {
-		const struct pg_synthesis_job *job = node->key;
-		if (job->role == DERIVATION_JOB) {
-			struct pg_derivation_input *input = export_header(storage, job->inputs[0]);
-			if (!input || input->parameters.conversion || input->parameters.reduction) goto done;
-			const struct pg_synthesis_job *worker = job->inputs[1];
-			if (worker) input->effect_parameter = pg_effect_equation_parameter(pg_synthesis_effect_worker(worker), job->inputs[2]);
-			for (size_t i = 0; i < input->count; ++i)
-				input->premises[i] = inputs[pg_dag_find(&jobs, job->inputs[i + 3])->id - 1];
-			inputs[node->id - 1] = input;
-		} else if (job->role == DERIVATION_INPUT_JOB)
-			inputs[node->id - 1] = raw[pg_dag_find(&export.raw, job->inputs[0])->id - 1];
-		else
-			inputs[node->id - 1] = proofs[pg_dag_find(&export.proofs, job->result)->id - 1];
-	}
-	for (const struct pg_dag_node *node = roots->first; node; node = node->next)
-		selected[node->id - 1] = inputs[pg_dag_find(&jobs, node->key)->id - 1];
-	*result = selected;
+	struct pg_derivation_view view = {count, &export, export_root, export_view_header, export_view_child};
+	if (emit(owner, &view)) goto done;
 	export.status = 0;
 done:
 	pg_dag_destroy(&jobs);
 	pg_dag_destroy(&export.proofs);
 	pg_dag_destroy(&export.workers);
-	pg_dag_destroy(&export.raw);
-	if (export.status) effects->failed = 1;
+	if (export.status) pg_effect_inference_fail(effects);
 	return export.status;
 }
 
-int pg_synthesis_export_rules(const struct pg_synthesis *synthesis, size_t count,
-	struct pg_synthesis_job *const *roots, struct pg_graph *storage,
-	struct pg_effect_inference *effects, int require_closed, const struct pg_derivation_input *const **result)
+struct export_selection {
+	const struct pg_dag *selected;
+	const struct pg_synthesis_input *inputs;
+	size_t count;
+	const struct pg_derivation_view *view;
+	void *owner;
+	int (*emit)(void *, const struct pg_derivation_view *);
+};
+
+static const void *selection_root(const void *owner, size_t index)
 {
-	struct pg_dag selected = {0};
+	const struct export_selection *selection = owner;
+	struct pg_synthesis_input input = selection->inputs[index];
+	const struct pg_dag_node *node = pg_dag_find(selection->selected,
+		input.checked ? (const void *)input.checked : input.pending);
+	return selection->view->root(selection->view->owner, node->id - 1);
+}
+
+static int selection_header(const void *owner, const void *key, struct pg_derivation_input *header)
+{
+	const struct export_selection *selection = owner;
+	return selection->view->header(selection->view->owner, key, header);
+}
+
+static int selection_child(const void *owner, const void *key, size_t index, const void **child)
+{
+	const struct export_selection *selection = owner;
+	return selection->view->child(selection->view->owner, key, index, child);
+}
+
+static int emit_selection(void *owner, const struct pg_derivation_view *view)
+{
+	struct export_selection *selection = owner;
+	selection->view = view;
+	struct pg_derivation_view ordered = {selection->count, selection,
+		selection_root, selection_header, selection_child};
+	return selection->emit(selection->owner, &ordered);
+}
+
+int pg_synthesis_export_rules(const struct pg_synthesis *synthesis, size_t count,
+	const struct pg_synthesis_input *roots, struct pg_graph *storage,
+	struct pg_effect_inference *effects, int require_closed,
+	void *owner, int (*emit)(void *, const struct pg_derivation_view *))
+{
+	struct pg_dag selected = {0}, checked = {0};
 	int status = -1;
-	if (!storage || !result || (count && !roots) || count > SIZE_MAX / sizeof(void *)) goto done;
-	if (pg_dag_init(&selected, NULL, NULL)) goto done;
-	for (size_t i = 0; i < count; ++i) if (pg_dag_add(&selected, roots[i])) goto done;
-	const struct pg_derivation_input *const *inputs;
-	status = pg_synthesis_export_rule_closure(synthesis, &selected, storage, effects, require_closed, NULL, NULL, &inputs);
-	if (status) goto done;
-	const struct pg_derivation_input **output = pg_alloc(storage, count * sizeof(*output));
-	if (!output) { status = -1; goto done; }
-	for (size_t i = 0; i < count; ++i) output[i] = inputs[pg_dag_find(&selected, roots[i])->id - 1];
-	*result = output;
+	if (!synthesis || !storage || !emit || (count && !roots) || count > SIZE_MAX / sizeof(*roots)) goto done;
+	if (pg_dag_init(&selected, NULL, NULL) || pg_dag_init(&checked, NULL, NULL)) goto done;
+	for (size_t i = 0; i < count; ++i) {
+		if (!pg_synthesis_input_owned(synthesis, roots[i])) goto done;
+		struct pg_synthesis_input input = roots[i];
+		if (pg_dag_add(&selected, input.checked ? (const void *)input.checked : input.pending)) goto done;
+		if (input.checked && pg_dag_add(&checked, input.checked)) goto done;
+	}
+	struct export_selection selection = {&selected, roots, count, NULL, owner, emit};
+	status = pg_synthesis_export_rule_closure(synthesis, &selected, &checked, storage,
+		effects, require_closed, NULL, &selection, emit_selection);
 done:
 	pg_dag_destroy(&selected);
-	if (status && effects) effects->failed = 1;
+	pg_dag_destroy(&checked);
+	if (status && effects) pg_effect_inference_fail(effects);
 	return status;
 }
 
-static void derivation_input_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+static const struct pg_evidence *checked_input(const void *owner, size_t i)
 {
-	struct derivation_input_work *local = pg_synthesis_work_state(job, DERIVATION_INPUT_JOB);
-	const struct pg_derivation_input *input = job->inputs[0];
-	struct pg_effect_inference *work = (void *)job->inputs[1];
-	if (!local->rule) {
-		if (input->count > SIZE_MAX / sizeof(struct pg_synthesis_job *)) {
-			pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
-		}
-		if (local->next < input->count) {
-			struct pg_synthesis_job *premise = pg_synthesis_rule_premise(synthesis, job, local->next);
-			if (!premise) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
-			if (pg_synthesis_await_preparation(synthesis, job, premise, NULL)) return;
-			if (!pg_synthesis_work_project(premise).rule) { pg_synthesis_finish(synthesis, job, premise->status); return; }
-			++local->next;
-			pg_synthesis_enqueue(synthesis, job);
-			return;
-		}
-		struct pg_derivation_input header = *input;
-		struct pg_effect_equation *equation = NULL;
-		if (input->effect_parameter) {
-			equation = pg_effect_equation_find(work, input->effect_parameter);
-			if (!equation) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
-			header.effect_parameter = NULL;
-		}
-		struct pg_synthesis_job **premises = input->count ? malloc(input->count * sizeof(*premises)) : NULL;
-		if (input->count && !premises) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-		for (size_t i = 0; i < input->count; ++i)
-			premises[i] = pg_synthesis_work_project(pg_synthesis_rule_premise(synthesis, job, i)).rule;
-		local->rule = pg_synthesis_rule(synthesis, &header, premises, equation ? work : NULL, equation);
-		free(premises);
-		if (!local->rule) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
-	}
-	pg_synthesis_forward(synthesis, job, local->rule);
+	const struct pg_synthesis_job *job = owner;
+	return pg_synthesis_input_result(pg_synthesis_work_dependency(job, 3 + 2 * i));
 }
 
 static void derivation_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
@@ -458,30 +568,25 @@ static void derivation_step(struct pg_synthesis *synthesis, struct pg_synthesis_
 	if (input->parameters.conversion || input->parameters.reduction) {
 		pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
 	}
-	if (input->count > SIZE_MAX / sizeof(const struct pg_evidence *)) {
-		pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
-	}
-	if (local->next < input->count) {
-		struct pg_synthesis_job *p = pg_synthesis_rule_premise(synthesis, job, local->next);
-		if (pg_synthesis_await(synthesis, job, p)) return;
+	while (local->next < input->count) {
+		struct pg_synthesis_input p = pg_synthesis_rule_input(synthesis, job, local->next);
+		if (pg_synthesis_await_input(synthesis, job, p)) return;
 		++local->next;
-		pg_synthesis_enqueue(synthesis, job);
-		return;
 	}
 	int converting = input->rule == PG_TYPE_CONVERSION;
 	int normalizing = input->rule == PG_PURE_NORMALIZATION;
 	struct pg_derivation_parameters parameters = input->parameters;
 	if (job->inputs[1]) {
-		struct pg_synthesis_job *effects = (void *)job->inputs[1];
-		if (pg_synthesis_await(synthesis, job, effects)) return;
-		parameters.effects = pg_effect_inference_result(pg_synthesis_effect_worker(effects), job->inputs[2]);
+		struct pg_effect_inference *effects = (void *)job->inputs[1];
+		if (pg_synthesis_await_effects(synthesis, job, effects)) return;
+		parameters.effects = pg_effect_inference_result(effects, job->inputs[2]);
 		if (!parameters.effects) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
 	}
 	if (converting || normalizing) {
 		if (input->count != (converting ? 2u : 1u) || !input->source || !input->target) {
 			pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
 		}
-		const struct pg_evidence *source = pg_synthesis_rule_premise(synthesis, job, 0)->result;
+		const struct pg_evidence *source = pg_synthesis_input_result(pg_synthesis_rule_input(synthesis, job, 0));
 		const struct pg_occurrence *subject = pg_evidence_subject(source);
 		if (!subject) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
 		if (!local->computation) local->computation = pg_alloc(synthesis->typing->graph, sizeof(*local->computation));
@@ -490,7 +595,7 @@ static void derivation_step(struct pg_synthesis *synthesis, struct pg_synthesis_
 		const struct pg_term *actual_source = converting ? pg_evidence_classifier(source) : subject->core;
 		const struct pg_term *actual_target = NULL;
 		if (converting) {
-			const struct pg_occurrence *target = pg_evidence_subject(pg_synthesis_rule_premise(synthesis, job, 1)->result);
+			const struct pg_occurrence *target = pg_evidence_subject(pg_synthesis_input_result(pg_synthesis_rule_input(synthesis, job, 1)));
 			if (!target) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
 			actual_target = target->core;
 		}
@@ -521,11 +626,14 @@ static void derivation_step(struct pg_synthesis *synthesis, struct pg_synthesis_
 	} else if (input->source || input->target) {
 		pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
 	}
-	const struct pg_evidence **premises = input->count ? malloc(input->count * sizeof(*premises)) : NULL;
-	if (input->count && !premises) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-	for (size_t i = 0; i < input->count; ++i)
-		premises[i] = pg_synthesis_rule_premise(synthesis, job, i)->result;
-	job->result = pg_prove_derivation(synthesis->typing, input->rule, &parameters, input->count, premises);
-	free(premises);
+	if (input->rule == PG_REINDEX) {
+		if (input->count != 2) {
+			pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
+		}
+		pg_synthesis_reindex_step(synthesis, job, checked_input(job, 0), checked_input(job, 1));
+		return;
+	}
+	job->result = pg_prove_derivation_inputs(synthesis->typing, input->rule,
+		&parameters, input->count, job, checked_input);
 	pg_synthesis_finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED);
 }

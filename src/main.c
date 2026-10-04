@@ -2,7 +2,7 @@
 #include "program.h"
 #include "graph_io.h"
 #include "source_io.h"
-#include "computation_io.h"
+#include "artifact/file.h"
 #include "execution.h"
 
 #include <errno.h>
@@ -14,7 +14,7 @@
 
 struct root_list {
 	/* Ordered user selections; aliases are allowed, jobs remain interned. */
-	struct pg_synthesis_job **items;
+	struct pg_synthesis_input *items;
 	size_t count, capacity;
 };
 
@@ -24,43 +24,12 @@ static int retain_root(struct root_list *roots, struct pg_synthesis_job *job)
 	if (roots->count == roots->capacity) {
 		if (roots->capacity > SIZE_MAX / sizeof(*roots->items) / 2) return -1;
 		size_t capacity = roots->capacity ? roots->capacity * 2 : 8;
-		struct pg_synthesis_job **items = realloc(roots->items, capacity * sizeof(*items));
+		struct pg_synthesis_input *items = realloc(roots->items, capacity * sizeof(*items));
 		if (!items) return -1;
 		roots->items = items; roots->capacity = capacity;
 	}
-	roots->items[roots->count++] = job;
+	roots->items[roots->count++] = (struct pg_synthesis_input){.pending = pg_synthesis_pending(job)};
 	return 0;
-}
-
-/* Publish only a completely written image; the temporary file shares its
- * destination directory so rename does not cross filesystems. */
-static int save_image(const char *path, const struct pg_program *program,
-	size_t count, struct pg_synthesis_job *const *roots, int retain_reductions)
-{
-	static const char suffix[] = ".tmp.XXXXXX";
-	size_t length = strlen(path);
-	if (length > SIZE_MAX - sizeof(suffix)) return -1;
-	char *temporary = malloc(length + sizeof(suffix));
-	if (!temporary) return -1;
-	memcpy(temporary, path, length);
-	memcpy(temporary + length, suffix, sizeof(suffix));
-	int status = -1;
-	int descriptor = mkstemp(temporary);
-	if (descriptor < 0) { free(temporary); return -1; }
-	FILE *file = fdopen(descriptor, "wb");
-	if (file) {
-		struct pg_graph temporary_graph = {0};
-		const struct pg_reduction_archive *reductions = retain_reductions
-			? pg_reduction_archive_snapshot(&temporary_graph, &program->evaluation, program->retained_reductions) : NULL;
-		if (!retain_reductions || reductions)
-			status = pg_sources_write_retained(file, &program->synthesis, count, roots, reductions);
-		pg_graph_destroy(&temporary_graph);
-		if (fclose(file)) status = -1;
-	} else close(descriptor);
-	if (!status) status = rename(temporary, path);
-	if (status) unlink(temporary);
-	free(temporary);
-	return status;
 }
 
 static int read_source(FILE *file, char **source, size_t *length)
@@ -188,7 +157,7 @@ static int run(struct pg_program *program, const struct pg_evidence *proof, uint
 }
 
 static int repl(struct pg_program *program, uint64_t budget,
-	struct root_list *roots, int retain_reductions)
+	struct root_list *roots)
 {
 	char *line = NULL;
 	size_t capacity = 0;
@@ -234,7 +203,7 @@ static int repl(struct pg_program *program, uint64_t budget,
 				fprintf(stderr, "root index must be in 1..%zu\n", roots->count);
 				continue;
 			}
-			program->root = roots->items[index - 1];
+			program->root = pg_pending_job(roots->items[index - 1].pending);
 			report(stdout, program, program->root);
 			continue;
 		}
@@ -246,7 +215,7 @@ static int repl(struct pg_program *program, uint64_t budget,
 			continue;
 		}
 		if (!strcmp(command, ":save") && *argument) {
-			if (save_image(argument, program, roots->count, roots->items, retain_reductions)) fputs("cannot save input image\n", stderr);
+			if (pg_artifact_save_file(argument, program, roots->count, roots->items, PG_ARTIFACT_INPUTS)) fputs("cannot save input image\n", stderr);
 			else puts("saved");
 			continue;
 		}
@@ -272,16 +241,20 @@ int main(int argc, char **argv)
 	uint64_t budget = 100000;
 	uint64_t run_budget = 100000;
 	uint64_t root_index = 0;
+	size_t image_limit = PG_ARTIFACT_DEFAULT_LIMIT;
 	enum pg_definition_policy policy = PG_DEFINITION_IMPLICIT_THUNK;
 	const char *path = NULL;
 	const char *selected = NULL;
 	const char *save = NULL;
+	enum pg_artifact_contents contents = PG_ARTIFACT_INPUTS;
 	const char *imports = NULL;
-	int nf = 0, load = 0, interactive = 0, retain_reductions = 0, legacy_intrinsic_dot = 0;
+	int nf = 0, load = 0, interactive = 0, legacy_intrinsic_dot = 0;
 	int execute = 0, run_steps = 0;
 	for (int i = 1; i < argc; ++i) {
 		if (!strcmp(argv[i], "--steps")) {
 			if (++i == argc || steps_argument(argv[i], &budget) != 0) goto usage;
+		} else if (!strcmp(argv[i], "--image-limit")) {
+			if (++i == argc || pg_artifact_limit_argument(argv[i], &image_limit)) goto usage;
 		} else if (!strcmp(argv[i], "--run-steps")) {
 			if (run_steps || ++i == argc || steps_argument(argv[i], &run_budget)) goto usage;
 			run_steps = 1;
@@ -298,14 +271,18 @@ int main(int argc, char **argv)
 			imports = argv[i];
 		} else if (!strcmp(argv[i], "--load")) load = 1;
 		else if (!strcmp(argv[i], "--repl")) interactive = 1;
-		else if (!strcmp(argv[i], "--retain-reductions")) retain_reductions = 1;
-		else if (!strcmp(argv[i], "--save")) {
+		else if (!strcmp(argv[i], "--retain-reductions")) {
+			fputs("--retain-reductions was removed; --save preserves recomputable inputs, not evaluator history.\n", stderr);
+			return 2;
+		}
+		else if (!strcmp(argv[i], "--save") || !strcmp(argv[i], "--save-inputs") || !strcmp(argv[i], "--save-materialized")) {
+			contents = !strcmp(argv[i], "--save-materialized") ? PG_ARTIFACT_MATERIALIZED : PG_ARTIFACT_INPUTS;
 			if (save || ++i == argc || !*argv[i] || !strcmp(argv[i], "-")) goto usage;
 			save = argv[i];
 		} else if (!strcmp(argv[i], "--strict-thunks")) policy = PG_DEFINITION_EXPLICIT_THUNK;
 		else if (!strcmp(argv[i], "--legacy-intrinsic-dot")) legacy_intrinsic_dot = 1;
 		else if (!strcmp(argv[i], "--help")) {
-			puts("usage: pointer-check [--steps N] [--strict-thunks] [--legacy-intrinsic-dot] [--imports FILE.p|--load [--root N]] [--save FILE.a] [--retain-reductions] [--whnf NAME|--nf NAME|--run NAME [--run-steps N]] INPUT|-\n"
+			puts("usage: pointer-check [--steps N] [--strict-thunks] [--legacy-intrinsic-dot] [--imports FILE.p|--load [--root N]] [--save FILE.a|--save-inputs FILE.a|--save-materialized FILE.a] [--whnf NAME|--nf NAME|--run NAME [--run-steps N]] INPUT|-\n"
 				"Checks with the pointer-core solver; host effects execute only with --run.\n"
 				"--run selects a checked definition, forces a stored thunk once, and runs it with fresh effect state.\n"
 				"Print writes exact Text bytes without a newline. Run diagnostics go to stderr.\n"
@@ -314,12 +291,13 @@ int main(int argc, char **argv)
 				"#Name is standard; --legacy-intrinsic-dot also accepts #.Name in source/imports/REPL.\n"
 				"--imports FILE.p supplies exported symbols to explicit source imports.\n"
 				"--repl keeps the loaded Program for :solve, :whnf, :nf, :status, :root, :save, :quit.\n"
-				"--load reads an image (limit 1000000); its stored thunk policy applies.\n"
+				"--load uses a fixed decoder allowance (default 1000000); --image-limit N|none sets it explicitly.\n"
+				"The allowance counts payload records/references/name units, not bytes, RAM or Solve fuel. Stored thunk policy applies.\n"
 				"--root N selects a loaded root (1-based, default 1); save retains every root.\n"
 				"Created WHNF/NF requests append roots without replacing the selected source module.\n"
-				"--save defaults to RECOMPUTE inputs, including pending/rejected inputs.\n"
-				"--retain-reductions also saves completed reductions and partial NF records, including imported ones.\n"
-				"Retained records are not trusted on load; ordinary source Solve still recomputes. This is not full CHECKPOINT.\n"
+				"--save and --save-inputs preserve recomputable inputs, including pending/rejected inputs.\n"
+				"--save-materialized FILE.a also retains available typed results; neither profile is a complete checkpoint.\n"
+				"Loaded results are descriptive, not accepted evidence; ordinary Solve still checks source. This is not full CHECKPOINT.\n"
 				"WHNF/NF select a definition, force a stored thunk once, and print its pure Core DAG.\n"
 				"Exit: 0 done, 1 rejected/syntax, 2 input/internal error, 3 pending, 4 unsupported.\n"
 				"Steps bound solver transitions, not parsing time or individual rule cost.");
@@ -333,7 +311,6 @@ int main(int argc, char **argv)
 	if (interactive && !strcmp(path, "-")) goto usage;
 	if (execute && interactive) goto usage;
 	if (run_steps && !execute) goto usage;
-	if (retain_reductions && !save && !interactive) goto usage;
 	if (!root_index) root_index = 1;
 	FILE *file = !strcmp(path, "-") ? stdin : fopen(path, "rb");
 	if (!file) { fprintf(stderr, "%s: cannot open input\n", path); return 2; }
@@ -341,7 +318,7 @@ int main(int argc, char **argv)
 	size_t count = 1;
 	struct pg_synthesis_job *const *roots = NULL;
 	if (load) {
-		program = pg_sources_read(file, 1000000, &count, &roots);
+		program = pg_artifact_read_file(file, image_limit, &count, &roots);
 		if (program && root_index > count) {
 			fprintf(stderr, "%s: root index out of range: %" PRIu64 " (count %zu)\n", path, root_index, count);
 			pg_program_destroy(program);
@@ -395,18 +372,18 @@ int main(int argc, char **argv)
 		result = report(execute ? stderr : stdout, program, job);
 		if (selected && !execute && !result && pg_graph_print(stdout, pg_evidence_subject(pg_synthesis_result(job))->core)) result = 2;
 		if (save) {
-			if (save_image(save, program, retained.count, retained.items, retain_reductions)) {
+			if (pg_artifact_save_file(save, program, retained.count, retained.items, contents)) {
 				fprintf(stderr, "%s: cannot save input image\n", save); result = 2;
 			}
 		}
 		if (execute && !result) result = run(program, pg_synthesis_result(job), run_budget);
-		if (interactive) result = repl(program, budget, &retained, retain_reductions);
+		if (interactive) result = repl(program, budget, &retained);
 	}
 done:
 	free(retained.items);
 	pg_program_destroy(program);
 	return result;
 usage:
-	fputs("usage: pointer-check [--steps N] [--strict-thunks] [--legacy-intrinsic-dot] [--imports FILE.p|--load [--root N]] [--save FILE.a] [--retain-reductions] [--whnf NAME|--nf NAME|--run NAME [--run-steps N]] INPUT|-\n", stderr);
+	fputs("usage: pointer-check [--steps N] [--strict-thunks] [--legacy-intrinsic-dot] [--imports FILE.p|--load [--root N]] [--save FILE.a|--save-inputs FILE.a|--save-materialized FILE.a] [--whnf NAME|--nf NAME|--run NAME [--run-steps N]] INPUT|-\n", stderr);
 	return 2;
 }

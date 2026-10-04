@@ -500,7 +500,7 @@ static void declaration_graph(FILE *file, struct pg_graph *graph, int writing)
 		const struct pg_evidence *results[] = {pg_prove_substitution(&typing, parameters, parameters, 1, &self),
 			pg_prove_substitution(&typing, parameters, fields, 1, &field_self)};
 		const struct pg_data_signature *signature = pg_data_signature(&typing, parameters, parameters);
-		const struct pg_data_schema *schema = pg_data_schema_check(&typing, declaration, signature, 2, results);
+		const struct pg_data_schema *schema = pg_data_schema_check(&typing, declaration, signature, 2, (struct pg_evidence_inputs){.owner = results});
 		assert(schema && pg_data_schema_layout(schema) == layout);
 		const struct pg_evidence *formation = pg_prove_inductive_type(&typing, schema);
 		assert(formation && pg_evidence_subject(formation)->core->as.reference == pg_data_declaration_family(declaration));
@@ -508,7 +508,7 @@ static void declaration_graph(FILE *file, struct pg_graph *graph, int writing)
 		size_t proofs = typing.proofs.count;
 		const struct pg_term *wrong[] = {terms[0], contexts[0]->declared_type, terms[2]};
 		const struct pg_data_declaration *changed = pg_data_declaration_unpack(graph, 4, contexts, 3, wrong);
-		assert(changed && !pg_data_schema_check(&typing, changed, signature, 2, results));
+		assert(changed && !pg_data_schema_check(&typing, changed, signature, 2, (struct pg_evidence_inputs){.owner = results}));
 		assert(!pg_data_declaration_unpack(graph, 4, contexts, 2, terms));
 		assert(!pg_data_declaration_unpack(graph, 3, contexts, 3, terms));
 		wrong[0] = terms[3];

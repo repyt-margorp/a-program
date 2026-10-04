@@ -3,11 +3,29 @@
 
 #include "syntax.h"
 #include "evidence.h"
+#include "pending.h"
 
 enum pg_synthesis_status { PG_SYNTHESIS_PENDING, PG_SYNTHESIS_DONE,
 	PG_SYNTHESIS_REJECTED, PG_SYNTHESIS_UNSUPPORTED, PG_SYNTHESIS_ERROR };
 struct pg_source_scope;
+struct pg_synthesis;
 struct pg_synthesis_job;
+struct waiter;
+/* A borrowed input, not an allocated producer. Exactly one field is set.
+ * Checked inputs retain their typed identity; pending inputs retain the owner
+ * of unfinished work. Neither Core pointer equality nor completion changes a key. */
+struct pg_synthesis_input {
+	const struct pg_evidence *checked;
+	struct pg_pending *pending;
+};
+/* Borrow the existing request prefix; no input adapter is allocated. */
+struct pg_pending *pg_synthesis_pending(struct pg_synthesis_job *);
+const struct pg_evidence *pg_synthesis_input_result(struct pg_synthesis_input input);
+/* Owned checked inputs or stable pending producers; no Evidence adapter is
+ * allocated. Force is the closed CLI demand, not an effect execution policy. */
+struct pg_synthesis_job *pg_synthesis_reduction_request(struct pg_synthesis *,
+	struct pg_synthesis_input context, struct pg_synthesis_input proof,
+	enum pg_reduction_kind kind, int force);
 /* Implicit mode also quotes inferred computational functions at argument and
  * named block-binding boundaries. Returning computations still sequence;
  * logical family signatures are not quoted as runtime functions. */
@@ -19,6 +37,8 @@ struct pg_synthesis {
 	const void *owner_key;
 	struct pg_whnf_work *normalization;
 	struct pg_index jobs;
+	/* Resolved request keys borrow existing owners, never progress or results. */
+	struct pg_index resolved_requests;
 	/* Immutable rule parameters, not conclusions or proof acceptance. */
 	struct pg_index rule_inputs;
 	struct pg_index scopes;
@@ -29,6 +49,7 @@ struct pg_synthesis {
 	struct pg_index source_references;
 	struct pg_synthesis_job *ready;
 	struct pg_synthesis_job *ready_tail;
+	struct waiter *free_waiters;
 	uint64_t steps;
 	enum pg_definition_policy definition_policy;
 };
@@ -48,32 +69,31 @@ const struct pg_source_scope *pg_synthesis_root(struct pg_synthesis *synthesis);
 /* A '*' token can name an explicitly supplied type assumption. Reading it
  * requires a universe-classified variable and retains extended_context in
  * the result. This does not create/discharge a recursive datatype signature;
- * ordinary declarations do not implicitly acquire this binding. */
+ * ordinary declarations do not implicitly acquire this binding. Checked
+ * contexts are borrowed directly; pending inputs retain their producer key
+ * and validate the same exact parent/binder when they become available. */
 const struct pg_source_scope *pg_synthesis_bind(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *parent, struct pg_token name,
-	const struct pg_object *binder, const struct pg_evidence *extended_context);
-/* Reserve a lexical name over a pending context-formation producer. Consumers
- * await it and validate the exact parent/binder with the same check as bind.
- * No new context or accepted proof is fabricated by this reservation. */
-const struct pg_source_scope *pg_synthesis_bind_context(struct pg_synthesis *synthesis,
-	const struct pg_source_scope *parent, struct pg_token name,
-	const struct pg_object *binder, struct pg_synthesis_job *context);
+	const struct pg_object *binder, struct pg_synthesis_input context);
 /* IH lookup is a binding association, not an additional proof rule. */
 const struct pg_source_scope *pg_synthesis_bind_hypothesis(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *parent, const struct pg_object *field,
-	const struct pg_object *binder, struct pg_synthesis_job *context);
+	const struct pg_object *binder, struct pg_synthesis_input context);
 /* Associate a checked graph field with its result binder for @result lookup. */
 const struct pg_source_scope *pg_synthesis_bind_graph(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *parent, const struct pg_object *value,
-	const struct pg_object *binder, struct pg_synthesis_job *context);
+	const struct pg_object *binder, struct pg_synthesis_input context);
 enum pg_source_association { PG_SOURCE_UNASSOCIATED, PG_SOURCE_HYPOTHESIS, PG_SOURCE_GRAPH };
 struct pg_synthesis_job *pg_synthesis_request(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax);
 /* An allocation address, not a typed environment or an acceptance request.
  * Exactly one of syntax and constructor identifies the allocation site.
  * Lambda/Pi and return clauses use slot zero; operation clauses use slots
- * 0/1/2 for payload/resume/response. Applications may allocate multiple binders.
- * scope lists enclosing binders from innermost to outermost. */
+ * 0/1/2 for payload/resume/response. Blocks use the named statement ordinal.
+ * Applications may allocate multiple binders.
+ * Raw factory inputs list enclosing binders from innermost to outermost.
+ * Native canonical addresses may omit scope and borrow their lexical owner;
+ * read canonical addresses through the cursor, not the raw array field. */
 struct pg_source_binding {
 	const struct pg_syntax *syntax;
 	size_t scope_count, slot;
@@ -81,6 +101,16 @@ struct pg_source_binding {
 	const struct pg_object *binder;
 	const struct pg_object *constructor;
 };
+/* Scratch traversal of canonical factory/visitor addresses only.
+ * No Solve, allocation or admission. Raw caller inputs are not canonical. */
+struct pg_source_binding_cursor {
+	const struct pg_source_scope *source;
+	const struct pg_context *context;
+	const struct pg_object *const *binders;
+	size_t count;
+};
+struct pg_source_binding_cursor pg_synthesis_source_binding_scope(const struct pg_source_binding *);
+int pg_synthesis_source_binding_next(struct pg_source_binding_cursor *, const struct pg_object **);
 const struct pg_source_binding *pg_synthesis_source_binding(struct pg_synthesis *synthesis,
 	const struct pg_source_binding *input);
 int pg_synthesis_visit_source_bindings(const struct pg_synthesis *synthesis,
@@ -143,7 +173,7 @@ struct pg_match_allocation {
 /* Read retained input or extract it from the accepted typed construction into
  * caller-owned temporary storage. This never executes Solve. */
 const struct pg_match_allocation *pg_synthesis_match_allocation(
-	const struct pg_synthesis_job *job, struct pg_graph *storage);
+	struct pg_synthesis_input input, struct pg_graph *storage);
 struct pg_synthesis_job *pg_synthesis_restore_elimination(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
 	const struct pg_match_allocation *allocation);
@@ -183,17 +213,19 @@ struct pg_synthesis_job *pg_synthesis_definition_request(struct pg_synthesis *sy
 const struct pg_source_scope *pg_synthesis_definition_scope(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *definitions);
 /* Reconstructible lexical input, not a copied scope or another authority.
- * A parentless empty view denotes the ordinary root. At most one of producer,
+ * A parentless empty view denotes the ordinary root. At most one of value,
  * module, exports, imports, definitions, binding and handler is present.
  * A handler boundary retains its allocation site, not solved effect state. */
 struct pg_source_environment {
 	const struct pg_source_scope *parent, *exports, *imports;
 	struct pg_token name;
-	struct pg_synthesis_job *producer, *module;
+	struct pg_synthesis_input value;
+	struct pg_synthesis_job *module;
 	const struct pg_syntax *definitions;
+	struct pg_synthesis_job *registration; /* Owner of definitions, otherwise NULL. */
 	const struct pg_syntax *handler;
 	struct pg_synthesis_job *binding;
-	struct pg_synthesis_job *context;
+	struct pg_synthesis_input context;
 	const struct pg_object *binder;
 	const struct pg_source_scope *associated;
 	enum pg_source_association association;
@@ -242,40 +274,30 @@ struct pg_synthesis_job *pg_synthesis_telescope(struct pg_synthesis *synthesis,
 struct pg_synthesis_job *pg_synthesis_telescope_at(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
 	const struct pg_context *prefix, const struct pg_context *end);
-/* Structural producer shared with the checked telescope above. Completion
- * exposes lexical scope/body even if domain checking is pending or failed;
- * its proof result is always NULL. One binding is opened per transition. */
-struct pg_synthesis_job *pg_synthesis_telescope_structure(struct pg_synthesis *synthesis,
-	const struct pg_source_scope *scope, const struct pg_syntax *syntax);
-/* Available after either telescope producer completes. Structural completion
- * is not context certification. Both retain the same source binder pointers. */
+/* Available after lexical preparation, even while Context checking is pending
+ * or failed. One binding opens per transition. Preparation notification uses
+ * the existing scheduler; only full completion exposes checked Context output. */
 const struct pg_source_scope *pg_synthesis_telescope_scope(const struct pg_synthesis_job *job);
 const struct pg_syntax *pg_synthesis_telescope_body(const struct pg_synthesis_job *job);
-/* Register an already accepted proof as a completed producer. The exact
- * evidence pointer, including its typed occurrence and premises, is the key.
- * No synthesis, evaluation or proof replay occurs. Only evidence owned by
- * this store's typing arena is accepted; this is not a serialized-proof loader. */
-struct pg_synthesis_job *pg_synthesis_evidence(struct pg_synthesis *synthesis,
-	const struct pg_evidence *proof);
 /* One pending callable producer per exact label/signature-producer tuple. Ordinary
  * Solve constructs its Lambda/request/RETURN evidence once; names and aliases
  * can refer to this producer before completion. Signature ownership is checked
  * by the same operation function builder, not inferred from the erased Core.
- * The accepted-declaration entry wraps its signature evidence as producers. */
+ * Accepted declarations borrow their checked signature inputs directly. */
 struct pg_synthesis_job *pg_synthesis_operation(struct pg_synthesis *synthesis,
 	const struct pg_operation_declaration *declaration);
-struct pg_synthesis_job *pg_synthesis_operation_jobs(struct pg_synthesis *synthesis,
-	const struct pg_object *label, struct pg_synthesis_job *payload, struct pg_synthesis_job *response);
+struct pg_synthesis_job *pg_synthesis_operation_request(struct pg_synthesis *synthesis,
+	const struct pg_object *label, struct pg_synthesis_input payload, struct pg_synthesis_input response);
 /* Raw wrapper allocation contains two binders, never signature authority. */
 struct pg_operation_input {
 	const struct pg_object *label;
-	struct pg_synthesis_job *payload, *response;
+	struct pg_synthesis_input payload, response;
 	const struct pg_context *allocation;
 };
 int pg_synthesis_operation_input(const struct pg_synthesis *synthesis,
 	const struct pg_synthesis_job *job, struct pg_operation_input *input);
 struct pg_synthesis_job *pg_synthesis_operation_at(struct pg_synthesis *synthesis,
-	const struct pg_object *label, struct pg_synthesis_job *payload, struct pg_synthesis_job *response,
+	const struct pg_object *label, struct pg_synthesis_input payload, struct pg_synthesis_input response,
 	const struct pg_context *allocation);
 /* Independently synthesize a #return clause as a raw continuation Lambda.
  * The input supplies its result-domain type, not an expected clause codomain.
@@ -283,7 +305,7 @@ struct pg_synthesis_job *pg_synthesis_operation_at(struct pg_synthesis *synthesi
  * Recover the resulting Pi classifier to obtain the return clause's carrier.
  * This alone neither infers operation-clause effects nor accepts a handler. */
 struct pg_synthesis_job *pg_synthesis_handler_return(struct pg_synthesis *synthesis,
-	const struct pg_source_scope *scope, struct pg_synthesis_job *input,
+	const struct pg_source_scope *scope, struct pg_synthesis_input input,
 	const struct pg_syntax *clause);
 /* Build the pending context Gamma, payload:A, resume:U(Pi(response:B, carrier))
  * using ordinary context/Pi/Thunk rules. All type inputs may still be pending;
@@ -291,8 +313,8 @@ struct pg_synthesis_job *pg_synthesis_handler_return(struct pg_synthesis *synthe
  * neither allocates fresh binders nor resolves an operation name. Consumers
  * retain their own operation-reference validation dependency. */
 struct pg_synthesis_job *pg_synthesis_handler_context(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *context, struct pg_synthesis_job *carrier,
-	struct pg_synthesis_job *payload_type, struct pg_synthesis_job *response_type,
+	struct pg_synthesis_input context, struct pg_synthesis_input carrier,
+	struct pg_synthesis_input payload_type, struct pg_synthesis_input response_type,
 	const struct pg_object *payload, const struct pg_object *resume, const struct pg_object *response);
 /* Resolve operation inputs through ordinary source aliases, prepare a pending
  * payload/resumption context and synthesize the clause without waiting for a
@@ -301,7 +323,7 @@ struct pg_synthesis_job *pg_synthesis_handler_context(struct pg_synthesis *synth
  * nested Lambda proof; final pg_prove_handler still checks carrier/effect
  * compatibility. This API does not guess or infer a missing carrier. */
 struct pg_synthesis_job *pg_synthesis_handler_clause(struct pg_synthesis *synthesis,
-	const struct pg_source_scope *scope, struct pg_synthesis_job *carrier,
+	const struct pg_source_scope *scope, struct pg_synthesis_input carrier,
 	const struct pg_syntax *clause);
 /* Immutable allocation input, not a saved classifier or accepted signature.
  * Ordinary clause synthesis checks that source lookup selects this producer. */
@@ -310,7 +332,7 @@ struct pg_handler_clause_input {
 	const struct pg_object *payload, *resume, *response;
 };
 struct pg_synthesis_job *pg_synthesis_handler_clause_at(struct pg_synthesis *synthesis,
-	const struct pg_source_scope *scope, struct pg_synthesis_job *carrier,
+	const struct pg_source_scope *scope, struct pg_synthesis_input carrier,
 	const struct pg_syntax *clause, const struct pg_handler_clause_input *input);
 const struct pg_source_scope *pg_synthesis_handler_clause_scope(const struct pg_synthesis_job *job);
 int pg_synthesis_handler_clause_input(const struct pg_synthesis *synthesis,
@@ -327,13 +349,13 @@ int pg_synthesis_handler_binding_input(const struct pg_synthesis *synthesis,
 const struct pg_source_scope *pg_synthesis_restore_handler_binding(struct pg_synthesis *synthesis,
 	const struct pg_handler_binding_input *input);
 /* Assemble all clauses through the shared producers and final kernel rule.
- * Exactly one #return clause is required, in any position. A NULL carrier
+ * Exactly one #return clause is required, in any position. An empty carrier input
  * requests independent return-type and least positive effect inference. The
  * handler owns that equation work until synthesis destruction; all structural
  * contributions precede sealing and final kernel acceptance. Explicit carriers
  * remain post-synthesis bounds, not expected types for clause elaboration. */
 struct pg_synthesis_job *pg_synthesis_handler(struct pg_synthesis *synthesis,
-	const struct pg_source_scope *scope, struct pg_synthesis_job *carrier,
+	const struct pg_source_scope *scope, struct pg_synthesis_input carrier,
 	const struct pg_syntax *syntax);
 struct pg_effect_inference;
 struct pg_effect_equation;
@@ -342,32 +364,24 @@ struct pg_effect_equation;
  * use application. If a computation has a dependent result, only a checked
  * pure RETURN may supply the argument. No host effects are executed here. */
 struct pg_synthesis_job *pg_synthesis_sequence(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *context, struct pg_synthesis_job *input,
-	struct pg_synthesis_job *continuation);
+	struct pg_synthesis_input context, struct pg_synthesis_input input,
+	struct pg_synthesis_input continuation);
 /* Recover a callable's classifier, open its Pi telescope and discharge binders
  * innermost first with ordinary constant-codomain rules. Parameter domains may
  * depend on earlier parameters; the remaining result must not depend on them.
  * Structural consumers may inspect the result before evidence acceptance;
  * use one parameter for return clauses, two for operation clauses. */
-struct pg_synthesis_job *pg_synthesis_constant_result(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *context, struct pg_synthesis_job *callable, size_t parameters);
+struct pg_pending *pg_synthesis_constant_result(struct pg_synthesis *synthesis,
+	struct pg_synthesis_input context, struct pg_synthesis_input callable, size_t parameters);
 /* Recover a constant result value type from an independently synthesized
  * return continuation, then form F G C using the converged equation G.
- * The context is a producer and may be unresolved; acceptance awaits it.
+ * Context and return inputs may be checked or unresolved; acceptance awaits them.
  * Work outlives synthesis; notify sealing through effect_inference below. No clause body
  * is checked against an expected type here; final handler checking remains
  * required. Dependent/raw-Pi codomains are not coerced to F G C. */
 struct pg_synthesis_job *pg_synthesis_handler_carrier(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *context, struct pg_synthesis_job *returned,
+	struct pg_synthesis_input context, struct pg_synthesis_input returned,
 	struct pg_effect_inference *work, const struct pg_effect_equation *equation);
-/* Borrow a positive effect-equation graph into ordinary budgeted Solve.
- * Completion has no proof result: closed rows are read from work and must still
- * be checked by typing rules. Work outlives this synthesis store. Unsealed work
- * parks without polling. After sealing (or construction failure), call this
- * function again to notify this store; it wakes the same producer once.
- * Rules may register dependencies before sealing, without accepting a row. */
-struct pg_synthesis_job *pg_synthesis_effect_inference(struct pg_synthesis *synthesis,
-	struct pg_effect_inference *work);
 /* Register (the structural F row of formation minus mask) in target. This
  * awaits structural information, not accepted evidence or row convergence.
  * Completion has no proof result. The owner must await every contribution
@@ -375,7 +389,7 @@ struct pg_synthesis_job *pg_synthesis_effect_inference(struct pg_synthesis *synt
  * Work and target outlive synthesis. Non-F/foreign rows are never guessed. */
 struct pg_synthesis_job *pg_synthesis_effect_contribution(struct pg_synthesis *synthesis,
 	struct pg_effect_inference *work, struct pg_effect_equation *target,
-	const struct pg_effect_row *mask, struct pg_synthesis_job *formation);
+	const struct pg_effect_row *mask, struct pg_pending *formation);
 /* Same registration from a raw row-expression DAG: closed/parameter leaves
  * and union nodes. Each exact row/target/mask request shares work. No row is
  * accepted as a type; await completion before sealing, as above. A rejected
@@ -392,24 +406,12 @@ struct pg_synthesis_job *pg_synthesis_effect_substitution(struct pg_synthesis *s
 	const struct pg_term *term, struct pg_effect_inference *work, size_t count,
 	const struct pg_effect_equation *const *equations);
 const struct pg_term *pg_synthesis_effect_substitution_result(const struct pg_synthesis_job *job);
-/* Resolve nominal operation identity through completed lexical aliases,
- * definition storage, quotation and successful source expectations. This is
- * shared budgeted work over producer links, not Core recognition or function
- * evaluation. Arbitrary functions and bare evidence registrations do not
- * acquire operation identity. Failed/pending producers retain their status.
- * Completion has no proof result and validates the original producer chain. */
-struct pg_synthesis_job *pg_synthesis_operation_reference(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *producer);
-/* Structural declaration lookup, possibly before reference validation. NULL
+/* Structural declaration lookup through the existing lexical producer links,
+ * possibly before source validation. No separate reference Job is allocated. NULL
  * means unavailable, not a negative proof. Cyclic producer chains stop without
- * evaluation. Consumers must still await reference completion before accepting
+ * evaluation. Consumers must still await the source producer before accepting
  * a clause; knowing the signature does not validate an alias or expectation. */
 const struct pg_operation_declaration *pg_synthesis_operation_declaration(const struct pg_synthesis_job *job);
-/* Borrow the actual signature producers through the same nominal provenance
- * path, even while their proofs are pending. This is input, not signature or
- * alias acceptance. Consumers must still validate the reference and types. */
-int pg_synthesis_operation_reference_input(const struct pg_synthesis *synthesis,
-	const struct pg_synthesis_job *reference, struct pg_operation_input *input);
 struct pg_derivation_input;
 /* Structural subject of an unaccepted formation producer. Universe/F/U/Pi
  * inputs can be inspected before row closure. Unknown rule forms await their
@@ -421,9 +423,18 @@ struct pg_derivation_input;
  * snapshots after substituting solved parameters, not by raw pointer identity.
  * Known formation rules share their construction request with term_structure;
  * source/projection views still enforce that the subject describes a type. */
-struct pg_synthesis_job *pg_synthesis_type_structure(struct pg_synthesis *synthesis,
+/* Borrowed by value, never interned or scheduled. Known structure comes from
+ * the checked occurrence; only unfinished discovery needs a pending owner. */
+struct pg_synthesis_structure {
+	const struct pg_term *term;
+	struct pg_synthesis_job *pending;
+};
+int pg_synthesis_structure_valid(struct pg_synthesis_structure);
+enum pg_synthesis_status pg_synthesis_structure_status(struct pg_synthesis_structure);
+int pg_synthesis_await_structure(struct pg_synthesis *, struct pg_synthesis_job *, struct pg_synthesis_structure);
+struct pg_synthesis_structure pg_synthesis_type_structure(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *formation);
-const struct pg_term *pg_synthesis_type_structure_result(const struct pg_synthesis_job *job);
+const struct pg_term *pg_synthesis_type_structure_result(struct pg_synthesis_structure);
 /* Structural classifier for pending VARIABLE/FORCE/THUNK/LAMBDA/APP rule inputs.
  * Prepared source VARIABLE/quotation rules share this projection too.
  * Uses binder identity through context producers, not names or accepted proof
@@ -432,83 +443,99 @@ const struct pg_term *pg_synthesis_type_structure_result(const struct pg_synthes
  * Accepted producers expose their retained classifier without new inference.
  * Other producers await acceptance. Read the raw result with the same
  * type_structure_result accessor; it supplies no typing evidence. */
-struct pg_synthesis_job *pg_synthesis_classifier_structure(struct pg_synthesis *synthesis,
+struct pg_synthesis_structure pg_synthesis_classifier_structure(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *term);
 /* Raw subject of supported pending rules (type formers, variables, value/type bridge,
  * projection, Lambda/APP and unary CBPV introductions/elimination). Other rules await
  * accepted subjects. No execution: an effectful computation is not its result.
  * The same type_structure_result accessor returns the structural term. */
-struct pg_synthesis_job *pg_synthesis_term_structure(struct pg_synthesis *synthesis,
+struct pg_synthesis_structure pg_synthesis_term_structure(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *term);
-/* Unaccepted stored rule DAG; request does not traverse or accept it. Inputs
- * outlive synthesis. Uses ordinary dependencies, rules and pure work. */
+/* Relocate an unaccepted stored DAG to ordinary pending rule requests. No
+ * Solve, normalization or evidence admission. Discard the import on failure. */
 struct pg_synthesis_job *pg_synthesis_derivation(struct pg_synthesis *synthesis,
 	const struct pg_derivation_input *input);
 /* Expand the same immutable rule DAG with relocated effect parameters resolved
  * in work. Definitions must already be registered; work outlives synthesis.
- * No worker address lives in the stored inputs. Expansion is fuel-accounted;
+ * No worker address lives in the stored inputs. Relocation is inert;
  * ordinary rule jobs await sealing/convergence before accepting F formation. */
 struct pg_synthesis_job *pg_synthesis_derivation_inference(struct pg_synthesis *synthesis,
 	const struct pg_derivation_input *input, struct pg_effect_inference *work);
-/* Same unaccepted rule evaluator, with producer premises instead of loaded
+/* Relocate a complete stored DAG directly to ordinary pending rule requests.
+ * This assembles dependencies only: no Solve, normalization or evidence. All
+ * selected roots share one traversal. Use only for an unpublished import owner;
+ * discard that owner on failure. The caller supplies count output slots;
+ * they are changed only on success and are not retained by the importer. */
+int pg_synthesis_import_rules(struct pg_synthesis *, size_t,
+	const struct pg_derivation_input *const *, struct pg_effect_inference *,
+	struct pg_synthesis_job **);
+/* Same unaccepted rule evaluator, with checked/pending premises instead of loaded
  * input->premises. The input header is copied and structurally keyed together
- * with exact premise/parameter producer pointers; header allocation identity
+ * with exact typed-input/pending-producer pointers; header allocation identity
  * does not distinguish otherwise identical rule calls. If work/equation
  * are supplied, await their closed result as the F-formation row parameter;
  * input->parameters.effects must then be NULL. No provisional proof is made.
  * The supplied array has input->count entries and is copied into the job key. */
-struct pg_synthesis_job *pg_synthesis_rule(struct pg_synthesis *synthesis,
-	const struct pg_derivation_input *input, struct pg_synthesis_job *const *premises,
-	struct pg_effect_inference *work, const struct pg_effect_equation *equation);
-/* Read-only export of stored input DAGs, prepared rule DAGs or completed proof jobs.
+struct pg_synthesis_job *pg_synthesis_rule_inputs(struct pg_synthesis *,
+	const struct pg_derivation_input *, const struct pg_synthesis_input *,
+	struct pg_effect_inference *, const struct pg_effect_equation *);
+/* Read-only export of checked evidence, stored input DAGs or prepared rules.
  * 0 ready, 1 an input is not prepared, -1 unsupported/error. No Solve occurs.
  * Unfinished source elaboration is not replaced by its provisional term.
- * Stored derivation inputs retain their original DAG before, during and after
- * Solve, including rejected inputs. Export does not force their expansion.
- * storage owns the transport inputs, which borrow Core objects from synthesis.
+ * Pending/refused rules retain their unchecked contracts without expansion.
+ * Completed rules borrow accepted typed inputs, not their old request history.
+ * emit synchronously borrows that input DAG, preserving root order and
+ * repetitions. Neither the view nor its owner may escape the callback. No
+ * detached header/premise graph is allocated; emit must not mutate synthesis.
  * effects is empty and initialized with storage; it receives immutable
  * definitions from all reached workers, never their solutions/sealing flags.
  * require_closed rejects still-extensible workers with result 1. Use it for
  * self-contained images which do not retain contribution-generating work.
- * On failure effects is poisoned and roots is unchanged. This is not a whole
- * module checkpoint: callers must retain all other source obligations too. */
+ * On failure effects is poisoned and emit is not called for an invalid closure.
+ * This is not a whole module checkpoint: callers must retain all other source
+ * obligations too. */
+struct pg_derivation_view;
 int pg_synthesis_export_rules(const struct pg_synthesis *synthesis, size_t count,
-	struct pg_synthesis_job *const *jobs, struct pg_graph *storage,
+	const struct pg_synthesis_input *inputs, struct pg_graph *storage,
 	struct pg_effect_inference *effects, int require_closed,
-	const struct pg_derivation_input *const **roots);
+	void *owner, int (*emit)(void *, const struct pg_derivation_view *));
 /* Append-only root closure for transport. observe may append to the leaf DAG
  * roots, but may not run or mutate synthesis. Exactly one of header/worker is
  * non-NULL. Headers are borrowed during the callback; premises are visited
- * separately. Outputs follow final root IDs; failure poisons effects. */
+ * separately. checked marks root keys that directly borrow local Evidence,
+ * rather than producer pointers; NULL means all roots are producers. No
+ * completed Job is allocated for these leaves. emit borrows the final closure
+ * synchronously, with roots in final ID order. Completed producers borrow their
+ * accepted inputs; their old rule recipe and effect worker are not retained.
+ * Pending/refused rules still expose their unchecked contract. No rule tree is
+ * created. It must not mutate synthesis. Failure poisons effects. */
 struct pg_dag;
 int pg_synthesis_export_rule_closure(const struct pg_synthesis *synthesis,
-	struct pg_dag *roots, struct pg_graph *storage, struct pg_effect_inference *effects,
+	struct pg_dag *roots, const struct pg_dag *checked, struct pg_graph *storage, struct pg_effect_inference *effects,
 	int require_closed,
 	int (*observe)(void *, const struct pg_derivation_input *, const struct pg_effect_inference *),
-	void *owner, const struct pg_derivation_input *const **result);
+	void *owner, int (*emit)(void *, const struct pg_derivation_view *));
 /* Publish a checked term or formation under an ordinary lexical name. This
  * does not extend the typing context or insert THUNK/RETURN/FORCE. The proof
  * must be available in the parent context (prefix projection is permitted).
- * Registration checks that prefix without constructing projection evidence;
+ * Registration checks a known prefix without constructing projection evidence;
+ * a pending Context defers that check to the ordinary projection rule.
  * a reference constructs its required projection during ordinary synthesis.
  * Names borrow their text as other source scopes do. The new scope shadows
- * its parent without modifying it; references share the accepted producer.
- * Serialized results must be checked before reaching this API. */
-const struct pg_source_scope *pg_synthesis_name(struct pg_synthesis *synthesis,
-	const struct pg_source_scope *parent, struct pg_token name,
-	const struct pg_evidence *proof);
-/* Bind an independently synthesizing producer, without guessing its type or
- * advancing it. References subscribe and project its eventual term evidence
+ * its parent without modifying it; checked references share their typed use.
+ * Serialized results must be checked before being supplied as checked inputs.
+ * A pending input binds an independently synthesizing producer without
+ * guessing its type or advancing it. References subscribe and project its eventual term evidence
  * into their context. Failed/pending producers cannot supply an accepted term;
  * a completed non-term job is unsupported. Scope compatibility is checked when
  * the result becomes available. A selected module export can be imported this
  * way without treating its symbol name as a namespace or a file name. */
-const struct pg_source_scope *pg_synthesis_name_job(struct pg_synthesis *synthesis,
+const struct pg_source_scope *pg_synthesis_name(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *parent, struct pg_token name,
-	struct pg_synthesis_job *producer);
-/* Look up an already-published producer without Solve or evidence extraction.
- * NULL is not a negative judgement; unprepared definitions may be absent. */
-struct pg_synthesis_job *pg_synthesis_named_input(const struct pg_synthesis *synthesis,
+	struct pg_synthesis_input value);
+/* Look up an already-published input without Solve or evidence extraction.
+ * An empty input is not a negative judgement; definitions may be unprepared. */
+struct pg_synthesis_input pg_synthesis_named_input(const struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, struct pg_token name);
 /* Supply the driver-selected symbol bindings for source import statements.
  * This closed scope is not made lexically visible: only explicit imports
@@ -536,55 +563,49 @@ const struct pg_source_scope *pg_synthesis_namespace(struct pg_synthesis *synthe
 const struct pg_source_scope *pg_synthesis_module_namespace(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *parent, struct pg_token name,
 	struct pg_synthesis_job *module);
-/* Diagonal action of an input job, after its own synthesis has succeeded.
- * Both jobs belong to this store. The supplied context must be exactly the
+/* Diagonal action after the input has been checked.
+ * Inputs belong to this typing/store. The supplied context must be exactly the
  * input judgement's context; no expected classifier guides the producer.
  * Results use the existing checked reflexivity rule, not a Core-only lookup.
  * This scheduler API does not introduce a new surface keyword. */
 struct pg_synthesis_job *pg_synthesis_reflexivity(struct pg_synthesis *synthesis,
-	const struct pg_evidence *context, struct pg_synthesis_job *input);
+	const struct pg_evidence *context, struct pg_synthesis_input input);
 /* Act on a synthesized input along checked substitutions and selected paths.
- * Input belongs to this store; its source context comes from the substitutions.
+ * Inputs belong to this typing/store; source context comes from the substitutions.
  * The request does not synthesize or act immediately. Boundary evidence must
  * outlive the store. All selected paths participate in the immutable job key.
  * After synthesis, check each path against its prefix-dependent family using
  * ordinary conversion evidence; expected families never guide input synthesis. */
 struct pg_synthesis_job *pg_synthesis_family_action(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *input, const struct pg_evidence *left_substitution,
+	struct pg_synthesis_input input, const struct pg_evidence *left_substitution,
 	const struct pg_evidence *right_substitution, size_t count,
-	const struct pg_evidence *const *paths);
-/* Same request with pending path producers. Completed evidence enters through
- * pg_synthesis_evidence; it has no separate action/checking implementation. */
-struct pg_synthesis_job *pg_synthesis_family_action_jobs(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *input, const struct pg_evidence *left_substitution,
-	const struct pg_evidence *right_substitution, size_t count,
-	struct pg_synthesis_job *const *paths);
+	const struct pg_synthesis_input *paths);
 /* Transport a value along the action of a value-type family. Compose ordinary
  * type-as-value, action, classifier normalization, conversion and transport
  * jobs; no additional rule, work kind or equality reflection. Family and value
  * synthesize independently. Selected paths are checked, never inferred merely
  * from equal endpoints. The result has the opposite endpoint's family type. */
-struct pg_synthesis_job *pg_synthesis_family_transport_jobs(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *family, const struct pg_evidence *left_substitution,
+struct pg_synthesis_job *pg_synthesis_family_transport(struct pg_synthesis *synthesis,
+	struct pg_synthesis_input family, const struct pg_evidence *left_substitution,
 	const struct pg_evidence *right_substitution, size_t count,
-	struct pg_synthesis_job *const *paths, struct pg_synthesis_job *value,
+	const struct pg_synthesis_input *paths, struct pg_synthesis_input value,
 	enum pg_identity_direction direction);
 /* Derive elimination of a supplied Identity between distinct constructors.
  * Builds an ordinary type case and transports value to target_type along path.
  * Equal/neutral constructor heads are unsupported, not evidence of falsity.
  * All six inputs are checked in context; target_type is a value formation. */
 struct pg_synthesis_job *pg_synthesis_disjoint_transport(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *context, struct pg_synthesis_job *left,
-	struct pg_synthesis_job *right, struct pg_synthesis_job *path,
-	struct pg_synthesis_job *value, struct pg_synthesis_job *target_type);
+	struct pg_synthesis_input context, struct pg_synthesis_input left,
+	struct pg_synthesis_input right, struct pg_synthesis_input path,
+	struct pg_synthesis_input value, struct pg_synthesis_input target_type);
 /* Explicit same-constructor field identity by type-case action/transport.
  * The schema binder fixes the observer; this is not result-type inference.
  * The field type must be independent of preceding constructor fields. */
 struct pg_synthesis_job *pg_synthesis_constructor_field_identity(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *context, struct pg_synthesis_job *left,
-	struct pg_synthesis_job *right, struct pg_synthesis_job *path,
-	const struct pg_object *field, struct pg_synthesis_job *left_field,
-	struct pg_synthesis_job *right_field);
+	struct pg_synthesis_input context, struct pg_synthesis_input left,
+	struct pg_synthesis_input right, struct pg_synthesis_input path,
+	const struct pg_object *field, struct pg_synthesis_input left_field,
+	struct pg_synthesis_input right_field);
 struct pg_data_schema;
 /* Assemble field telescopes and result maps for a parsed @{...} or @\i:T=>
  * declaration in its already opened parameter scope. Constructors are checked
@@ -629,107 +650,106 @@ struct pg_synthesis_job *pg_synthesis_induction_branch(struct pg_synthesis *synt
 	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
 	const struct pg_evidence *generalization, const struct pg_syntax *clause);
 /* Recover the selected nominal declaration and parameter map, never by Core
- * lookup. Pending producers converge on the same accepted-evidence request. */
-struct pg_synthesis_job *pg_synthesis_inductive_instance(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *type);
-int pg_synthesis_inductive_instance_result(const struct pg_synthesis_job *job,
+ * lookup. Preparation owns normalization evidence; the canonical typed query
+ * owns nominal recovery. Its typed result is the recovered type, not a copied
+ * parameter-map receipt. Pending identities remain stable after resolution. */
+struct pg_pending *pg_synthesis_inductive_instance(struct pg_synthesis *synthesis,
+	struct pg_synthesis_input type);
+int pg_synthesis_inductive_instance_result(struct pg_pending *pending,
 	struct pg_inductive_instance *output);
-/* Abstract an independently synthesized body over an accepted context suffix.
+/* Abstract a checked or independently synthesized body over an accepted context suffix.
  * Builds ordinary Lambda producers without waiting for the body. Context
  * binders are retained; no fresh binders or provisional proofs are created. */
-struct pg_synthesis_job *pg_synthesis_abstract(struct pg_synthesis *synthesis,
+struct pg_synthesis_input pg_synthesis_abstract(struct pg_synthesis *synthesis,
 	const struct pg_evidence *prefix, const struct pg_evidence *context,
-	struct pg_synthesis_job *body);
+	struct pg_synthesis_input body);
 /* Derive a constant computation motive from an independent branch producer.
  * The field context must extend the destination. Each removed binder needs
- * checked codomain independence; dependent results remain unsupported rather
+ * checked codomain independence; dependent results reject this candidate rather
  * than being filled from an expected classifier. */
-struct pg_synthesis_job *pg_synthesis_constant_motive(struct pg_synthesis *synthesis,
+struct pg_pending *pg_synthesis_constant_motive(struct pg_synthesis *synthesis,
 	const struct pg_evidence *destination, const struct pg_evidence *fields,
-	struct pg_synthesis_job *body);
-/* Shared suspended typed substitution; the checked substitution/proof pair
- * determines a job. Uses the existing reindex machine, not a second traversal. */
-struct pg_synthesis_job *pg_synthesis_reindex(struct pg_synthesis *synthesis,
-	const struct pg_evidence *substitution, const struct pg_evidence *proof);
-/* Record dependencies before either input completes. The evidence API above
- * uses this same request with evidence producers; no second reindex machine.
- * Completed incompatible inputs are rejected without exposing partial proof. */
-struct pg_synthesis_job *pg_synthesis_reindex_jobs(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *substitution, struct pg_synthesis_job *proof);
+	struct pg_synthesis_input body);
+/* Borrow an already checked exact-premise result without a scheduler node.
+ * Otherwise retain one unfinished obligation over stable checked/pending
+ * inputs. It borrows the shared action, then checks admission; resolving an
+ * input never creates another checked-input Job for the same work. */
+struct pg_synthesis_input pg_synthesis_reindex_input(struct pg_synthesis *synthesis,
+	struct pg_synthesis_input substitution, struct pg_synthesis_input proof);
 /* Post-check independently produced term/type evidence with matching context
  * and polarity. Explicit closed F rows permit directed effect widening after
  * result-type conversion. No expectation reaches the producer, and no Core
  * coercion is inserted. Surface :: performs its exposure before this step. */
-struct pg_synthesis_job *pg_synthesis_expect(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *term, struct pg_synthesis_job *type);
+/* Checked operands are borrowed; pending producers retain their identity.
+ * This only compares after synthesis, never guides either input's inference. */
+struct pg_synthesis_job *pg_synthesis_expect_inputs(struct pg_synthesis *synthesis,
+	struct pg_synthesis_input term, struct pg_synthesis_input type);
 /* Source annotation over independently synthesized inputs. Applies the same
  * source-reference/polarity adaptations as expr :: type, then post-checks.
  * No syntax fabrication or expected-type feedback into either producer. */
 struct pg_synthesis_job *pg_synthesis_source_expect(struct pg_synthesis *synthesis,
-	const struct pg_source_scope *scope, struct pg_synthesis_job *term,
-	struct pg_synthesis_job *type);
+	const struct pg_source_scope *scope, struct pg_synthesis_input term,
+	struct pg_synthesis_input type);
 /* Borrow the immutable inputs, before or after Solve. Zero on success. */
 int pg_synthesis_source_expect_input(const struct pg_synthesis *synthesis,
 	const struct pg_synthesis_job *job, const struct pg_source_scope **scope,
-	struct pg_synthesis_job **term, struct pg_synthesis_job **type);
+	struct pg_synthesis_input *term, struct pg_synthesis_input *type);
 /* Raw CBPV application of independent producers. Exposes the computation
  * classifier, post-checks the value argument and uses ordinary APP evidence.
  * No implicit force, thunk, return or sequencing; no expected type flows
  * into either producer. Accepted inputs reuse normalization and comparison;
- * rule scheduling may remain pending even when those computations are cached. */
+ * rule scheduling may remain pending even when those computations are cached.
+ * Context, callee and argument borrow checked inputs or stable producers;
+ * checked operands never require completed input Jobs. */
 struct pg_synthesis_job *pg_synthesis_application(struct pg_synthesis *synthesis,
-	const struct pg_evidence *context, struct pg_synthesis_job *function,
-	struct pg_synthesis_job *argument);
-/* Same rule graph with a pending context producer. */
-struct pg_synthesis_job *pg_synthesis_application_jobs(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *context, struct pg_synthesis_job *function,
-	struct pg_synthesis_job *argument);
+	struct pg_synthesis_input context, struct pg_synthesis_input function,
+	struct pg_synthesis_input argument);
 /* Prepare Gamma,x:A from a pending M:F E A, without executing M or supplying
  * its result. The caller owns the stable binder; the result is a context
- * formation producer, usable by pg_synthesis_bind_context. */
+ * formation producer, usable by pg_synthesis_bind. */
 struct pg_synthesis_job *pg_synthesis_result_context(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *context, struct pg_synthesis_job *computation,
+	struct pg_synthesis_input context, struct pg_synthesis_input computation,
 	const struct pg_object *binder);
 /* Shared source/continuation Lambda construction. Context already contains
  * the binder with the supplied domain. Value bodies are lifted by RETURN;
- * raw computation bodies remain raw. All three producers may be pending. */
+ * raw computation bodies remain raw. Contexts and bodies can be checked or
+ * pending; checked operands never need completed input Jobs. */
 struct pg_synthesis_job *pg_synthesis_lambda_body(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *context,
-	struct pg_synthesis_job *body);
+	struct pg_synthesis_input context,
+	struct pg_synthesis_input body);
 /* Instantiate an independently produced Universe Identity family at two
  * value endpoints. Post-check each against its own endpoint type; never
  * replace the chosen family with a homogeneous or inferred relation. */
 struct pg_synthesis_job *pg_synthesis_identity_instance(struct pg_synthesis *synthesis,
-	const struct pg_evidence *context, struct pg_synthesis_job *family,
-	struct pg_synthesis_job *left, struct pg_synthesis_job *right);
+	const struct pg_evidence *context, struct pg_synthesis_input family,
+	struct pg_synthesis_input left, struct pg_synthesis_input right);
 /* Recover retained Identity formation after its producer completes. Shared
  * by accepted input evidence, including requests from distinct producers.
  * The output is convertible to the input, not a conversion certificate;
- * callers requiring the original classifier must still post-check it. */
-struct pg_synthesis_job *pg_synthesis_identity_formation(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *producer);
-/* Share a suspended endpoint derivation on the ordinary work queue. face is
+ * callers requiring the original classifier must still post-check it.
+ * Checked inputs borrow the typing store's query directly; a pending producer
+ * retains input discovery only, not another recovery cursor or result. */
+struct pg_pending *pg_synthesis_identity_formation(struct pg_synthesis *synthesis,
+	struct pg_synthesis_input producer);
+/* Share a suspended endpoint derivation on its typed query. face is
  * an immutable, graph-lived canonical endpoint selector: its first coordinate
  * is fixed, followed by its ordered axes. Those axes count outer Identity
  * directions, not the full dimension of the input. Its pointer, context and
  * formation identify the request. One queue step advances one traversal
  * step, not a bounded-cost primitive proof rule. Unsupported is not rejection.
- * This is a restricted entry to identity_face, sharing its job and result;
+ * This is a restricted entry to identity_face, sharing its query and result;
  * it adds no surface syntax or typed center symmetry rule. */
 struct pg_dimension_map;
-struct pg_synthesis_job *pg_synthesis_identity_endpoint(struct pg_synthesis *synthesis,
+struct pg_pending *pg_synthesis_identity_endpoint(struct pg_synthesis *synthesis,
 	const struct pg_evidence *context, const struct pg_evidence *formation,
 	const struct pg_dimension_map *face);
 /* Select an ordered proper face, suspending between retained-family checks
  * and endpoint traversal steps. The same immutable-input lifetime applies.
+ * Checked inputs return the typed query directly. An unresolved producer
+ * retains only input discovery; it borrows the query once its input completes.
  * Permutations and hidden Identity dimensions remain unsupported. */
-struct pg_synthesis_job *pg_synthesis_identity_face(struct pg_synthesis *synthesis,
-	const struct pg_evidence *context, const struct pg_evidence *formation,
-	const struct pg_dimension_map *face);
-/* Wait for a formation producer, then share the accepted-evidence face job.
- * A failed producer propagates its status; a completed non-formation rejects. */
-struct pg_synthesis_job *pg_synthesis_identity_face_job(struct pg_synthesis *synthesis,
-	const struct pg_evidence *context, struct pg_synthesis_job *formation,
+struct pg_pending *pg_synthesis_identity_face(struct pg_synthesis *synthesis,
+	const struct pg_evidence *context, struct pg_synthesis_input formation,
 	const struct pg_dimension_map *face);
 /* Select the source boundary for a permutation: permutation composed with
  * target_face = ordered composed with intrinsic. The returned producer proves
@@ -738,66 +758,49 @@ struct pg_synthesis_job *pg_synthesis_identity_face_job(struct pg_synthesis *syn
  * no typed symmetry is admitted, and intrinsic changes only on success.
  * Geometry is interned in dimensions, which must use the same graph. */
 struct pg_dimensions;
-struct pg_synthesis_job *pg_synthesis_permutation_source_face(struct pg_synthesis *synthesis,
+struct pg_pending *pg_synthesis_permutation_source_face(struct pg_synthesis *synthesis,
 	struct pg_dimensions *dimensions, const struct pg_evidence *context,
-	struct pg_synthesis_job *formation, const struct pg_dimension_map *permutation,
+	struct pg_synthesis_input formation, const struct pg_dimension_map *permutation,
 	const struct pg_dimension_map *target_face, const struct pg_dimension_map **intrinsic);
 /* Extend a checked substitution with an independently typed value. The
  * expected dependent field type is reindexed and compared using shared work;
- * only completed conversion evidence reaches the ordinary pairing rule. */
-struct pg_synthesis_job *pg_synthesis_substitution_pair(struct pg_synthesis *synthesis,
+ * only completed conversion evidence reaches the ordinary pairing rule.
+ * Family pairing returns its ordinary checked result directly, not a DONE Job.
+ * Invalid inputs return an empty input. */
+struct pg_synthesis_input pg_synthesis_substitution_pair(struct pg_synthesis *synthesis,
 	const struct pg_evidence *substitution, const struct pg_evidence *extension,
 	const struct pg_evidence *image);
-/* Borrow the same composition query as the synchronous kernel adapter. */
-struct pg_synthesis_job *pg_synthesis_substitution_compose(struct pg_synthesis *synthesis,
-	const struct pg_evidence *first, const struct pg_evidence *second);
-/* Build a complete substitution from independently synthesized image jobs in
+/* Build a complete substitution from independently synthesized images in
  * source declaration order. Index-result elaboration uses this same request: each
  * image is post-checked after preceding images determine its dependent type.
- * Requests never supply expected types to producers or publish a partial map. */
+ * Requests never supply expected types to producers or publish a partial map.
+ * Arity and context validity are checked after contexts finish, on the same
+ * path for checked and pending inputs. No checked input needs a Job wrapper. */
 struct pg_synthesis_job *pg_synthesis_substitution(struct pg_synthesis *synthesis,
-	const struct pg_evidence *source, const struct pg_evidence *destination,
-	size_t count, struct pg_synthesis_job *const *images);
-/* Same worker with pending source/destination contexts. Arity and context
- * validity are checked after those producers finish, before forming a map. */
-struct pg_synthesis_job *pg_synthesis_substitution_jobs(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *source, struct pg_synthesis_job *destination,
-	size_t count, struct pg_synthesis_job *const *images);
-/* Lift a checked substitution over a value or family extension through the
- * shared kernel construction. The caller supplies the destination binder;
- * the interned job retains signature-local allocations. Structural lifting
- * advances one worker step per quantum; final declaration admission still
- * uses synchronous ordinary checking. */
-struct pg_synthesis_job *pg_synthesis_substitution_lift(struct pg_synthesis *synthesis,
-	const struct pg_evidence *substitution, const struct pg_evidence *extension,
-	const struct pg_object *binder);
-/* Instantiate Self, then lift each constructor field. Formation and parameter
- * substitution are pending producers; fresh field binders belong to this job. */
+	struct pg_synthesis_input source, struct pg_synthesis_input destination,
+	size_t count, const struct pg_synthesis_input *images);
+/* Instantiate Self, then lift each constructor field. Borrow checked or pending
+ * inputs; fresh field binders belong to this unfinished construction. */
 struct pg_synthesis_job *pg_synthesis_constructor_scope(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *formation, const struct pg_object *constructor,
-	struct pg_synthesis_job *parameters);
+	struct pg_synthesis_input formation, const struct pg_object *constructor,
+	struct pg_synthesis_input parameters);
 /* Restore only field binder identities before construction begins. Prefix and
  * field count must match the ordinary parameter/constructor inputs; declared
  * types in end are not accepted evidence. Ordinary lifting checks all types.
  * Repeated identical attachments reuse the same job; conflicts/late changes
  * fail. Borrowed contexts must outlive synthesis. */
 struct pg_synthesis_job *pg_synthesis_constructor_scope_at(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *formation, const struct pg_object *constructor,
-	struct pg_synthesis_job *parameters, const struct pg_context *prefix, const struct pg_context *end);
+	struct pg_synthesis_input formation, const struct pg_object *constructor,
+	struct pg_synthesis_input parameters, const struct pg_context *prefix, const struct pg_context *end);
 /* Constructor namespace members share this owner: formation, constructor and
  * parameter substitution. Nullary members are values, others raw functions.
  * The allocation variant seeds the same field-scope job before it runs. */
 struct pg_synthesis_job *pg_synthesis_constructor_value(struct pg_synthesis *synthesis,
-	const struct pg_evidence *formation, const struct pg_object *constructor,
-	const struct pg_evidence *parameters);
-/* Pending inputs use the same member worker. No formation or substitution is
- * accepted by creating this request. Input jobs belong to this store. */
-struct pg_synthesis_job *pg_synthesis_constructor_value_jobs(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *formation, const struct pg_object *constructor,
-	struct pg_synthesis_job *parameters);
+	struct pg_synthesis_input formation, const struct pg_object *constructor,
+	struct pg_synthesis_input parameters);
 /* Borrowed creation inputs, not a claim that the member is well typed. */
 struct pg_constructor_input {
-	struct pg_synthesis_job *formation, *parameters;
+	struct pg_synthesis_input formation, parameters;
 	const struct pg_object *constructor;
 	int allocated;
 	const struct pg_context *prefix, *fields;
@@ -810,15 +813,15 @@ struct pg_synthesis_job *pg_synthesis_constructor_value_at(struct pg_synthesis *
 /* Extend the shared field scope with thunked motives for direct recursive
  * fields. Input producers must ultimately justify the same nominal family. */
 struct pg_synthesis_job *pg_synthesis_induction_scope(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *formation, const struct pg_object *constructor,
-	struct pg_synthesis_job *parameters, struct pg_synthesis_job *motive_context,
-	struct pg_synthesis_job *motive);
+	struct pg_synthesis_input formation, const struct pg_object *constructor,
+	struct pg_synthesis_input parameters, struct pg_synthesis_input motive_context,
+	struct pg_synthesis_input motive);
 /* Restore the IH suffix over the existing constructor field context. Only
  * binder identities are reused; motive substitution checks each IH type. */
 struct pg_synthesis_job *pg_synthesis_induction_scope_at(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *formation, const struct pg_object *constructor,
-	struct pg_synthesis_job *parameters, struct pg_synthesis_job *motive_context,
-	struct pg_synthesis_job *motive, const struct pg_context *fields, const struct pg_context *end);
+	struct pg_synthesis_input formation, const struct pg_object *constructor,
+	struct pg_synthesis_input parameters, struct pg_synthesis_input motive_context,
+	struct pg_synthesis_input motive, const struct pg_context *fields, const struct pg_context *end);
 /* Pure checked computation -> returned value, using the same job table and
  * scheduler. The immutable context/evidence pair is the key, never bare Core.
  * A neutral total, empty-effect input has a checked symbolic result; an
@@ -829,7 +832,8 @@ struct pg_synthesis_job *pg_synthesis_return(struct pg_synthesis *synthesis,
 	const struct pg_evidence *context, const struct pg_evidence *computation);
 /* Normalize an accepted term or formation using shared pure WHNF work, then
  * retain typing through directed subject-reduction evidence. The immutable
- * typed input, not its erased Core alone, is the evidence-job key. */
+ * typed input, not its erased Core alone, is the request key. Checked operands
+ * are borrowed directly, without allocating completed Evidence jobs. */
 struct pg_synthesis_job *pg_synthesis_normalize(struct pg_synthesis *synthesis,
 	const struct pg_evidence *context, const struct pg_evidence *proof);
 /* Strong pure normalization of the same typed inputs, with a distinct job
@@ -837,27 +841,17 @@ struct pg_synthesis_job *pg_synthesis_normalize(struct pg_synthesis *synthesis,
  * This may normalize under THUNK; it is not a runtime execution request. */
 struct pg_synthesis_job *pg_synthesis_nf(struct pg_synthesis *synthesis,
 	const struct pg_evidence *context, const struct pg_evidence *proof);
-/* Same requests with pending premises. Solve checks their context and typing
- * before reducing; construction does not imply acceptance or advance work. */
-struct pg_synthesis_job *pg_synthesis_normalize_jobs(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *context, struct pg_synthesis_job *proof,
-	enum pg_reduction_kind kind);
-/* Closed CLI-style demand: once typing is known, force a stored thunk once,
- * otherwise normalize the subject unchanged. Still uses pure evaluation. */
-struct pg_synthesis_job *pg_synthesis_evaluate_jobs(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *context, struct pg_synthesis_job *proof,
-	enum pg_reduction_kind kind);
 /* Immutable request operands, for retention without serializing acceptance. */
 int pg_synthesis_normalization_input(const struct pg_synthesis *synthesis,
-	const struct pg_synthesis_job *job, struct pg_synthesis_job **context,
-	struct pg_synthesis_job **proof, enum pg_reduction_kind *kind, int *force);
+	const struct pg_synthesis_job *job, struct pg_synthesis_input *context,
+	struct pg_synthesis_input *proof, enum pg_reduction_kind *kind, int *force);
 /* Retain the term, normalize its derived classifier and explicitly convert
  * its typing evidence. No target type is supplied to synthesis or guessed
- * from Core. An unchanged classifier preserves the original proof. */
-struct pg_synthesis_job *pg_synthesis_normalize_classifier(struct pg_synthesis *synthesis,
-	const struct pg_evidence *context, const struct pg_evidence *proof);
-struct pg_synthesis_job *pg_synthesis_normalize_classifier_jobs(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *context, struct pg_synthesis_job *proof);
+ * from Core. An unchanged classifier preserves the original proof. Checked
+ * families with a checked Context return directly; value/computation inputs
+ * and pending Contexts retain an ordinary checking/normalization request. */
+struct pg_synthesis_input pg_synthesis_normalize_classifier(struct pg_synthesis *synthesis,
+	struct pg_synthesis_input context, struct pg_synthesis_input proof);
 /* Expose checked THUNK code through shared normalization and typed inversion.
  * This does not execute the stored computation or cache an effect result. */
 struct pg_synthesis_job *pg_synthesis_unthunk(struct pg_synthesis *synthesis,
@@ -866,8 +860,28 @@ struct pg_synthesis_job *pg_synthesis_unthunk(struct pg_synthesis *synthesis,
  * tail. Finite primitive transitions do not starve other ready work. This is
  * not a wall-clock bound on individual kernel rules or allocation. */
 void pg_synthesis_advance(struct pg_synthesis *synthesis, uint64_t budget);
+/* Demand an existing construction or typing query with the same Solve fuel.
+ * No wrapper is allocated; zero budget only reads the current status. */
+enum pg_synthesis_status pg_synthesis_advance_pending(struct pg_synthesis *, struct pg_pending *, uint64_t);
 enum pg_synthesis_status pg_synthesis_status(const struct pg_synthesis_job *job);
 const struct pg_evidence *pg_synthesis_result(const struct pg_synthesis_job *job);
+/* Read-only materialized construction, without checking or advancing Solve.
+ * Imported construction and its association to the producer are unaccepted,
+ * even when that producer was once done. Raw Contexts do not select declaration
+ * formation bounds. Consumers needing acceptance must use ordinary checking. */
+int pg_synthesis_materialized(const struct pg_synthesis_job *job,
+	const struct pg_occurrence **root);
+/* Attach a graph-owned input to its exact producer, never by erased Core.
+ * This neither changes status nor supplies an expected type to synthesis. */
+int pg_synthesis_import_materialized(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *job, const struct pg_occurrence *root);
+/* Saved completion is a descriptive assertion, not local acceptance. Preserve
+ * it on inert roundtrips; once checking starts, only local completion is saved.
+ * No scheduler/kernel consumer may use this in place of pg_synthesis_result. */
+int pg_synthesis_saved_complete(const struct pg_synthesis *synthesis,
+	const struct pg_synthesis_job *job);
+int pg_synthesis_import_completion(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *job);
 /* Read-only diagnostics for rejected declaration checks in this store, not
  * a new failure authority or a complete causal explanation of a root status.
  * Each callback borrows constructor/index tokens and a zero-based written
@@ -897,7 +911,8 @@ struct pg_synthesis_job *pg_synthesis_definition(const struct pg_synthesis_job *
  * Does not allocate, register names, or advance Solve. */
 int pg_synthesis_definition_entry(const struct pg_synthesis_job *root, size_t index,
 	const struct pg_syntax_item **item, struct pg_synthesis_job **producer);
-/* Retain an unaccepted module-input relationship without advancing Solve.
+/* Retain an unaccepted namespace-input relationship without advancing Solve.
+ * The owner is its registration or a module selection sharing it.
  * Ordinary registration must reconstruct the identical producer before use.
  * Existing entries cannot be overwritten. Does not retain acceptance/cursors. */
 int pg_synthesis_retain_definition_input(struct pg_synthesis *synthesis,

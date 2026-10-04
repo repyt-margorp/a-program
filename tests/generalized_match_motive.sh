@@ -29,16 +29,12 @@ sed 's/@(n self => Vec A (Nat.succ n))/@(n self => Vec A n)/g' "$source" > "$dir
 check 1 wrong-motive "$directory/wrong-motive.p"
 sed 's/Vec A n->Vec A n;/Vec A n->Vec A (Nat.succ n);/' "$source" > "$directory/wrong-assertion.p"
 check 1 wrong-assertion "$directory/wrong-assertion.p"
-for mode in ordinary retained; do
-	options=()
-	if [[ $mode == retained ]]; then options+=(--retain-reductions); fi
-	check 0 "$mode-save" "${options[@]}" --save "$directory/full.a" "$source"
-	check 0 "$mode-load" --load "$directory/full.a"
-	for budget in 0 100 1000; do
-		check 3 "$mode-pending-$budget" --steps "$budget" "${options[@]}" --save "$directory/partial.a" "$source"
-		check 0 "$mode-resume-$budget" --load "$directory/partial.a"
-	done
-	check 3 "$mode-invalid-pending" --steps 100 "${options[@]}" --save "$directory/wrong.a" "$directory/wrong-motive.p"
-	check 1 "$mode-invalid-resume" --load "$directory/wrong.a"
+check 0 "semantic-save" --save "$directory/full.a" "$source"
+check 0 "semantic-load" --load "$directory/full.a"
+for budget in 0 100 1000; do
+	check 3 "semantic-pending-$budget" --steps "$budget" --save "$directory/partial.a" "$source"
+	check 0 "semantic-resume-$budget" --load "$directory/partial.a"
 done
+check 3 "semantic-invalid-pending" --steps 100 --save "$directory/wrong.a" "$directory/wrong-motive.p"
+check 1 "semantic-invalid-resume" --load "$directory/wrong.a"
 printf '%s\n' 'generalized explicit motives: captured values, shadowing, post-checks and images passed'

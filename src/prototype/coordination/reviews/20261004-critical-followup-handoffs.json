@@ -1,0 +1,20 @@
+{
+  "job-evidence": {
+    "notice": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/coordination/outbox/critical-frontier-progress-20261004.txt",
+    "sha256": "cab67a1fc42fe74e096a61930226f0399dbee12ed8674e20f6eb62f5b8c7fafd"
+  },
+  "performance": {
+    "notice": "/home/repyt/workspace/a-program-workers/performance/src/prototype/coordination/outbox/performance-critical-readback-original-controls-start-20261004.txt",
+    "sha256": "a62909135106840f5387a882e946897a95be3b6a8f91be778efe48bacbe0e962"
+  },
+  "Job_WIP": "Only Source Lambda first-dispatch prototype round trips worker-reported. Advanced child/frontier, charged admission and strict3 open; excluded from accepted promotion.",
+  "Performance_WIP": "Readback cache order correctness against old frozen E25 starts at j1, not cost or current accepted-source promotion. Root accepted integration builds/acceptance are independently active; no exclusive measurement grant or collector.",
+  "C33_READY_initial_review": {
+    "file": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c33-ready-initial-pin-review.json",
+    "sha256": "5e3c8271495e27179900b2d49643f22c7ba44f25eb0fdd0dab3e3f3031f47253",
+    "archive11_raw549_exact": true,
+    "current_accepted_Job_qualification_running": true
+  },
+  "new_approval": false,
+  "Goal_reset_or_completion": false
+}

@@ -7,6 +7,21 @@
 
 struct pg_effect_inference;
 
+/* Synchronous projection of an existing rule DAG. Keys and header parameters
+ * borrow their owners for the entire write. No premises are copied or accepted.
+ * child uses the ordinary DAG convention: 1 child, 0 end, -1 invalid. */
+struct pg_derivation_view {
+	size_t count;
+	const void *owner;
+	const void *(*root)(const void *, size_t);
+	int (*header)(const void *, const void *, struct pg_derivation_input *);
+	int (*child)(const void *, const void *, size_t, const void **);
+};
+struct pg_derivation_view pg_derivation_input_view(size_t,
+	const struct pg_derivation_input *const *);
+int pg_derivation_view_write(FILE *, const struct pg_derivation_view *,
+	const struct pg_effect_inference *, const struct pg_graph_codec *, void *);
+
 enum { PG_DERIVATION_TERM_SLOTS = 9 };
 struct pg_derivation_payload {
 	size_t count, metadata_count;
@@ -56,6 +71,17 @@ int pg_derivation_inputs_write(FILE *file, size_t count, const struct pg_derivat
 int pg_derivation_inputs_write_inference(FILE *file, size_t count,
 	const struct pg_derivation_input *const *roots, const struct pg_effect_inference *work,
 	const struct pg_graph_codec *codec, void *owner);
+/* Parameter-only projection for direct rule jobs with separately mapped premise
+ * jobs. Preserves arity but neither reads nor allocates premises[]. These headers
+ * may be passed to pg_synthesis_rule, not pg_synthesis_derivation. A distinct
+ * envelope prevents a header table being read as a complete derivation DAG.
+ * Shares the normal parameter/Core codec; no Solve or acceptance. */
+int pg_derivation_headers_write(FILE *file, size_t count,
+	const struct pg_derivation_input *const *roots,
+	const struct pg_graph_codec *codec, void *owner);
+int pg_derivation_headers_read(FILE *file, struct pg_typing *typing, size_t limit, size_t name_limit,
+	const struct pg_graph_codec *codec, void *owner,
+	size_t *count, const struct pg_derivation_input *const **roots);
 /* Restores inputs only, with one Core relocation table and shared premise DAG.
  * Limits bound records/edges here and records in the nested Core separately.
  * Raw contexts are interned in typing; no proof index is accessed and no
@@ -71,7 +97,9 @@ int pg_derivations_read_descriptors(FILE *file, struct pg_typing *typing, size_t
  * The caller establishes contribution completeness before sealing and Solve.
  * Any failure poisons work until destroy; no roots are published on failure.
  * A NULL worker accepts only images without effect definitions/open rows. */
-int pg_derivations_read_inference(FILE *file, struct pg_typing *typing, size_t limit, size_t name_limit,
+/* Rule headers/edges belong to inputs; referenced semantic objects belong to
+ * typing->graph. An importer may discard inputs after copying exact requests. */
+int pg_derivations_read_inference(FILE *file, struct pg_typing *typing, struct pg_graph *inputs, size_t limit, size_t name_limit,
 	struct pg_effect_inference *work, const struct pg_graph_codec *codec, void *owner,
 	size_t *count, const struct pg_derivation_input *const **roots);
 

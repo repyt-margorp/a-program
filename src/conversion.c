@@ -196,29 +196,41 @@ size_t pg_conversion_task_count(const struct pg_conversion *conversion)
 const struct pg_term *pg_conversion_left(const struct pg_conversion_certificate *certificate) { return certificate->left; }
 const struct pg_term *pg_conversion_right(const struct pg_conversion_certificate *certificate) { return certificate->right; }
 
+struct reduced_bindings {
+	const void *owner;
+	struct pg_reduced_binding (*input)(const void *, size_t);
+	int target;
+};
+
+static struct pg_binding_value reduction_binding(const void *owner, size_t i)
+{
+	const struct reduced_bindings *inputs = owner;
+	struct pg_reduced_binding input = inputs->input(inputs->owner, i);
+	if (inputs->target && input.reduction)
+		input.binding.value = pg_reduction_target(input.reduction);
+	return input.binding;
+}
+
 const struct pg_conversion_certificate *pg_conversion_substitution(
 	struct pg_substitution_work *work, const struct pg_term *left,
 	const struct pg_term *right, const struct pg_term *body, size_t count,
-	const struct pg_binding_value *bindings,
-	const struct pg_reduction_certificate *const *reductions)
+	const void *owner, struct pg_reduced_binding (*input)(const void *, size_t))
 {
-	if (!work || !left || !right || !body || (count && (!bindings || !reductions))) return NULL;
-	if (count > SIZE_MAX / sizeof(*bindings)) return NULL;
-	struct pg_binding_value *images = malloc(count * sizeof(*images));
-	if (count && !images) return NULL;
-	struct pg_conversion_certificate *result = NULL;
+	if (!work || !left || !right || !body || (count && !input)) return NULL;
+	if (count > SIZE_MAX / sizeof(struct pg_binding_value)) return NULL;
 	for (size_t i = 0; i < count; ++i) {
-		images[i] = bindings[i];
-		if (!reductions[i]) continue;
-		if (pg_reduction_policy(reductions[i]) != &pg_pure_policy ||
-			pg_alpha_equal(bindings[i].value, pg_reduction_source(reductions[i])) != 1) goto done;
-		images[i].value = pg_reduction_target(reductions[i]);
+		struct pg_reduced_binding image = input(owner, i);
+		if (!image.binding.binder || !image.binding.value) return NULL;
+		if (!image.reduction) continue;
+		if (pg_reduction_policy(image.reduction) != &pg_pure_policy ||
+			pg_alpha_equal(image.binding.value, pg_reduction_source(image.reduction)) != 1) return NULL;
 	}
-	if (pg_alpha_equal(left, pg_substitution_compute(work, body, count, bindings)) != 1 ||
-		pg_alpha_equal(right, pg_substitution_compute(work, body, count, images)) != 1) goto done;
-	result = pg_alloc(work->graph, sizeof(*result));
+	struct reduced_bindings inputs = {owner, input, 0};
+	struct pg_binding_inputs bindings = {.owner = &inputs, .at = reduction_binding};
+	if (pg_alpha_equal(left, pg_substitution_compute(work, body, count, bindings)) != 1) return NULL;
+	inputs.target = 1;
+	if (pg_alpha_equal(right, pg_substitution_compute(work, body, count, bindings)) != 1) return NULL;
+	struct pg_conversion_certificate *result = pg_alloc(work->graph, sizeof(*result));
 	if (result) *result = (struct pg_conversion_certificate){left, right};
-done:
-	free(images);
 	return result;
 }

@@ -5,20 +5,32 @@ trap 'rm -rf "$directory"' EXIT
 fixture=$1
 binary=$2
 compare=$3
-# Source-origin discovery order must survive a retained computation snapshot.
+# Source-origin discovery order must survive a materialized computation image.
 quicksort="$(dirname "${BASH_SOURCE[0]}")/../archive/legacy/src/prototype/tests/fixtures/typing/if8_fuel_free_quicksort_check.p"
-"$binary" --legacy-intrinsic-dot --steps 1000000 --retain-reductions --whnf main \
-	--save "$directory/retained-order.a" "$quicksort" > "$directory/status"
-"$fixture" retained-append-origin "$directory/retained-order.a"
+"$binary" --legacy-intrinsic-dot --steps 1000000 --whnf main \
+	--save-materialized "$directory/retained-order.a" "$quicksort" > "$directory/status"
+"$fixture" retained-name-input "$directory/retained-order.a" append
 for round in 1 2; do
 	code=0
-	"$binary" --load --steps 0 --retain-reductions --save "$directory/retained-order-$round.a" \
+	"$binary" --load --steps 0 --save-materialized "$directory/retained-order-$round.a" \
 		"$directory/retained-order.a" > "$directory/status" || code=$?
 	test "$code" = 3
 	cmp "$directory/retained-order.a" "$directory/retained-order-$round.a"
-	"$fixture" retained-append-origin "$directory/retained-order-$round.a"
+	"$fixture" retained-name-input "$directory/retained-order-$round.a" append
 	mv "$directory/retained-order-$round.a" "$directory/retained-order.a"
 done
+# Non-seekable input uses the same byte-derived allowance and remains inert.
+code=0
+cat "$directory/retained-order.a" | "$binary" --load --steps 0 \
+	--save-materialized "$directory/piped.a" - > "$directory/status" || code=$?
+test "$code" = 3
+grep -qx 'pending steps=0' "$directory/status"
+cmp "$directory/retained-order.a" "$directory/piped.a"
+code=0
+head -c 16 "$directory/retained-order.a" | "$binary" --load --steps 0 \
+	--save "$directory/truncated.a" - > "$directory/status" 2>&1 || code=$?
+test "$code" = 2
+test ! -e "$directory/truncated.a"
 # Transport's comparisons and scope preparation are suspended work, not evidence.
 # Resume direct, normalized and constructor-field candidates through normal Solve.
 for case in indexed-dependent-field-path:dependent indexed-later-scope:main indexed-normalized-transport:main; do
@@ -41,7 +53,7 @@ for case in indexed-dependent-field-path:dependent indexed-later-scope:main inde
 done
 "$fixture" nominal-write "$directory/multiple.a"
 code=0
-"$binary" --load --steps 0 --save "$directory/unsolved.a" "$directory/multiple.a" > "$directory/status" || code=$?
+"$binary" --load --steps 0 --save-materialized "$directory/unsolved.a" "$directory/multiple.a" > "$directory/status" || code=$?
 test "$code" = 3
 cmp "$directory/multiple.a" "$directory/unsolved.a"
 # Solve can discover additional module inputs; only an unsolved resave is byte-identical.
@@ -57,47 +69,53 @@ code=0
 test "$code" = 2
 grep -q 'root index out of range: 9 (count 8)' "$directory/status"
 example="$(dirname "${BASH_SOURCE[0]}")/../examples/09_list_induction.p"
-"$binary" --nf main --save "$directory/list.a" "$example" > "$directory/source-nf"
+"$binary" --nf main --save-materialized "$directory/list.a" "$example" > "$directory/source-nf"
 "$binary" --load --nf main "$directory/list.a" > "$directory/image-nf"
 # Solve scheduling may differ; the fully reduced computation graph must not.
 sed '1d' "$directory/source-nf" > "$directory/source-value"
 sed '1d' "$directory/image-nf" > "$directory/image-value"
 cmp "$directory/source-value" "$directory/image-value"
 
-# Retention selects raw reduction data, never accepted flags or host effects.
-"$binary" --nf main --retain-reductions --save "$directory/retained.a" "$example" > "$directory/retained-nf"
-sed '1d' "$directory/retained-nf" > "$directory/retained-value"
-cmp "$directory/source-value" "$directory/retained-value"
-"$fixture" retention-check "$directory/retained.a" > "$directory/retained-summary"
-"$fixture" retained-name-input "$directory/retained.a" main
-grep -Eq '^retained=1 reductions=[1-9][0-9]* phases=[0-9]+ steps=0$' "$directory/retained-summary"
+# Materialized results are viewable without accepting or evaluating them.
+"$fixture" materialized-summary "$directory/list.a" > "$directory/summary"
+"$fixture" retained-name-input "$directory/list.a" main
+grep -Eq '^materialized=[1-9][0-9]* roots=[1-9][0-9]* steps=0$' "$directory/summary"
 code=0
-"$binary" --load --steps 0 --retain-reductions --save "$directory/retained-resaved.a" "$directory/retained.a" > "$directory/status" || code=$?
+"$binary" --load --steps 0 --save-materialized "$directory/resaved.a" "$directory/list.a" > "$directory/status" || code=$?
 test "$code" = 3
-"$fixture" retention-summary "$directory/retained-resaved.a" > "$directory/resaved-summary"
-cmp "$directory/retained-summary" "$directory/resaved-summary"
-"$fixture" retained-name-input "$directory/retained-resaved.a" main
-"$binary" --load --nf main "$directory/retained-resaved.a" > "$directory/retained-loaded-nf"
+cmp "$directory/list.a" "$directory/resaved.a"
+"$fixture" materialized-summary "$directory/resaved.a" > "$directory/resaved-summary"
+cmp "$directory/summary" "$directory/resaved-summary"
+"$fixture" retained-name-input "$directory/resaved.a" main
+"$binary" --load --nf main "$directory/resaved.a" > "$directory/retained-loaded-nf"
 sed '1d' "$directory/retained-loaded-nf" > "$directory/retained-loaded-value"
 cmp "$directory/source-value" "$directory/retained-loaded-value"
 code=0
-"$binary" --load --steps 0 --save "$directory/discarded.a" "$directory/retained.a" > "$directory/status" || code=$?
+"$binary" --steps 0 --save "$directory/empty.a" "$example" > "$directory/status" || code=$?
 test "$code" = 3
-"$fixture" retention-summary "$directory/discarded.a" > "$directory/discarded-summary"
-grep -q '^retained=0 reductions=0 phases=0 steps=0$' "$directory/discarded-summary"
+"$fixture" materialized-summary "$directory/empty.a" > "$directory/empty-summary"
+grep -q '^materialized=0 roots=1 steps=0$' "$directory/empty-summary"
 code=0
-"$binary" --steps 0 --retain-reductions --save "$directory/empty-retained.a" "$example" > "$directory/status" || code=$?
+"$binary" --load --steps 0 --save-inputs "$directory/repl-inputs.a" "$directory/list.a" > "$directory/status" || code=$?
 test "$code" = 3
-"$fixture" retention-summary "$directory/empty-retained.a" > "$directory/empty-summary"
-grep -q '^retained=1 reductions=0 phases=0 steps=0$' "$directory/empty-summary"
-printf ':save %s\n:quit\n' "$directory/repl-retained.a" |
-	"$binary" --load --steps 0 --retain-reductions --repl "$directory/retained.a" > "$directory/status"
-"$fixture" retention-summary "$directory/repl-retained.a" > "$directory/resaved-summary"
-cmp "$directory/retained-summary" "$directory/resaved-summary"
+printf ':save %s\n:quit\n' "$directory/repl.a" |
+	"$binary" --load --steps 0 --repl "$directory/list.a" > "$directory/status"
+cmp "$directory/repl-inputs.a" "$directory/repl.a"
+"$binary" --nf main --save "$directory/compact.a" "$example" > "$directory/status"
+"$binary" --nf main --save-inputs "$directory/compact-alias.a" "$example" > "$directory/status"
+cmp "$directory/compact.a" "$directory/compact-alias.a"
+"$fixture" materialized-summary "$directory/compact.a" > "$directory/compact-summary"
+# The module and selected normalization stay as two recomputable roots.
+grep -q '^materialized=0 roots=2 steps=0$' "$directory/compact-summary"
+"$binary" --load --nf main "$directory/compact.a" > "$directory/compact-nf"
+sed '1d' "$directory/compact-nf" > "$directory/compact-value"
+cmp "$directory/source-value" "$directory/compact-value"
 code=0
-"$binary" --retain-reductions "$example" > "$directory/status" 2>&1 || code=$?
+"$binary" --retain-reductions --save "$directory/removed.a" "$example" > "$directory/status" 2>&1 || code=$?
 test "$code" = 2
-printf '%s\n' 'image cli: explicit reduction retention, inert resave, REPL policy and default discard passed'
+grep -q '^--retain-reductions was removed;' "$directory/status"
+test ! -e "$directory/removed.a"
+printf '%s\n' 'image cli: materialized roots, inert resave, REPL and explicit archive-option retirement passed'
 
 # A failed write must not truncate a previously usable image, even in place.
 cp "$directory/list.a" "$directory/list-before.a"

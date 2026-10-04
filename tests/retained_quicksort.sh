@@ -7,10 +7,9 @@ trap 'rm -rf "$directory"' EXIT
 failed=0
 # Includes execution of the explicit ordinary-result proof, not just sorting.
 steps=5000000
-for mode in solved retained whnf retained-whnf; do
+for mode in solved whnf; do
 	options=()
-	case "$mode" in retained|retained-whnf) options+=(--retain-reductions);; esac
-	case "$mode" in whnf|retained-whnf) options+=(--whnf main);; esac
+	case "$mode" in whnf) options+=(--whnf main);; esac
 	"$binary" --steps "$steps" --legacy-intrinsic-dot "${options[@]}" \
 		--save "$directory/$mode.a" \
 		--imports "$root/archive/legacy/src/prototype/tests/fixtures/typing/if8_fuel_free_quicksort_check.p" \
@@ -23,7 +22,7 @@ for mode in solved retained whnf retained-whnf; do
 		cat "$directory/load" >&2
 		failed=1
 	fi
-	if [[ $mode == whnf || $mode == retained-whnf ]]; then
+	if [[ $mode == whnf ]]; then
 		for root_index in 1 2; do
 			if ! "$binary" --steps "$steps" --load --root "$root_index" \
 				"$directory/$mode.a" > "$directory/root-load"; then
@@ -33,9 +32,9 @@ for mode in solved retained whnf retained-whnf; do
 			fi
 		done
 	fi
-	if [[ $mode == retained-whnf ]]; then
+	if [[ $mode == whnf ]]; then
 		code=0
-		"$binary" --load --steps 0 --save "$directory/resaved.a" --retain-reductions \
+		"$binary" --load --steps 0 --save "$directory/resaved.a" \
 			"$directory/$mode.a" > "$directory/resave" || code=$?
 		if [[ $code != 3 ]] || ! grep -qx 'pending steps=0' "$directory/resave" ||
 			! cmp -s "$directory/$mode.a" "$directory/resaved.a"; then

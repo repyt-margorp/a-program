@@ -38,6 +38,13 @@ done
 sed '/^import /d; / :: /{ :next; /;$/d; N; b next; }' "$provider" "$source" > "$directory/independent.p"
 check 0 independent-synthesis --save "$directory/independent.a" "$directory/independent.p"
 equal "$directory/independent.a" main output
+# Typed results are an explicit larger profile; the product allowance stays fixed.
+check 0 independent-materialized --save-materialized "$directory/materialized.a" "$directory/independent.p"
+status=0
+timeout 120 "$binary" --load --steps 0 "$directory/materialized.a" > "$directory/status" 2> "$directory/error" || status=$?
+[[ $status == 2 ]]
+grep -q 'cannot read or initialize input' "$directory/error"
+timeout 120 "$compare" --image-limit 2000000 --steps 8000000 --equal-image "$directory/materialized.a" main output
 sed '/^import /d' "$provider" "$source" > "$directory/complete.p"
 negative() {
 	local label=$1 body=$2
@@ -57,23 +64,19 @@ negative wrong-value 'bad:=reordering_observe Nat three input input_size output 
 negative wrong-origin 'bad:=(same_position three).refl first :: same_position three first (position_forward three positions first);'
 negative duplicated-position 'bad:=(position_permutation three).mk &(\i:Fin three=>first) &(\i:Fin three=>i) &(\i:Fin three=>(same_position three).refl i) &(\i:Fin three=>(same_position three).refl i);'
 
-for mode in ordinary retained; do
-	options=()
-	if [[ $mode == retained ]]; then options+=(--retain-reductions); fi
-	check 0 "$mode-save" --imports "$provider" "${options[@]}" --save "$directory/full.a" "$source"
-	check 0 "$mode-load" --load "$directory/full.a"
-	equal "$directory/full.a" second_origin two
-	for budget in 0 100; do
-		check 3 "$mode-pending-$budget" --imports "$provider" --steps "$budget" "${options[@]}" \
-			--save "$directory/partial.a" "$source"
-		check 3 "$mode-inert-$budget" --load --steps 0 "${options[@]}" \
-			--save "$directory/copy.a" "$directory/partial.a"
-		cmp "$directory/partial.a" "$directory/copy.a"
-		check 0 "$mode-resume-$budget" --load "$directory/copy.a"
-		equal "$directory/copy.a" main output
-	done
-	check 3 "$mode-invalid-pending" --imports "$directory/complete.p" --steps 100 "${options[@]}" \
-		--save "$directory/wrong.a" "$directory/wrong-value.p"
-	check 1 "$mode-invalid-resume" --load "$directory/wrong.a"
+check 0 "semantic-save" --imports "$provider" --save "$directory/full.a" "$source"
+check 0 "semantic-load" --load "$directory/full.a"
+equal "$directory/full.a" second_origin two
+for budget in 0 100; do
+	check 3 "semantic-pending-$budget" --imports "$provider" --steps "$budget" \
+		--save "$directory/partial.a" "$source"
+	check 3 "semantic-inert-$budget" --load --steps 0 \
+		--save "$directory/copy.a" "$directory/partial.a"
+	cmp "$directory/partial.a" "$directory/copy.a"
+	check 0 "semantic-resume-$budget" --load "$directory/copy.a"
+	equal "$directory/copy.a" main output
 done
+check 3 "semantic-invalid-pending" --imports "$directory/complete.p" --steps 100 \
+	--save "$directory/wrong.a" "$directory/wrong-value.p"
+check 1 "semantic-invalid-resume" --load "$directory/wrong.a"
 printf '%s\n' 'finite permutation views: general position bijection and actual-value laws passed'

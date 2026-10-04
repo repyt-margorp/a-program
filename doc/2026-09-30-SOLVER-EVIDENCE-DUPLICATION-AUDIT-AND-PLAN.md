@@ -1,7 +1,7 @@
 # Solver and Evidence Duplication Audit
 
 Date: 2026-09-30
-Status: audit complete; SE1 ownership consolidation underway, full refactor unfinished.
+Status: reviewed Job migration verified for accepted promotion; full SE/frontier/cost work unfinished.
 Parent: [artifact plan, AP0](2026-09-28-ARTIFACT-SEMANTIC-PERSISTENCE-REFACTOR-PLAN.md#ap0-simplify-before-extending-persistence).
 This is the active prerequisite work list, not another artifact format proposal.
 
@@ -14,6 +14,13 @@ This is the active prerequisite work list, not another artifact format proposal.
 4. **SE4:** persistence reconstructs another rule-input graph from these layers.
 
 ## Subjective (User)
+
+2026-10-04 09:42 UTC, English translation of explicit human adoption via
+inquiry desk019ebfae: Job may now enter accepted code; migrate it and replace
+the old broadly expanded Job with the current prototype version. This
+supersedes prototype-only scope for the reviewed Job refactor, not unrelated
+trials. Root owns comparison/promotion; implementation choices remain in
+Assessment and Plan.
 
 2026-10-03, English paraphrase of the explicit human workflow change relayed
 by inquiry desk `019ebfae-06be-7b71-974a-b97505daed4a`: implementation lanes may
@@ -169,6 +176,27 @@ epochs, with separate working directories to avoid interference.
 
 ## Objective (Code)
 
+2026-10-04, accepted promotion review at parent `a8418715`, runtime120 manifest
+`930997b62db85814718d0d5ac151f392bfae243a447d5d0d5f2adbde66cba5ae`:
+initial normal regression, evaluator/Identity codecs and host/execution pass.
+Final compact-default acceptance coverage passes after targeted correction of
+the added image-CLI harness's one-versus-two root assertion; broad exit2 is
+retained, full-replay0 is not claimed. The omitted syntax recipe passes158 rows.
+Both save profiles, default decode refusal and explicit2,000,000 materialized
+equality pass. Five owner sanitizer groups, final CLI18 sanitizer controls and
+preserved-local-edit Core/IADT gates pass. The strict public
+partition gate still exits 1 with the same three failures. Detailed selection,
+per-file deltas, raw hashes and limitations are in the
+[promotion receipt](../src/prototype/solver_inputs/accepted_promotion/20261004/review.json).
+
+Same independent finite-permutation input freshly produces 1,365,999 bytes with
+old accepted APGSRC62 and 20,728,552 bytes with new materialized APGSRC70.
+Its Core table grows from 21 objects/21 terms to 211,600 objects/804,267 terms.
+The old image loads under the default allowance; the new image exceeds it.
+This is measured artifact growth, not a historical fixture-size explanation or
+a memory improvement. The migration adopts reviewed ownership changes; it does
+not close redundant retention, exact frontier, peak-memory or time criteria.
+
 2026-10-03, fresh epoch 1 against `5035c7a` / producer `64df10d`:
 module/reference output borrowing and module export/stage deletion pass full O2
 regression/examples/acceptance, semantic/seven checkpoint gates, focused
@@ -285,6 +313,27 @@ identical TSVs in O2 and ASan/UBSan builds, including repeated samples without
 additional fuel. No full acceptance suite was rerun for this audit-only change.
 
 ## Assessment
+
+2026-10-04, Root adoption decision superseding the initial materialized-default
+selection after fresh attribution: Job-required Source dependencies are separable
+from the CLI save profile. Preserve the previously accepted compact/recomputable
+profile for `--save`, `--save-inputs` and REPL save. The same fixture then produces
+1,369,677 bytes (+3,678), with 21 objects/21 terms and default-cap load0. Preserve
+typed-retention capability as explicit `--save-materialized`, with its growth and
+ordinary checking visible. Do not raise the product decoder default. Test both
+profiles, including materialized refusal and bounded larger-image equality.
+Revalidate final CLI and acceptance after this change. Artifact growth in the
+explicit profile remains an open SE/AP result. Old `source_work` and shared semantic dispatch are
+removed, but owner modules and tests grow, so no overall size or RAM win follows.
+Exclude Surface policy, held Performance, checkpoint modules and private frontier
+trials. Unowned local changes remain uncommitted, with only required API adaptation.
+
+2026-10-04, Root implementation decision after explicit Job adoption:
+compare qualified E25a87cba42 against accepted Main, promote only the Job
+refactor and justified dependency closure, preserve unrelated local changes
+and known failures. Use isolated accepted integration for overlap handling;
+exclude held Performance and private E26/E27/Surface alternatives. This
+promotion is separate from further frontier/codec implementation.
 
 2026-10-03, Merge operational schedule after the human memory/deletion priority:
 MEM1 follows current qualification, with attribution/scaling/matched costs owned
@@ -1018,6 +1067,13 @@ named-result truncation and post-synthesis assertions. This is prototype work,
 not authorization to promote code or a claim that general resumption is solved.
 
 ## Plan
+
+- [x] Adopt reviewed Job decomposition/direct-input ownership into accepted
+  source with minimal justified Evidence/query/I/O/build/test dependency closure.
+- [x] Preserve unowned edits, verify accepted default build and affected/regression
+  gates, and record actual old source_work/shared-dispatch deletion.
+- [ ] Push accepted migration to Main and report remaining frontier/strict/cost
+  criteria without treating adoption as full SE completion.
 
 No new binding/domain checkpoint fields or backend features before this gate.
 Implement prototypes, verify, and push reviewable deletion-oriented milestones.

@@ -1089,15 +1089,19 @@ static int capture_eliminator(struct pg_function_graph_state *s, const struct pg
 	const struct pg_evidence *body = pg_prove_elimination_reindex(t, map, s->body);
 	if (!body) return -1;
 	size_t count = pg_evidence_premise_count(body) - 6;
-	const struct pg_evidence *const *branches = pg_evidence_premises(body) + 5;
+	if (count > SIZE_MAX / sizeof(const struct pg_evidence *)) return -1;
+	const struct pg_evidence **branches = malloc(count * sizeof(*branches));
+	if (count && !branches) return -1;
+	for (size_t i = 0; i < count; ++i) branches[i] = pg_evidence_premise(body, i + 5);
 	const struct pg_evidence *input = pg_prove_variable(t, scope, pg_evidence_context(scope)->binder);
 	if (pg_evidence_rule(body) == PG_INDUCTION_ELIM)
 		body = pg_prove_induction(t, pg_evidence_premise(body, 1),
 			pg_evidence_premise(body, 2), input, pg_evidence_premise(body, 4),
-			pg_evidence_premise(body, 0), count, branches);
+			pg_evidence_premise(body, 0), count, (struct pg_evidence_inputs){.owner = branches});
 	else body = pg_prove_match(t, pg_evidence_premise(body, 1),
 		pg_evidence_premise(body, 2), input, pg_evidence_premise(body, 4),
-		pg_evidence_premise(body, 0), count, branches);
+		pg_evidence_premise(body, 0), count, (struct pg_evidence_inputs){.owner = branches});
+	free(branches);
 	const struct pg_evidence *function = pg_prove_abstract(t, context, scope, body);
 	if (!function) return -1;
 	s->captured_input = scrutinee;
@@ -1321,6 +1325,22 @@ int pg_function_graph_source_order(struct pg_function_graph_work *work,
 	return 0;
 }
 
+struct graph_results {
+	const struct graph_case *first, *current;
+};
+
+/* Schema admission makes ascending passes and retains only checked receipts.
+ * Borrow the existing leaves; restarting a pass does not copy a result table. */
+static const struct pg_evidence *graph_result(const void *owner, size_t index)
+{
+	struct graph_results *results = (void *)owner;
+	const struct graph_case *leaf = results->current;
+	if (!leaf || leaf->leaf > index) leaf = results->first;
+	while (leaf && leaf->leaf < index) leaf = leaf->leaf_next;
+	results->current = leaf;
+	return leaf && leaf->leaf == index ? leaf->result : NULL;
+}
+
 enum pg_function_graph_status pg_function_graph_advance(struct pg_function_graph_work *work, uint64_t budget)
 {
 	if (!work || !work->state) return PG_FUNCTION_GRAPH_ERROR;
@@ -1351,13 +1371,10 @@ enum pg_function_graph_status pg_function_graph_advance(struct pg_function_graph
 				continue;
 			}
 			size_t count = s->leaf_count;
-			if (count > SIZE_MAX / sizeof(*s->results)) { s->status = PG_FUNCTION_GRAPH_ERROR; break; }
-			s->results = pg_alloc(&s->temporary, count * sizeof(*s->results));
-			if (count && !s->results) { s->status = PG_FUNCTION_GRAPH_ERROR; break; }
-			for (const struct graph_case *leaf = s->leaves; leaf; leaf = leaf->leaf_next)
-				s->results[leaf->leaf] = leaf->result;
+			struct graph_results results = {.first = s->leaves};
 			s->schema = pg_data_schema(s->typing,
-				pg_data_signature(s->typing, s->self, s->indices), count, s->results);
+				pg_data_signature(s->typing, s->self, s->indices), count,
+				(struct pg_evidence_inputs){.owner = &results, .at = graph_result});
 			s->declaration = pg_prove_inductive_type(s->typing, s->schema);
 			s->formation = s->declaration;
 			if (s->specialization) {

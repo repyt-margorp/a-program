@@ -2,8 +2,8 @@
 
 Date: 2026-09-28
 Updated: 2026-09-30
-Status: in progress; APGSRC68 persistence and first C backend are prototypes,
-not promoted. AP0 simplification now precedes further persistence/backend work.
+Status: reviewed Job and necessary APGSRC70 Source dependencies verified for accepted promotion;
+full persistence/checkpoint and C backend remain prototype work.
 Exact resumption and trust/fuel integration remain unfinished.
 Baseline: `152b59506e915e18a34f6dc8041e981fb2a82888` (PR #45 documents
 imported). Implementation is unchanged from `e716232`; unrelated working-tree
@@ -32,6 +32,11 @@ measurements, causes and the separate Context/syntax investigations.
 ## AP0. Simplify Before Extending Persistence
 
 ### Subjective (User)
+
+2026-10-04 09:42 UTC, English translation of explicit human adoption via
+inquiry desk019ebfae: migrate the current prototype Job into accepted code,
+replacing the old broadly expanded Job. This supersedes the earlier
+prototype-only boundary for this Job refactor.
 
 2026-10-03, English paraphrase: explore C-backend and surface development in
 parallel with the necessary Job/Evidence refactor on one PC, coordinating the
@@ -87,6 +92,19 @@ alongside the SE ownership audit. GitHub connectivity is reported restored.
 
 ### Objective (Code): Parallel Work Inspection
 
+2026-10-04, Root reviewed Job promotion at accepted parenta8418715/runtime120
+930997b6: final compact-default acceptance coverage passes after targeted
+image-CLI harness correction; broad exit2 retained, no full-replay0 claim.
+Initial regression and five owner/final18 CLI sanitizer controls pass; strict3 remain.
+The same annotation-free finite-permutation materialized image grows
+from old APGSRC62 1,365,999 bytes to materialized APGSRC70 20,728,552 bytes.
+Final default saves keep the compact/recomputable profile: 1,369,677 bytes, Core
+objects21/terms21 and default-cap load0. The larger profile is explicit
+`--save-materialized`; refusal and equality under 2,000,000 remain tested.
+This is new retention growth and no peak-RAM benefit is claimed. See the
+[promotion receipt](../src/prototype/solver_inputs/accepted_promotion/20261004/review.json)
+for exact old/new table counts, selected dependencies and verification.
+
 2026-10-03, `eb0aad6` plus local documentation edits: GitHub REST lists seven
 open issues (#41, #43, #44, #47, #49, #51, #52). Initially two open PRs were #53
 (audit documents) and #54 (generic MergeSort library); a follow-up REST check
@@ -100,6 +118,15 @@ shared `/tmp` paths, so concurrent workers must explicitly set their own
 `OVERLAY` and `BUILD` and never share mutable assembly/symlink targets.
 
 ### Assessment: Proposed Parallel Workflow
+
+2026-10-04, Root implementation decision: select only necessary reviewed Job,
+Evidence/query and Source I/O dependencies, preserve unowned changes, and
+exclude held Performance, separate Surface syntax and unqualified owner trials.
+Accepted promotion is separate from full frontier/codec/cost completion.
+Fresh attribution supersedes the initial materialized-default choice: preserve
+compact CLI/REPL saves, explicit typed retention and revalidate both profiles.
+The Job API does not require larger default images; explicit retained growth
+remains open.
 
 User-selected division: Main owns Job/Evidence, Sub1 C-backend design, and
 Sub2 system performance through simplification, with the latest instruction

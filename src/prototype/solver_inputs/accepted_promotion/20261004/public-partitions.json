@@ -1,0 +1,7 @@
+{
+  "exit": 1,
+  "log_sha256": "e6a5d84597553288273b0f0a4add99aba8c74b360bca390d053da4d826602592",
+  "TSV_sha256": "47a2c73a247ce0caecea2d4bf439ab1ab6e8511cc8263f51dbad52eb3e90e641",
+  "profile": "CLI/REPL compact default",
+  "strict_failures_unwaived": true
+}

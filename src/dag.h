@@ -17,16 +17,26 @@ struct pg_dag {
 	struct pg_graph storage;
 	struct pg_index index;
 	struct pg_dag_node *first, *last;
+	struct pg_dag_node *pending;
+	const void *root;
 	size_t count;
 	int failed;
 	int (*child)(void *, const void *, size_t, const void **);
 	void *context;
+	/* Optional stable key projection before lookup/traversal. For transport
+	 * aliases only, never conversion. Returned storage outlives this DAG;
+	 * NULL means failure. Unset preserves exact input-pointer identity. */
+	const void *(*key)(void *, const void *);
 };
 int pg_dag_init(struct pg_dag *dag,
 	int (*child)(void *, const void *, size_t, const void **), void *context);
 /* Iterative postorder; previously completed roots cost one indexed lookup.
  * Cycles/errors poison the collector until destroy. IDs are local and 1-based. */
 int pg_dag_add(struct pg_dag *dag, const void *root);
+/* One transition visits one child slot or closes one node. Return -1 error,
+ * 0 pending, 1 complete. A pending root must be resumed before another root.
+ * Zero budget performs lookup only and neither allocates nor calls child. */
+int pg_dag_advance(struct pg_dag *dag, const void *root, uint64_t budget);
 const struct pg_dag_node *pg_dag_find(const struct pg_dag *dag, const void *key);
 void pg_dag_destroy(struct pg_dag *dag);
 

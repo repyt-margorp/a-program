@@ -58,23 +58,19 @@ for kind in local strong; do
 	sed "\$s/$predicate A R (quickSort A (\&le) xs);/$predicate A R xs;/" "$proof" > "$directory/wrong-result.p"
 	if cmp -s "$proof" "$directory/wrong-result.p"; then exit 1; fi
 	check 1 "$kind-wrong-result" --legacy-intrinsic-dot --imports "$imports" "$directory/wrong-result.p"
-	for mode in ordinary retained; do
-		options=()
-		if [[ $mode == retained ]]; then options+=(--retain-reductions); fi
-		check 0 "$kind-$mode-complete" --legacy-intrinsic-dot --imports "$imports" \
-			"${options[@]}" --save "$directory/full.a" "$proof"
-		check 0 "$kind-$mode-load" --load "$directory/full.a"
-		check 3 "$kind-$mode-inert-resave" --load --steps 0 "${options[@]}" \
-			--save "$directory/copy.a" "$directory/full.a"
-		cmp "$directory/full.a" "$directory/copy.a"
-		for steps in 0 100; do
-			check 3 "$kind-$mode-pending-$steps" --legacy-intrinsic-dot --imports "$imports" \
-				--steps "$steps" "${options[@]}" --save "$directory/pending.a" "$proof"
-			check 0 "$kind-$mode-resumed-$steps" --load "$directory/pending.a"
-			check 3 "$kind-$mode-pending-wrong-$steps" --legacy-intrinsic-dot --imports "$imports" \
-				--steps "$steps" "${options[@]}" --save "$directory/wrong.a" "$directory/wrong-result.p"
-			check 1 "$kind-$mode-resumed-wrong-$steps" --load "$directory/wrong.a"
-		done
+	check 0 "$kind-semantic-complete" --legacy-intrinsic-dot --imports "$imports" \
+		--save "$directory/full.a" "$proof"
+	check 0 "$kind-semantic-load" --load "$directory/full.a"
+	check 3 "$kind-semantic-inert-resave" --load --steps 0 \
+		--save "$directory/copy.a" "$directory/full.a"
+	cmp "$directory/full.a" "$directory/copy.a"
+	for steps in 0 100; do
+		check 3 "$kind-semantic-pending-$steps" --legacy-intrinsic-dot --imports "$imports" \
+			--steps "$steps" --save "$directory/pending.a" "$proof"
+		check 0 "$kind-semantic-resumed-$steps" --load "$directory/pending.a"
+		check 3 "$kind-semantic-pending-wrong-$steps" --legacy-intrinsic-dot --imports "$imports" \
+			--steps "$steps" --save "$directory/wrong.a" "$directory/wrong-result.p"
+		check 1 "$kind-semantic-resumed-wrong-$steps" --load "$directory/wrong.a"
 	done
 done
 

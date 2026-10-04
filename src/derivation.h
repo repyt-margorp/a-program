@@ -59,5 +59,12 @@ const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
 	enum pg_evidence_rule rule,
 	const struct pg_derivation_parameters *parameters, size_t count,
 	const struct pg_evidence *const *premises);
+/* Borrow immutable accepted inputs directly. The reader is synchronous and
+ * side-effect free; neither it nor its owner is retained by the checker. The
+ * same named rules validate every input, including ownership and exact scope. */
+const struct pg_evidence *pg_prove_derivation_inputs(struct pg_typing *typing,
+	enum pg_evidence_rule rule,
+	const struct pg_derivation_parameters *parameters, size_t count,
+	const void *owner, const struct pg_evidence *(*premise)(const void *, size_t));
 
 #endif

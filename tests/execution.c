@@ -125,9 +125,9 @@ static void admission_and_unknown(void)
 	const struct pg_evidence *text = pg_prove_host_type(&p->typing, context, pg_host_type("Text"));
 	const struct pg_operation_declaration *op = pg_operation_declaration(&p->typing, text, text);
 	assert(op);
-	p->scope = pg_synthesis_name_job(&p->synthesis, p->scope,
+	p->scope = pg_synthesis_name(&p->synthesis, p->scope,
 		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "Other", .length = 5},
-		pg_synthesis_operation(&p->synthesis, op));
+		(struct pg_synthesis_input){.pending = pg_synthesis_pending(pg_synthesis_operation(&p->synthesis, op))});
 	const struct pg_evidence *proof = entry(p, "main:=Other #\"a\";");
 	FILE *output = tmpfile();
 	assert(output);

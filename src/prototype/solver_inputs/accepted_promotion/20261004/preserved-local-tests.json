@@ -1,0 +1,13 @@
+{
+  "checks": [
+    {
+      "test": "core_test",
+      "exit": 0
+    },
+    {
+      "test": "iadt_test",
+      "exit": 0
+    }
+  ],
+  "preservation": "Original local context/schema transport and two tests remain outside promotion commit. Only new direct Evidence-input API call adaptation and declarative header merge."
+}

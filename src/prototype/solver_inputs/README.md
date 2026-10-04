@@ -1,7 +1,11 @@
 # Direct Solver Inputs
 
 Prototype prerequisite to the [Solver/Evidence plan, SE1](../../../doc/2026-09-30-SOLVER-EVIDENCE-DUPLICATION-AUDIT-AND-PLAN.md).
-Applies after the artifact/readback/conversion candidate, not to accepted code.
+The reviewed Job refactor was authorized for accepted promotion on 2026-10-04.
+The patches and overlay script retain the historical pre-promotion baseline;
+use an immutable pre-promotion checkout via `ARTIFACT_SOURCE` to reproduce them.
+Do not reapply those complete patches to the migrated accepted sources. New
+frontier/codecs and Performance alternatives remain prototypes until qualified.
 
 ## Problem List
 

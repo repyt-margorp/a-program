@@ -7,6 +7,7 @@
 #include "conversion.h"
 #include "classifier.h"
 #include "evidence.h"
+#include "typed_query.h"
 #include "function_graph.h"
 #include "function_witness.h"
 #include "derivation.h"
@@ -81,6 +82,42 @@ static void dag_test(void)
 	struct dag_fixture missing = {1, {NULL}};
 	assert(pg_dag_add(&dag, &missing) == -1);
 	pg_dag_destroy(&dag);
+	visits = 0;
+	assert(!pg_dag_init(&dag, dag_child, &visits));
+	assert(!pg_dag_advance(&dag, &root, 0));
+	assert(!dag.index.count && !dag.pending && !dag.storage.blocks && !visits);
+	for (size_t i = 0; i < 7; ++i) {
+		assert(pg_dag_advance(&dag, &root, 1) == (i == 6));
+		assert(visits == i + 1);
+		assert(pg_dag_advance(&dag, &root, 0) == (i == 6));
+		assert(visits == i + 1);
+	}
+	assert(dag.count == 3 && !dag.pending && !dag.root);
+	assert(pg_dag_find(&dag, &leaf)->id == 1 && pg_dag_find(&dag, &root)->id == 3);
+	assert(pg_dag_advance(&dag, &root, 1) == 1 && visits == 7);
+	pg_dag_destroy(&dag);
+	visits = 0;
+	assert(!pg_dag_init(&dag, dag_child, &visits));
+	assert(!pg_dag_advance(&dag, &root, 3) && visits == 3);
+	assert(pg_dag_advance(&dag, &root, 4) == 1 && visits == 7 && dag.count == 3);
+	assert(pg_dag_advance(&dag, &cycle, 1) == -1 && dag.failed);
+	pg_dag_destroy(&dag);
+	assert(!pg_dag_init(&dag, dag_child, &visits));
+	assert(!pg_dag_advance(&dag, &root, 1));
+	assert(pg_dag_advance(&dag, &leaf, 1) == -1 && dag.failed);
+	pg_dag_destroy(&dag);
+}
+
+struct borrowed_inputs {
+	const struct pg_typing *typing;
+	const struct pg_evidence *proof;
+};
+
+static const struct pg_evidence *borrowed_premise(const void *owner, size_t i)
+{
+	const struct borrowed_inputs *inputs = owner;
+	const struct pg_evidence *child = NULL;
+	return pg_derivation_input_dependency(inputs->typing, inputs->proof, i, &child) == 1 ? child : NULL;
 }
 
 static void reconstruct_derivation(struct pg_typing *typing,
@@ -91,15 +128,25 @@ static void reconstruct_derivation(struct pg_typing *typing,
 	assert(pg_derivation_input_header(source, &input) == 0);
 	assert(pg_derivation_parameters(source, &input.parameters) == 0);
 	size_t count = input.count;
-	const struct pg_evidence *const *borrowed = pg_evidence_premises(source);
-	for (size_t i = 0; i < pg_evidence_premise_count(source); ++i) assert(borrowed[i] == pg_evidence_premise(source, i));
+	const struct pg_evidence *first = pg_evidence_premise(source, 0);
 	if (pg_evidence_judgement(source) == PG_JUDGEMENT_CONTEXT) assert(!pg_evidence_premise_count(source));
 	const struct pg_evidence **premises = pg_alloc(typing->graph, (count + 1) * sizeof(*premises));
 	assert(premises);
 	for (size_t i = 0; i < count; ++i) assert(pg_derivation_input_dependency(typing, source, i, premises + i) == 1);
 	assert(pg_derivation_input_dependency(typing, source, count, premises + count) == 0);
 	assert(pg_prove_derivation(typing, input.rule, &input.parameters, count, premises) == source);
-	assert(pg_evidence_premises(source) == borrowed);
+	const struct borrowed_inputs borrowed = {typing, source};
+	const struct pg_evidence_inputs view = {.owner = &borrowed, .at = borrowed_premise};
+	for (size_t i = 0; i < count; ++i) assert(pg_evidence_input(view, i) == premises[i]);
+	assert(!pg_evidence_input((struct pg_evidence_inputs){0}, 0));
+	assert(!pg_evidence_input((struct pg_evidence_inputs){.owner = &borrowed,
+		.at = borrowed_premise, .first = SIZE_MAX}, 1));
+	assert(pg_prove_derivation_inputs(typing, input.rule, &input.parameters, count,
+		&borrowed, borrowed_premise) == source);
+	assert(!pg_prove_derivation_inputs(typing, input.rule, &input.parameters, count + 1,
+		&borrowed, borrowed_premise));
+	if (count) assert(!pg_prove_derivation_inputs(typing, input.rule, &input.parameters, count, &borrowed, NULL));
+	assert(pg_evidence_premise(source, 0) == first);
 	premises[count] = source;
 	assert(!pg_prove_derivation(typing, input.rule, &input.parameters, count + 1, premises));
 	if (count) {
@@ -514,6 +561,59 @@ static const struct pg_evidence *checked_normalize(struct pg_typing *typing,
 	return result;
 }
 
+static void unary_inversion_receipts(struct pg_graph *graph)
+{
+	for (size_t variant = 0; variant < 4; ++variant) {
+		struct pg_typing typing, foreign;
+		struct pg_whnf_work evaluation;
+		assert(!pg_typing_init(&typing, graph));
+		assert(!pg_typing_init(&foreign, graph));
+		assert(!pg_whnf_work_init(&evaluation, graph));
+		const struct pg_evidence *empty = pg_prove_empty_context(&typing);
+		const struct pg_object *a = pg_binder(graph), *x = pg_binder(graph);
+		const struct pg_evidence *parameters = pg_prove_context_extension(&typing, empty, a,
+			pg_prove_universe(&typing, empty, 0));
+		const struct pg_evidence *context = pg_prove_context_extension(&typing, parameters, x,
+			pg_prove_value_type(&typing, pg_prove_variable(&typing, parameters, a)));
+		const struct pg_evidence *source = pg_prove_return(&typing,
+			pg_prove_variable(&typing, context, x));
+		if (variant & 1) source = pg_prove_thunk(&typing, source);
+		const struct pg_evidence *acted = pg_prove_reflexivity(&typing,
+			pg_prove_classifier(&typing, context, source), source);
+		const struct pg_evidence *formation = checked_normalize(&typing, &evaluation,
+			pg_prove_classifier(&typing, context, acted));
+		const struct pg_evidence *normal = checked_normalize(&typing, &evaluation, acted);
+		struct pg_conversion conversion;
+		assert(!pg_conversion_init(&conversion, &evaluation, pg_evidence_classifier(normal),
+			pg_evidence_subject(formation)->core));
+		assert(pg_conversion_advance(&conversion, 10000) == PG_CONVERSION_EQUAL);
+		source = pg_prove_conversion(&typing, normal, formation, pg_conversion_certificate(&conversion));
+		pg_conversion_destroy(&conversion);
+		assert(source);
+		const struct pg_evidence *canonical = source;
+		if (variant & 2) source = pg_prove_reindex(&typing,
+			pg_prove_substitution_projection(&typing, context, context), source);
+		const struct pg_evidence *content = variant & 1 ? pg_prove_thunk_computation(&typing, source)
+			: pg_prove_return_value(&typing, source);
+		assert(content && pg_evidence_subject(content)->origin == pg_evidence_subject(source));
+		assert(pg_evidence_rule(content) == (variant & 1 ? PG_THUNK_COMPUTATION : PG_RETURN_VALUE));
+		assert(pg_evidence_premise_count(content) == 1 && !pg_evidence_premise(content, 1));
+		assert(pg_evidence_premise(content, 0) == canonical);
+		assert(!pg_evidence_retained_premise_count(content));
+		reconstruct_derivation(&typing, content);
+		size_t proofs = typing.proofs.count, occurrences = typing.occurrences.count;
+		assert((variant & 1 ? pg_prove_thunk_computation(&typing, source)
+			: pg_prove_return_value(&typing, source)) == content);
+		assert(typing.proofs.count == proofs && typing.occurrences.count == occurrences);
+		assert(!pg_prove_return_value(&foreign, source) && !pg_prove_thunk_computation(&foreign, source));
+		pg_typing_destroy(&foreign);
+		pg_typing_destroy(&typing);
+		assert(pg_evidence_premise(content, 0) == canonical);
+		pg_whnf_work_destroy(&evaluation);
+	}
+	puts("unary inversions: borrowed origins, exact alternatives, reconstruction and index-free lifetime passed");
+}
+
 static void returned_value_rebase_test(struct pg_graph *graph)
 {
 	struct pg_typing typing;
@@ -542,6 +642,7 @@ static void returned_value_rebase_test(struct pg_graph *graph)
 	const struct pg_evidence *mapped = pg_prove_reindex(&typing, map, extracted);
 	assert(mapped);
 	struct pg_typed_query *query = pg_rebase_request(&typing, empty, mapped);
+	assert(query && pg_typed_query_role(query)->size <= 5 * sizeof(void *));
 	while (!pg_typed_query_advance(query, 1)) assert(pg_typed_query_steps(query) < 1000);
 	const struct pg_evidence *result = pg_typed_query_result(query);
 	const struct pg_evidence *expected = pg_prove_thunk(&typing, pg_prove_return(&typing, u0));
@@ -575,6 +676,7 @@ static void evidence_test(struct pg_graph *graph)
 	assert(pg_evidence_classifier(u0) == pg_universe(graph, 1));
 	assert(pg_evidence_premise(u0, 0) == empty);
 	assert(pg_evidence_premise_count(u0) == 1);
+	assert(pg_evidence_retained_premise_bytes(u0) == sizeof(const struct pg_evidence *));
 	assert(!pg_evidence_premise(u0, 1));
 	assert(!pg_prove_universe(&typing, empty, UINT64_MAX));
 	const struct pg_object *a = pg_binder(graph);
@@ -582,10 +684,45 @@ static void evidence_test(struct pg_graph *graph)
 	const struct pg_object *y = pg_binder(graph);
 	const struct pg_evidence *a_context = pg_prove_context_extension(&typing, empty, a, u0);
 	assert(a_context && pg_context_declared_input(&typing, a_context) == u0);
+	const struct pg_context *owned_context = pg_evidence_context(a_context);
+	assert(pg_context_owned_by(owned_context, &typing) && pg_context_owned_by(NULL, &typing));
+	assert(!pg_context_owned_by(NULL, NULL));
+	struct pg_context copied_context = *owned_context;
+	assert(copied_context.receipts && !pg_context_owned_by(&copied_context, &typing));
+	struct pg_typing foreign_context_owner;
+	assert(!pg_typing_init(&foreign_context_owner, graph));
+	const struct pg_context *foreign_context = pg_context_intern(&foreign_context_owner, &copied_context);
+	assert(foreign_context && foreign_context != owned_context);
+	assert(pg_context_owned_by(foreign_context, &foreign_context_owner));
+	assert(!pg_context_owned_by(foreign_context, &typing));
+	assert(!pg_context_owned_by(owned_context, &foreign_context_owner));
+	pg_typing_destroy(&foreign_context_owner);
+	assert(!pg_context_owned_by(foreign_context, &foreign_context_owner));
 	const struct pg_evidence *a_type = pg_prove_variable(&typing, a_context, a);
 	assert(a_type && pg_evidence_classifier(a_type) == pg_universe(graph, 0));
 	const struct pg_evidence *x_context = pg_prove_context_extension(&typing, a_context, x, a_type);
 	assert(x_context);
+	const struct pg_evidence *mapped_universe = pg_prove_projection(&typing, a_context, u0);
+	assert(mapped_universe && pg_evidence_premise_count(mapped_universe) == 2);
+	assert(!pg_evidence_retained_premise_count(mapped_universe));
+	assert(pg_evidence_premise(mapped_universe, 0) == a_context);
+	assert(pg_evidence_premise(mapped_universe, 1) == u0);
+	const struct pg_evidence *alternate_universe = pg_prove_reindex(&typing,
+		pg_prove_substitution_projection(&typing, empty, empty), u0);
+	const struct pg_evidence *selected_projection = pg_prove_projection(&typing, a_context, alternate_universe);
+	assert(selected_projection != mapped_universe);
+	assert(pg_evidence_subject(selected_projection) == pg_evidence_subject(mapped_universe));
+	assert(pg_evidence_retained_premise_count(selected_projection) == 1);
+	assert(pg_evidence_retained_premise_bytes(selected_projection) == 2 * sizeof(const struct pg_evidence *));
+	assert(pg_evidence_premise(selected_projection, 0) == a_context);
+	assert(pg_evidence_premise(selected_projection, 1) == alternate_universe);
+	assert(!pg_evidence_premise(selected_projection, 2));
+	reconstruct_derivation(&typing, mapped_universe);
+	reconstruct_derivation(&typing, selected_projection);
+	const struct pg_evidence *variable_projection = pg_prove_projection(&typing, x_context, a_type);
+	assert(!pg_evidence_subject(variable_projection)->origin);
+	assert(pg_evidence_retained_premise_count(variable_projection) == 2);
+	reconstruct_derivation(&typing, variable_projection);
 	const struct pg_evidence *fa = pg_prove_return_type(&typing, a_type);
 	assert(fa && pg_evidence_judgement(fa) == PG_JUDGEMENT_COMPUTATION_TYPE);
 	assert(!pg_prove_value_type(&typing, fa));
@@ -818,6 +955,20 @@ static void evidence_test(struct pg_graph *graph)
 	assert(!pg_reduction_congruence(pg_nf_certificate(beta_nf)));
 	assert(pg_reduction_head_congruence(pg_nf_certificate(beta_nf)));
 	const struct pg_evidence *beta_result = pg_prove_normalization(&typing, app, pg_nf_certificate(beta_nf));
+	assert(pg_evidence_premise_count(beta_result) == 1 && !pg_evidence_retained_premise_count(beta_result));
+	assert(!pg_evidence_retained_premise_bytes(beta_result));
+	assert(pg_evidence_premise(beta_result, 0) == app && !pg_evidence_premise(beta_result, 1));
+	const struct pg_evidence *alternate_app = pg_prove_reindex(&typing,
+		pg_prove_substitution_projection(&typing, x_context, x_context), app);
+	assert(alternate_app != app && pg_evidence_subject(alternate_app) == pg_evidence_subject(app));
+	const struct pg_evidence *selected_normal = pg_prove_normalization(&typing, alternate_app, pg_nf_certificate(beta_nf));
+	assert(selected_normal != beta_result && pg_evidence_subject(selected_normal) == pg_evidence_subject(beta_result));
+	assert(pg_evidence_retained_premise_count(selected_normal) == 1);
+	assert(pg_evidence_retained_premise_bytes(selected_normal) == sizeof(const struct pg_evidence *));
+	assert(pg_evidence_premise(selected_normal, 0) == alternate_app);
+	assert(pg_prove_normalization(&typing, alternate_app, pg_nf_certificate(beta_nf)) == selected_normal);
+	reconstruct_derivation(&typing, beta_result);
+	reconstruct_derivation(&typing, selected_normal);
 	struct pg_typed_query *changed_head = pg_typed_input_request(&typing, beta_result, 0);
 	while (!pg_typed_query_advance(changed_head, 1)) assert(pg_typed_query_steps(changed_head) < 10000);
 	/* The source is APP but its result is RETURN. Input zero must be the
@@ -1047,6 +1198,17 @@ static void evidence_test(struct pg_graph *graph)
 	assert(pg_evidence_conversion(converted) == certificate);
 	assert(pg_evidence_premise(converted, 0) == quoted_function);
 	assert(pg_evidence_premise(converted, 1) == upi_z);
+	assert(!pg_evidence_retained_premise_count(converted));
+	const struct pg_evidence *alternate_quote = pg_prove_reindex(&typing,
+		pg_prove_substitution_projection(&typing, x_context, x_context), quoted_function);
+	assert(alternate_quote != quoted_function && pg_evidence_subject(alternate_quote) == pg_evidence_subject(quoted_function));
+	const struct pg_evidence *selected_conversion = pg_prove_conversion(&typing, alternate_quote, upi_z, certificate);
+	assert(selected_conversion != converted && pg_evidence_subject(selected_conversion) == pg_evidence_subject(converted));
+	assert(pg_evidence_retained_premise_count(selected_conversion) == 1);
+	assert(pg_evidence_premise(selected_conversion, 0) == alternate_quote);
+	assert(pg_evidence_premise(selected_conversion, 1) == upi_z);
+	assert(pg_evidence_conversion(selected_conversion) == certificate);
+	reconstruct_derivation(&typing, selected_conversion);
 	assert(pg_prove_conversion(&typing, quoted_function, upi_z, certificate) == converted);
 	assert(!pg_prove_conversion(&typing, quoted_function, upi_z, NULL));
 	assert(!pg_prove_conversion(&typing, x_term, upi_z, certificate));
@@ -1454,7 +1616,34 @@ static void evidence_test(struct pg_graph *graph)
 		}
 		reconstruct_derivation(&typing, records[i]);
 	}
+	/* Phase checking owns only its immutable key and existing dependency.
+	 * Zero private bytes must never be initialized as a different query. */
+	size_t phases = 0;
+	for (size_t i = 0; i < typing.typed_queries.capacity; ++i) {
+		for (struct pg_index_entry *entry = typing.typed_queries.buckets[i]; entry; entry = entry->next) {
+			struct pg_typed_query *query = (void *)entry;
+			if (pg_typed_query_role(query)->size) continue;
+			uint64_t steps = pg_typed_query_steps(query);
+			int status = query->status;
+			assert(pg_typed_query_advance(query, 0) == status);
+			assert(pg_typed_query_steps(query) == steps);
+			if (status != 1) continue;
+			const struct pg_evidence *result = pg_typed_query_result(query);
+			assert(result && pg_typed_query_advance(query, 1) == 1);
+			assert(pg_typed_query_result(query) == result && pg_typed_query_steps(query) == steps);
+			++phases;
+		}
+	}
+	assert(phases);
 	pg_typing_destroy(&typing);
+	assert(pg_evidence_premise(mapped_universe, 0) == a_context);
+	assert(pg_evidence_premise(mapped_universe, 1) == u0);
+	assert(pg_evidence_premise(selected_projection, 1) == alternate_universe);
+	assert(pg_evidence_premise(beta_result, 0) == app);
+	assert(pg_evidence_premise(selected_normal, 0) == alternate_app);
+	assert(pg_evidence_retained_premise_bytes(selected_normal) == sizeof(const struct pg_evidence *));
+	assert(pg_evidence_premise(converted, 0) == quoted_function && pg_evidence_premise(converted, 1) == upi_z);
+	assert(pg_evidence_premise(selected_conversion, 0) == alternate_quote);
 	puts("evidence: checked contexts, stratified universes and occurrence-based variable derivations passed");
 }
 
@@ -1526,7 +1715,7 @@ static void dependent_application_test(struct pg_graph *graph)
 		const struct pg_binding_value binding = {a, pg_reference(graph, renamed)};
 		const struct pg_evidence *original_child = i ? inner : fa;
 		const struct pg_term *body = pg_substitution_compute(&typing.substitutions,
-			pg_evidence_subject(original_child)->core, 1, &binding);
+			pg_evidence_subject(original_child)->core, 1, (struct pg_binding_inputs){.owner = &binding});
 		const struct pg_term *alpha = i ? pg_lambda(graph, renamed, body)
 			: pg_pi(graph, pg_evidence_subject(u1)->core, renamed, body);
 		if (i == 2) alpha = pg_application(graph, pg_reference(graph, &pg_force_operation),
@@ -1562,7 +1751,7 @@ static void dependent_application_test(struct pg_graph *graph)
 		assert(child && pg_evidence_context(child)->parent == pg_evidence_context(empty));
 		assert(pg_evidence_context(child)->binder == renamed && pg_evidence_subject(child)->core == body);
 		const struct pg_term *classifier = pg_substitution_compute(&typing.substitutions,
-			pg_evidence_classifier(original_child), 1, &binding);
+			pg_evidence_classifier(original_child), 1, (struct pg_binding_inputs){.owner = &binding});
 		assert(pg_evidence_classifier(child) == classifier);
 		uint64_t steps = pg_typed_query_steps(lift);
 		size_t proofs = typing.proofs.count, queries = typing.typed_queries.count;
@@ -1724,13 +1913,13 @@ static void dependent_application_test(struct pg_graph *graph)
 	const struct pg_evidence *g_argument = pg_prove_type_value(&typing, pg_prove_universe(&typing, g_context, 0));
 	struct pg_binding_value image = {a, pg_evidence_subject(g_argument)->core};
 	struct pg_substitution *prepared = pg_substitution_request(&typing.substitutions,
-		pg_evidence_subject(inner_pi)->core, 1, &image);
+		pg_evidence_subject(inner_pi)->core, 1, (struct pg_binding_inputs){.owner = &image});
 	assert(prepared && pg_substitution_advance(prepared, 1) == PG_SUBSTITUTION_PENDING);
 	const struct pg_evidence *g_app = pg_prove_application(&typing, g_term, g_argument);
 	assert(pg_substitution_status(prepared) == PG_SUBSTITUTION_DONE);
 	assert(pg_evidence_classifier(g_app) == pg_substitution_result(prepared));
 	uint64_t substituted_steps = pg_substitution_steps(prepared);
-	assert(pg_substitution_request(&typing.substitutions, pg_evidence_subject(inner_pi)->core, 1, &image) == prepared);
+	assert(pg_substitution_request(&typing.substitutions, pg_evidence_subject(inner_pi)->core, 1, (struct pg_binding_inputs){.owner = &image}) == prepared);
 	assert(pg_substitution_advance(prepared, 100) == PG_SUBSTITUTION_DONE);
 	assert(pg_substitution_steps(prepared) == substituted_steps);
 	const struct pg_evidence *g_formation = pg_prove_classifier(&typing, g_context, g_app);
@@ -1847,9 +2036,24 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(!pg_context_map_lookup(map, b, &position) && position == 1);
 	assert(!pg_context_map_lookup(map, NULL, NULL));
 	assert(!pg_context_map_lookup(NULL, a, NULL));
-	const struct pg_binding_value *bindings = pg_context_map_bindings(map);
-	assert(bindings[0].binder == a && bindings[0].value == pg_evidence_subject(destination_b)->core);
-	assert(bindings[1].binder == x && bindings[1].value == pg_evidence_subject(destination_y)->core);
+	{
+		struct pg_binding_inputs bindings = pg_context_map_bindings(map);
+		struct pg_binding_value first = pg_binding_input(bindings, 0), second = pg_binding_input(bindings, 1);
+		assert(first.binder == a && first.value == pg_evidence_subject(destination_b)->core);
+		assert(second.binder == x && second.value == pg_evidence_subject(destination_y)->core);
+		assert(!pg_binding_input(bindings, map->count).binder);
+		assert(!pg_binding_input(pg_context_map_bindings(NULL), 0).binder);
+		const struct pg_term *pair = pg_application(graph, pg_reference(graph, a), pg_reference(graph, x));
+		struct pg_substitution *map_request = pg_substitution_request(&typing.substitutions, pair, 2, bindings);
+		const struct pg_binding_value array[] = {first, second};
+		assert(map_request && !pg_substitution_steps(map_request));
+		assert(pg_substitution_request(&typing.substitutions, pair, 2, (struct pg_binding_inputs){.owner = array}) == map_request);
+		assert(pg_substitution_compute(&typing.substitutions, pair, 2, bindings) == pg_application(graph, first.value, second.value));
+		const struct pg_context *duplicate_scope = pg_context_bind(&typing, NULL, a, first.value, PG_JUDGEMENT_VALUE);
+		duplicate_scope = pg_context_bind(&typing, duplicate_scope, a, first.value, PG_JUDGEMENT_VALUE);
+		const struct pg_context_map *raw = pg_context_map(&typing, duplicate_scope, map->destination, 2, map->images);
+		assert(raw && pg_context_map_lookup(raw, a, &position) == map->images[0] && position == 0);
+	}
 	assert(pg_prove_type_value(&typing, pg_prove_value_type(&typing, destination_b)) == destination_b);
 	const struct pg_evidence *alternate_b = pg_prove_reindex(&typing,
 		pg_prove_substitution_projection(&typing, destination, destination), destination_b);
@@ -1932,6 +2136,52 @@ static void typed_substitution_test(struct pg_graph *graph)
 		assert(!pg_prove_substitution(&typing, source, destination, 2, bad_last));
 		assert(typing.proofs.count == proofs);
 	}
+	/* Map endpoints/images supply default receipts, not a second premise array.
+	 * Prefix admission remains independent, including a zero-image extension. */
+	const struct pg_evidence *receipt_destination = pg_prove_context_extension(&typing,
+		destination, pg_binder(graph), pg_prove_universe(&typing, destination, 0));
+	const struct pg_evidence *map_receipts[] = {
+		pg_prove_substitution_projection(&typing, empty, empty),
+		pg_prove_substitution_projection(&typing, empty, destination),
+		pg_prove_substitution_projection(&typing, source, source),
+		pg_prove_substitution_projection(&typing, a_scope, source),
+		sigma, alternate,
+		pg_prove_substitution_extension(&typing, source, receipt_destination, sigma, 0, (struct pg_evidence_inputs){.owner = NULL}),
+		pg_prove_substitution_extension(&typing, source, receipt_destination, alternate, 0, (struct pg_evidence_inputs){.owner = NULL})
+	};
+	const struct pg_evidence *map_inputs[][5] = {
+		{empty, empty}, {empty, destination}, {source, source}, {a_scope, source},
+		{source, destination, map_receipts[1], destination_b, destination_y},
+		{source, destination, map_receipts[1], alternate_b, destination_y},
+		{source, receipt_destination, sigma}, {source, receipt_destination, alternate}
+	};
+	const size_t map_arities[] = {2, 2, 2, 2, 5, 5, 3, 3};
+	const size_t map_retained[] = {2, 1, 0, 0, 1, 2, 1, 1};
+	assert(map_receipts[6] != map_receipts[7]);
+	assert(pg_evidence_context_map(map_receipts[6]) == pg_evidence_context_map(map_receipts[7]));
+	size_t map_proofs = typing.proofs.count, map_terms = graph->terms.count;
+	const struct pg_evidence *mutable_images[] = {alternate_b, destination_y};
+	assert(pg_prove_substitution_extension(&typing, source, destination,
+		map_receipts[1], 2, (struct pg_evidence_inputs){.owner = mutable_images}) == alternate);
+	mutable_images[0] = destination_b;
+	assert(pg_prove_substitution_extension(&typing, source, destination,
+		map_receipts[1], 2, (struct pg_evidence_inputs){.owner = mutable_images}) == sigma);
+	mutable_images[1] = NULL;
+	assert(!pg_prove_substitution_extension(&typing, source, destination,
+		map_receipts[1], 2, (struct pg_evidence_inputs){.owner = mutable_images}));
+	assert(!pg_prove_substitution_extension(&typing, source, destination,
+		map_receipts[1], SIZE_MAX, (struct pg_evidence_inputs){.owner = mutable_images}));
+	assert(pg_evidence_premise(alternate, 3) == alternate_b);
+	assert(pg_evidence_premise(sigma, 4) == destination_y);
+	for (size_t n = 0; n < 8; ++n) {
+		assert(map_receipts[n] && pg_evidence_premise_count(map_receipts[n]) == map_arities[n]);
+		assert(pg_evidence_retained_premise_count(map_receipts[n]) == map_retained[n]);
+		for (size_t i = 0; i < map_arities[n]; ++i)
+			assert(pg_evidence_premise(map_receipts[n], i) == map_inputs[n][i]);
+		assert(!pg_evidence_premise(map_receipts[n], map_arities[n]));
+		reconstruct_derivation(&typing, map_receipts[n]);
+	}
+	assert(typing.proofs.count == map_proofs && graph->terms.count == map_terms);
 	assert(!pg_evidence_context_map(destination_b) && !pg_evidence_context_map(NULL));
 	assert(!pg_context_map(&typing, map->source, map->destination, 1, map->images));
 	struct pg_occurrence_action *split = pg_occurrence_action_request(&typing, map, pg_evidence_subject(source_x));
@@ -1962,10 +2212,10 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(action && pg_occurrence_action_result(action) == pg_evidence_subject(destination_y));
 	uint64_t action_steps = pg_occurrence_action_steps(action);
 	const struct pg_evidence *first_receipt = pg_evidence_for_subject(&typing, pg_evidence_subject(reindexed), NULL);
-	size_t conclusion_count = typing.evidence_conclusions.count;
+	size_t occurrence_count = typing.occurrences.count;
 	const struct pg_evidence *alternative_result = pg_prove_reindex(&typing, alternate, source_x);
 	assert(alternative_result != reindexed && pg_evidence_subject(alternative_result) == pg_evidence_subject(reindexed));
-	assert(typing.evidence_conclusions.count == conclusion_count);
+	assert(typing.occurrences.count == occurrence_count);
 	assert(pg_evidence_for_subject(&typing, pg_evidence_subject(reindexed), NULL) == first_receipt);
 	assert(pg_evidence_for_subject(&typing, pg_evidence_subject(reindexed), reindexed) == alternative_result);
 	assert(!pg_evidence_for_subject(&typing, pg_evidence_subject(reindexed), alternative_result));
@@ -1984,12 +2234,12 @@ static void typed_substitution_test(struct pg_graph *graph)
 		assert(++receipt_count <= typing.proofs.count);
 	}
 	assert(saw_original && saw_alternative);
-	/* Growing both indexes must preserve the first proof and alternative order. */
-	size_t capacity = typing.evidence_conclusions.capacity;
+	/* Growing the derivation index cannot replace the owner-local admission. */
+	size_t capacity = typing.proofs.capacity;
 	const struct pg_evidence *after_alternative = pg_evidence_for_subject(&typing, same_subject, alternative_result);
 	for (size_t level = 0; level <= capacity; ++level)
 		assert(pg_prove_universe(&typing, empty, level));
-	assert(typing.evidence_conclusions.capacity > capacity);
+	assert(typing.proofs.capacity > capacity);
 	assert(pg_evidence_for_subject(&typing, same_subject, NULL) == first_receipt);
 	assert(pg_evidence_for_subject(&typing, same_subject, reindexed) == alternative_result);
 	assert(pg_evidence_for_subject(&typing, same_subject, alternative_result) == after_alternative);
@@ -2037,6 +2287,35 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(pg_evidence_subject(reindexed_return)->origin == pg_evidence_subject(returned));
 	assert(pg_evidence_subject(reindexed_return)->map == map);
 	assert(pg_evidence_subject(reindexed_return)->operand_count == 0);
+	/* The mapped typed use already retains the map and source. Only exact
+	 * receipt selections differing from their first admission need edges. */
+	const struct pg_evidence *source_identity = pg_prove_substitution_projection(&typing, source, source);
+	const struct pg_evidence *selected_source = pg_prove_reindex(&typing, source_identity, returned);
+	assert(selected_source && selected_source != returned && pg_evidence_subject(selected_source) == pg_evidence_subject(returned));
+	const struct pg_evidence *mapped_receipts[] = {
+		reindexed_return, alternate_return,
+		pg_prove_reindex(&typing, sigma, selected_source),
+		pg_prove_reindex(&typing, alternate, selected_source),
+		selected_source, reindexed, alternative_result
+	};
+	const struct pg_evidence *mapped_inputs[][2] = {
+		{sigma, returned}, {alternate, returned},
+		{sigma, selected_source}, {alternate, selected_source},
+		{source_identity, returned}, {sigma, source_x}, {alternate, source_x}
+	};
+	const size_t mapped_retained[] = {0, 1, 1, 2, 2, 2, 2};
+	size_t mapped_proofs = typing.proofs.count, mapped_terms = graph->terms.count;
+	for (size_t n = 0; n < 7; ++n) {
+		assert(mapped_receipts[n] && pg_evidence_premise_count(mapped_receipts[n]) == 2);
+		assert(pg_evidence_retained_premise_count(mapped_receipts[n]) == mapped_retained[n]);
+		for (size_t i = 0; i < 2; ++i)
+			assert(pg_evidence_premise(mapped_receipts[n], i) == mapped_inputs[n][i]);
+		assert(!pg_evidence_premise(mapped_receipts[n], 2));
+		assert(pg_prove_reindex(&typing, mapped_inputs[n][0], mapped_inputs[n][1]) == mapped_receipts[n]);
+		reconstruct_derivation(&typing, mapped_receipts[n]);
+		if (n < 4) assert(pg_evidence_subject(mapped_receipts[n]) == pg_evidence_subject(reindexed_return));
+	}
+	assert(typing.proofs.count == mapped_proofs && graph->terms.count == mapped_terms);
 	size_t input_proofs = typing.proofs.count;
 	struct pg_occurrence_input *input = pg_occurrence_input_request(&typing, pg_evidence_subject(reindexed_return), 0);
 	assert(input && !pg_occurrence_input_result(input));
@@ -2291,6 +2570,7 @@ static void typed_substitution_test(struct pg_graph *graph)
 		struct pg_typed_query *origin = pg_construction_origin_request(&typing, projected);
 		struct pg_typed_query *inner_origin = pg_construction_origin_request(&typing, reindexed_return);
 		assert(origin && inner_origin && !pg_typed_query_advance(origin, 0));
+		assert(pg_typed_query_role(origin)->size <= 2 * sizeof(void *));
 		assert(!pg_construction_origin_environment(origin));
 		assert(pg_construction_origin_request(&typing, alternate_return) == inner_origin);
 		assert(!pg_typed_query_advance(inner_origin, 1));
@@ -2957,9 +3237,9 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(typing.proofs.count == proof_count);
 	pg_graph_destroy(&scratch);
 	reconstruct_derivation(&typing, dag);
-	assert(!pg_prove_substitution_extension(&typing, dag_scope, source, dag, 0, NULL));
-	assert(!pg_prove_substitution_extension(&typing, source, destination, source, 0, NULL));
-	assert(!pg_prove_substitution_extension(&typing, source, destination, dag, 0, NULL));
+	assert(!pg_prove_substitution_extension(&typing, dag_scope, source, dag, 0, (struct pg_evidence_inputs){.owner = NULL}));
+	assert(!pg_prove_substitution_extension(&typing, source, destination, source, 0, (struct pg_evidence_inputs){.owner = NULL}));
+	assert(!pg_prove_substitution_extension(&typing, source, destination, dag, 0, (struct pg_evidence_inputs){.owner = NULL}));
 	/* Missing mapped origins still need ordered checking, even when most
 	 * structural requests can use already accepted prerequisites directly. */
 	const struct pg_evidence *chain_scope = empty;
@@ -2981,6 +3261,12 @@ static void typed_substitution_test(struct pg_graph *graph)
 		chain, PG_JUDGEMENT_COMPUTATION, pg_universe(graph, 4))));
 	assert(typing.proofs.count == proof_count);
 	pg_typing_destroy(&typing);
+	for (size_t n = 0; n < 7; ++n)
+		for (size_t i = 0; i < 2; ++i)
+			assert(pg_evidence_premise(mapped_receipts[n], i) == mapped_inputs[n][i]);
+	for (size_t n = 0; n < 8; ++n)
+		for (size_t i = 0; i < map_arities[n]; ++i)
+			assert(pg_evidence_premise(map_receipts[n], i) == map_inputs[n][i]);
 	puts("typed substitution: dependent declarations, simultaneous images and shared premise DAG passed");
 }
 
@@ -3543,6 +3829,18 @@ static void fold_association_test(struct pg_graph *graph)
 	puts("fold association: neutral inputs, captured continuations, operation order and extraction boundary passed");
 }
 
+struct fold_test_inputs {
+	const struct pg_object *labels[2];
+	const struct pg_term *bodies[2];
+};
+
+static struct pg_operation_clause fold_test_clause(const void *owner, size_t i)
+{
+	const struct fold_test_inputs *inputs = owner;
+	assert(i < 2);
+	return (struct pg_operation_clause){inputs->labels[i], inputs->bodies[i]};
+}
+
 static void request_forwarding_test(struct pg_graph *graph)
 {
 	static const struct pg_object_class operation_class = {"test-operation"};
@@ -3609,6 +3907,23 @@ static void request_forwarding_test(struct pg_graph *graph)
 	struct pg_operation_clause clauses[] = {{&second, second_clause}, {&first, first_clause}};
 	const struct pg_term *handled = pg_computation_fold(graph, request, ret, 2, clauses);
 	assert(handled && handled == pg_computation_fold(graph, request, ret, 2, clauses));
+	struct fold_test_inputs borrowed = {{&second, &first}, {second_clause, first_clause}};
+	size_t before_terms = graph->terms.count, before_objects = graph->objects.count;
+	assert(handled == pg_computation_fold_inputs(graph, request, ret, 2, &borrowed, fold_test_clause));
+	assert(graph->terms.count == before_terms && graph->objects.count == before_objects);
+	assert(pg_computation_fold_inputs(graph, request, return_r, 0, NULL, NULL) == body);
+	assert(!pg_computation_fold_inputs(graph, request, ret, 2, &borrowed, NULL));
+	assert(!pg_computation_fold_inputs(graph, request, ret, SIZE_MAX, &borrowed, fold_test_clause));
+	borrowed.bodies[1] = NULL;
+	assert(!pg_computation_fold_inputs(graph, request, ret, 2, &borrowed, fold_test_clause));
+	borrowed.bodies[1] = first_clause;
+	borrowed.labels[1] = x;
+	assert(!pg_computation_fold_inputs(graph, request, ret, 2, &borrowed, fold_test_clause));
+	borrowed.labels[1] = &second;
+	assert(!pg_computation_fold_inputs(graph, request, ret, 2, &borrowed, fold_test_clause));
+	assert(graph->terms.count == before_terms && graph->objects.count == before_objects);
+	/* Core retains neither the borrowed owner nor its reader. */
+	memset(&borrowed, 0, sizeof(borrowed));
 	assert(pg_computation_fold(graph, request, return_r, 0, NULL) == body);
 	assert(request_whnf(graph, handled, 1) == pg_application(graph, ret, vy));
 	assert(request_whnf(graph, handled, 10000) == pg_application(graph, ret, vy));
@@ -4288,6 +4603,11 @@ static void restriction_test(struct pg_graph *graph)
 	puts("restriction: term faces compose and commute with beta without capturing bound variables");
 }
 
+static struct pg_reduced_binding conversion_binding(const void *owner, size_t i)
+{
+	return ((const struct pg_reduced_binding *)owner)[i];
+}
+
 static void conversion_test(struct pg_graph *graph)
 {
 	struct pg_whnf_work work;
@@ -4424,25 +4744,44 @@ static void conversion_test(struct pg_graph *graph)
 	struct pg_nf_job *nf = pg_nf_request(&work, &pg_pure_policy, redex);
 	assert(pg_nf_advance(nf, 10000) == PG_NF_DONE && pg_nf_result(nf) == vy);
 	const struct pg_reduction_certificate *receipt = pg_nf_certificate(nf);
-	struct pg_binding_value binding = {x, redex};
+	struct pg_reduced_binding image = {{x, redex}, receipt};
 	const struct pg_term *template = pg_application(graph, vx, vx);
 	const struct pg_term *instance = pg_application(graph, redex, redex), *right = pg_application(graph, vy, vy);
-	const struct pg_conversion_certificate *congruence = pg_conversion_substitution(&substitution, instance, right, template, 1, &binding, &receipt);
+	const struct pg_conversion_certificate *congruence = pg_conversion_substitution(&substitution, instance, right, template, 1, &image, conversion_binding);
 	assert(congruence && pg_conversion_left(congruence) == instance && pg_conversion_right(congruence) == right);
-	assert(!pg_conversion_substitution(&substitution, right, right, template, 1, &binding, &receipt));
-	assert(!pg_conversion_substitution(&substitution, instance, instance, template, 1, &binding, &receipt));
-	binding.value = vx;
-	assert(!pg_conversion_substitution(&substitution, instance, right, template, 1, &binding, &receipt));
-	binding.value = redex;
+	assert(!pg_conversion_substitution(&substitution, right, right, template, 1, &image, conversion_binding));
+	assert(!pg_conversion_substitution(&substitution, instance, instance, template, 1, &image, conversion_binding));
+	image.binding.value = vx;
+	assert(!pg_conversion_substitution(&substitution, instance, right, template, 1, &image, conversion_binding));
+	image.binding.value = redex;
 	nf = pg_nf_request(&work, &pg_beta_policy, redex);
 	assert(pg_nf_advance(nf, 10000) == PG_NF_DONE);
-	receipt = pg_nf_certificate(nf);
-	assert(!pg_conversion_substitution(&substitution, instance, right, template, 1, &binding, &receipt));
-	receipt = NULL;
-	assert(pg_conversion_substitution(&substitution, instance, instance, template, 1, &binding, &receipt));
-	assert(!pg_conversion_substitution(&substitution, instance, right, template, 1, NULL, &receipt));
-	assert(!pg_conversion_substitution(&substitution, instance, right, template, 1, &binding, NULL));
+	image.reduction = pg_nf_certificate(nf);
+	assert(!pg_conversion_substitution(&substitution, instance, right, template, 1, &image, conversion_binding));
+	image.reduction = NULL;
+	assert(pg_conversion_substitution(&substitution, instance, instance, template, 1, &image, conversion_binding));
+	assert(!pg_conversion_substitution(&substitution, instance, right, template, 1, &image, NULL));
+	image.binding.binder = NULL;
+	assert(!pg_conversion_substitution(&substitution, instance, instance, template, 1, &image, conversion_binding));
+	image.binding = (struct pg_binding_value){x, NULL};
+	assert(!pg_conversion_substitution(&substitution, instance, instance, template, 1, &image, conversion_binding));
+	assert(!pg_conversion_substitution(&substitution, instance, instance, template, SIZE_MAX, &image, conversion_binding));
 	assert(pg_conversion_substitution(&substitution, identity, identity, identity, 0, NULL, NULL));
+	/* Unchanged prefix and shadowed images remain ordered inputs; the reader
+	 * does not survive checking, and every supplied receipt is validated. */
+	struct pg_reduced_binding images[] = {
+		{{y, vx}, NULL}, {{x, vx}, NULL}, {{x, redex}, receipt}};
+	const struct pg_term *mixed = pg_application(graph, vx, vy);
+	const struct pg_term *old_mixed = pg_application(graph, redex, vx);
+	const struct pg_term *new_mixed = pg_application(graph, vy, vx);
+	congruence = pg_conversion_substitution(&substitution, old_mixed, new_mixed, mixed, 3, images, conversion_binding);
+	assert(congruence && pg_conversion_left(congruence) == old_mixed && pg_conversion_right(congruence) == new_mixed);
+	images[0].binding.value = vy;
+	assert(pg_conversion_right(congruence) == new_mixed);
+	assert(!pg_conversion_substitution(&substitution, old_mixed, new_mixed, mixed, 3, images, conversion_binding));
+	images[0].binding.value = vx;
+	images[1].reduction = receipt;
+	assert(!pg_conversion_substitution(&substitution, old_mixed, new_mixed, mixed, 3, images, conversion_binding));
 	pg_substitution_work_destroy(&substitution);
 	pg_whnf_work_destroy(&work);
 	puts("conversion: explicit beta comparison, binder scope, shared DAG and pending divergence passed");
@@ -5019,6 +5358,18 @@ static void substitution_test(struct pg_graph *graph)
 	puts("substitution: simultaneous images, capture avoidance, sharing and no reduction passed");
 }
 
+struct binding_reader_fixture {
+	const struct pg_binding_value *bindings;
+	size_t count, visits;
+};
+
+static struct pg_binding_value borrowed_binding(const void *owner, size_t i)
+{
+	struct binding_reader_fixture *fixture = (void *)owner;
+	++fixture->visits;
+	return i < fixture->count ? fixture->bindings[i] : (struct pg_binding_value){0};
+}
+
 static void shared_substitution_test(struct pg_graph *graph)
 {
 	struct pg_substitution_work work, independent;
@@ -5029,59 +5380,91 @@ static void shared_substitution_test(struct pg_graph *graph)
 	const struct pg_term *body = pg_application(graph, vx, vx);
 	const struct pg_term *term = pg_lambda(graph, y, body);
 	struct pg_binding_value image = {x, vy}, copy = image;
-	struct pg_substitution *first = pg_substitution_request(&work, term, 1, &image);
+	struct pg_substitution *first = pg_substitution_request(&work, term, 1, (struct pg_binding_inputs){.owner = &image});
 	assert(first && pg_substitution_steps(first) == 0 && !pg_substitution_result(first));
 	assert(pg_substitution_advance(first, 1) == PG_SUBSTITUTION_PENDING);
 	size_t terms = graph->terms.count;
-	struct pg_substitution *second = pg_substitution_request(&work, term, 1, &copy);
+	struct pg_substitution *second = pg_substitution_request(&work, term, 1, (struct pg_binding_inputs){.owner = &copy});
 	assert(second == first && pg_substitution_steps(second) == 1 && graph->terms.count == terms);
+	struct binding_reader_fixture reader = {&copy, 1, 0};
+	struct pg_binding_inputs borrowed = {.owner = &reader, .at = borrowed_binding};
+	size_t requests_before = work.jobs.count, environments_before = work.environments.count;
+	assert(pg_substitution_request(&work, term, 1, borrowed) == first && reader.visits);
+	assert(work.jobs.count == requests_before && work.environments.count == environments_before);
+	assert(pg_substitution_advance(first, 0) == PG_SUBSTITUTION_PENDING && pg_substitution_steps(first) == 1);
 	copy.value = vz;
-	struct pg_substitution *different = pg_substitution_request(&work, term, 1, &copy);
-	struct pg_substitution *other_store = pg_substitution_request(&independent, term, 1, &image);
+	struct pg_substitution *different = pg_substitution_request(&work, term, 1, (struct pg_binding_inputs){.owner = &copy});
+	struct pg_substitution *other_store = pg_substitution_request(&independent, term, 1, (struct pg_binding_inputs){.owner = &image});
 	assert(different && different != first && !pg_substitution_steps(different));
 	assert(other_store && other_store != first && !pg_substitution_steps(other_store));
-	const struct pg_term *answer = pg_substitution_compute(&work, term, 1, &image);
+	const struct pg_term *answer = pg_substitution_compute(&work, term, 1, (struct pg_binding_inputs){.owner = &image});
 	assert(answer && answer == pg_substitution_result(first));
 	assert(answer->as.lambda.binder != y);
 	assert(answer->as.lambda.body == pg_application(graph, vy, vy));
 	assert(!first->state->context.temporary.blocks && !first->state->context.results.capacity);
 	uint64_t steps = pg_substitution_steps(first);
-	assert(pg_substitution_compute(&work, term, 1, &image) == answer);
+	assert(pg_substitution_compute(&work, term, 1, (struct pg_binding_inputs){.owner = &image}) == answer);
 	assert(pg_substitution_steps(first) == steps);
 	assert(pg_substitution_status(different) == PG_SUBSTITUTION_PENDING);
 	assert(pg_substitution_status(other_store) == PG_SUBSTITUTION_PENDING);
 	const struct pg_term *alpha = pg_lambda(graph, z, body);
 	assert(pg_alpha_equal(term, alpha) == 1);
-	assert(pg_substitution_request(&work, alpha, 1, &image) != first);
+	assert(pg_substitution_request(&work, alpha, 1, (struct pg_binding_inputs){.owner = &image}) != first);
 	/* Different term requests share the same immutable input environment,
 	 * without sharing traversal progress or identifying their output terms. */
-	struct pg_substitution *body_work = pg_substitution_request(&work, body, 1, &image);
+	struct pg_substitution *body_work = pg_substitution_request(&work, body, 1, (struct pg_binding_inputs){.owner = &image});
 	const struct pg_environment *prefix = pg_substitution_input(first)->environment;
 	assert(body_work != first && pg_substitution_input(body_work)->environment == prefix);
 	assert(pg_substitution_input(different)->environment != prefix);
 	assert(pg_substitution_input(other_store)->environment != prefix);
 	assert(pg_substitution_steps(body_work) == 0);
 	struct pg_binding_value shadow[] = {{x, vy}, {x, vx}};
-	struct pg_substitution *shadow_work = pg_substitution_request(&work, vx, 2, shadow);
+	struct pg_substitution *shadow_work = pg_substitution_request(&work, vx, 2, (struct pg_binding_inputs){.owner = shadow});
+	reader = (struct binding_reader_fixture){shadow, 2, 0};
+	assert(pg_substitution_request(&work, vx, 2, borrowed) == shadow_work);
 	const struct pg_environment *extended = pg_substitution_input(shadow_work)->environment;
 	assert(extended != prefix && extended->parent == prefix);
-	assert(pg_substitution_compute(&work, vx, 2, shadow) == vx);
+	assert(pg_substitution_compute(&work, vx, 2, (struct pg_binding_inputs){.owner = shadow}) == vx);
 	shadow[1].value = vz;
 	assert(extended->value.term == vx);
-	assert(pg_substitution_compute(&work, body, 1, &image) == pg_application(graph, vy, vy));
+	assert(pg_substitution_compute(&work, body, 1, (struct pg_binding_inputs){.owner = &image}) == pg_application(graph, vy, vy));
 	assert(pg_substitution_input(body_work)->environment == prefix);
 	struct pg_binding_value ordered[] = {{x, vy}, {y, vx}}, reversed[] = {{y, vx}, {x, vy}};
-	assert(pg_substitution_request(&work, body, 2, ordered) != pg_substitution_request(&work, body, 2, reversed));
+	assert(pg_substitution_request(&work, body, 2, (struct pg_binding_inputs){.owner = ordered}) != pg_substitution_request(&work, body, 2, (struct pg_binding_inputs){.owner = reversed}));
 	struct pg_binding_value identity[] = {{x, vx}, {y, vy}};
-	assert(pg_substitution_request(&work, term, 2, identity) == pg_substitution_request(&work, term, 0, NULL));
+	assert(pg_substitution_request(&work, term, 2, (struct pg_binding_inputs){.owner = identity}) == pg_substitution_request(&work, term, 0, (struct pg_binding_inputs){0}));
+	reader = (struct binding_reader_fixture){identity, 2, 0};
+	assert(pg_substitution_request(&work, term, 2, borrowed) == pg_substitution_request(&work, term, 0, (struct pg_binding_inputs){0}));
+	/* The reader and its array can disappear while the canonical work remains
+	 * pending. Images are simultaneous, not recursively substituted. */
+	struct pg_binding_value selected[] = {{y, vy}, {x, vz}, {z, vy}};
+	reader = (struct binding_reader_fixture){selected, 3, 0};
+	const struct pg_term *pair = pg_application(graph, vx, vz);
+	struct pg_substitution *snapshot = pg_substitution_request(&work, pair, 3, borrowed);
+	assert(snapshot && !pg_substitution_steps(snapshot));
+	borrowed.first = 1;
+	assert(pg_substitution_request(&work, pair, 2, borrowed) == snapshot);
+	memset(selected, 0, sizeof(selected)); reader = (struct binding_reader_fixture){0};
+	assert(pg_substitution_advance(snapshot, 0) == PG_SUBSTITUTION_PENDING && !reader.visits);
+	while (pg_substitution_advance(snapshot, 1) == PG_SUBSTITUTION_PENDING) {}
+	assert(pg_substitution_result(snapshot) == pg_application(graph, vz, vy) && !reader.visits);
+	borrowed.first = 0;
 	const struct pg_term *semantic = pg_reference(graph, &pg_return_operation);
-	assert(pg_substitution_request(&work, semantic, 1, &image) == pg_substitution_request(&work, semantic, 0, NULL));
+	assert(pg_substitution_request(&work, semantic, 1, (struct pg_binding_inputs){.owner = &image}) == pg_substitution_request(&work, semantic, 0, (struct pg_binding_inputs){0}));
 	size_t requests = work.jobs.count;
 	struct pg_binding_value invalid = {&pg_return_operation, vx};
-	assert(!pg_substitution_request(&work, semantic, 1, &invalid));
-	assert(!pg_substitution_request(&work, term, 1, NULL));
-	assert(!pg_substitution_request(&work, term, SIZE_MAX, &image));
-	assert(!pg_substitution_request(&work, NULL, 0, NULL));
+	assert(!pg_substitution_request(&work, semantic, 1, (struct pg_binding_inputs){.owner = &invalid}));
+	assert(!pg_substitution_request(&work, term, 1, (struct pg_binding_inputs){0}));
+	assert(!pg_substitution_request(&work, term, SIZE_MAX, (struct pg_binding_inputs){.owner = &image}));
+	assert(!pg_substitution_request(&work, NULL, 0, (struct pg_binding_inputs){0}));
+	reader = (struct binding_reader_fixture){&invalid, 1, 0};
+	assert(!pg_substitution_request(&work, semantic, 1, borrowed));
+	reader = (struct binding_reader_fixture){&image, 1, 0};
+	assert(!pg_substitution_request(&work, term, 2, borrowed));
+	assert(!pg_substitution_request(&work, term, SIZE_MAX, borrowed));
+	size_t visits = reader.visits;
+	assert(!pg_binding_input((struct pg_binding_inputs){.owner = &reader, .at = borrowed_binding, .first = 1}, SIZE_MAX).binder);
+	assert(reader.visits == visits);
 	assert(work.jobs.count == requests);
 	/* A growing input DAG retains one node per new binding, not one copied
 	 * telescope per term request. These requests stay pending until teardown. */
@@ -5091,8 +5474,8 @@ static void shared_substitution_test(struct pg_graph *graph)
 	size_t environments = work.environments.count;
 	for (size_t i = 0; i < 64; ++i) {
 		chain[i] = (struct pg_binding_value){chain_binder, vx};
-		struct pg_substitution *left = pg_substitution_request(&work, term, i + 1, chain);
-		struct pg_substitution *right = pg_substitution_request(&work, body, i + 1, chain);
+		struct pg_substitution *left = pg_substitution_request(&work, term, i + 1, (struct pg_binding_inputs){.owner = chain});
+		struct pg_substitution *right = pg_substitution_request(&work, body, i + 1, (struct pg_binding_inputs){.owner = chain});
 		const struct pg_environment *current = pg_substitution_input(left)->environment;
 		assert(current->parent == tail && pg_substitution_input(right)->environment == current);
 		assert(work.environments.count == environments + i + 1);
@@ -5102,7 +5485,7 @@ static void shared_substitution_test(struct pg_graph *graph)
 	/* Cancellation releases pending traversals without invalidating outputs. */
 	pg_substitution_work_destroy(&independent);
 	pg_substitution_work_destroy(&work);
-	assert(!pg_substitution_request(&work, term, 1, &image));
+	assert(!pg_substitution_request(&work, term, 1, (struct pg_binding_inputs){.owner = &image}));
 	assert(answer->as.lambda.body == pg_application(graph, vy, vy));
 	puts("shared substitution: exact inputs, capture, pending reuse, compact results and independent owners passed");
 }
@@ -5636,6 +6019,19 @@ static void evidence_owner_test(struct pg_graph *graph)
 	}
 	/* Arena-owned evidence survives index disposal, but not as accepted input
 	 * to another initialization of the same C storage address. */
+	const struct pg_evidence *scope = pg_prove_context_extension(&first,
+		contexts[0], pg_binder(graph), types[0]);
+	assert(scope && pg_evidence_context(scope)->receipts);
+	struct pg_context header = *pg_evidence_context(scope);
+	header.binder = pg_binder(graph);
+	const struct pg_context *unaccepted = pg_context_intern(&first, &header);
+	assert(unaccepted && !unaccepted->receipts);
+	assert(!pg_evidence_for_context(&first, unaccepted));
+	header = *pg_evidence_context(scope);
+	header.receipts = (struct pg_evidence *)contexts[1];
+	assert(pg_context_intern(&first, &header) == pg_evidence_context(scope));
+	assert(pg_evidence_for_context(&first, pg_evidence_context(scope)) == scope);
+	assert(!pg_evidence_for_context(&second, pg_evidence_context(scope)));
 	pg_typing_destroy(&second);
 	assert(!pg_evidence_owned_by(types[1], &second));
 	assert(!pg_typing_init(&second, graph));
@@ -5804,6 +6200,27 @@ static void effect_classifier_test(struct pg_graph *graph)
 		pg_prove_projection(&typing, scope, universe));
 	const struct pg_evidence *widened = pg_prove_effect_subsumption(&typing, force, target);
 	assert(widened && pg_evidence_rule(widened) == PG_EFFECT_SUBSUMPTION);
+	assert(pg_evidence_premise_count(widened) == 2 && !pg_evidence_retained_premise_count(widened));
+	assert(pg_evidence_premise(widened, 0) == force && pg_evidence_premise(widened, 1) == target);
+	const struct pg_evidence *alternate_force = pg_prove_reindex(&typing,
+		pg_prove_substitution_projection(&typing, scope, scope), force);
+	assert(alternate_force != force && pg_evidence_subject(alternate_force) == pg_evidence_subject(force));
+	const struct pg_evidence *selected_widening = pg_prove_effect_subsumption(&typing, alternate_force, target);
+	assert(selected_widening != widened && pg_evidence_subject(selected_widening) == pg_evidence_subject(widened));
+	assert(pg_evidence_retained_premise_count(selected_widening) == 1);
+	assert(pg_evidence_premise(selected_widening, 0) == alternate_force);
+	assert(pg_evidence_premise(selected_widening, 1) == target);
+	const struct pg_evidence *unchanged = pg_prove_effect_subsumption(&typing, widened, target);
+	assert(unchanged != widened && pg_evidence_subject(unchanged) == pg_evidence_subject(widened));
+	assert(pg_evidence_premise(unchanged, 0) == widened && pg_evidence_premise(unchanged, 1) == target);
+	const struct pg_evidence *force_type = pg_prove_classifier(&typing, scope, force);
+	const struct pg_evidence *unchanged_force = pg_prove_effect_subsumption(&typing, force, force_type);
+	assert(unchanged_force && pg_evidence_subject(unchanged_force) == pg_evidence_subject(force));
+	assert(!pg_evidence_subject(unchanged_force)->origin && pg_evidence_retained_premise_count(unchanged_force) == 2);
+	assert(pg_evidence_premise(unchanged_force, 0) == force && pg_evidence_premise(unchanged_force, 1) == force_type);
+	reconstruct_derivation(&typing, selected_widening);
+	reconstruct_derivation(&typing, unchanged);
+	reconstruct_derivation(&typing, unchanged_force);
 	assert(pg_evidence_subject(widened) != pg_evidence_subject(force));
 	assert(pg_evidence_subject(widened)->core == pg_evidence_subject(force)->core);
 	assert(pg_evidence_classifier(force) == effectful);
@@ -5820,6 +6237,10 @@ static void effect_classifier_test(struct pg_graph *graph)
 	const struct pg_evidence *widening_premises[] = {force, target};
 	assert(pg_prove_derivation(&typing, PG_EFFECT_SUBSUMPTION, &parameters, 2, widening_premises) == widened);
 	pg_typing_destroy(&typing);
+	assert(pg_evidence_premise(widened, 0) == force && pg_evidence_premise(widened, 1) == target);
+	assert(pg_evidence_premise(selected_widening, 0) == alternate_force);
+	assert(pg_evidence_premise(unchanged, 0) == widened);
+	assert(pg_evidence_premise(unchanged_force, 1) == force_type);
 	puts("effects: explicit closed sets, union laws, unknown is not empty, and pure-only views passed");
 }
 
@@ -5833,6 +6254,7 @@ static void totality_classifier_test(struct pg_graph *graph)
 		pg_prove_universe(&typing, context, 0));
 	const struct pg_effect_row *empty = pg_effect_row(graph, 0, NULL), *row;
 	const struct pg_evidence *types[2], *returned[2], *functions[2];
+	const struct pg_evidence *termination_receipts[2][2], *termination_inputs[2][2];
 	const struct pg_term *value;
 	enum pg_totality grade;
 	const struct pg_object *x = pg_binder(graph);
@@ -5902,7 +6324,8 @@ static void totality_classifier_test(struct pg_graph *graph)
 		claimed.core = i ? pg_application(graph, pg_reference(graph, &pg_thunk_operation), omega) : omega;
 		const struct pg_occurrence *description = pg_occurrence_intern(&typing, &claimed,
 			subject->operands, pg_occurrence_maps(subject));
-		assert(description && !pg_prove_structural_subject(&typing, description));
+		assert(description && !description->receipts);
+		assert(!pg_prove_structural_subject(&typing, description));
 		assert(!pg_evidence_for_subject(&typing, description, NULL));
 		assert(pg_prove_structural_subject(&typing, pg_evidence_subject(source)) == source);
 	}
@@ -5945,10 +6368,39 @@ static void totality_classifier_test(struct pg_graph *graph)
 		assert(value == pg_evidence_subject(suspended)->core);
 		const struct pg_evidence *witness = pg_prove_termination(&typing, termination, suspended);
 		assert(!!witness == i);
+		termination_receipts[i][0] = termination;
+		termination_receipts[i][1] = witness;
+		termination_inputs[i][0] = suspended_type;
+		termination_inputs[i][1] = suspended;
+		assert(pg_evidence_premise_count(termination) == 2);
+		assert(pg_evidence_premise(termination, 0) == suspended_type);
+		assert(pg_evidence_premise(termination, 1) == suspended);
+		assert(!pg_evidence_retained_premise_count(termination));
+		reconstruct_derivation(&typing, termination);
 		struct pg_derivation_parameters parameters = {0};
 		assert(pg_prove_derivation(&typing, PG_TERMINATION_INTRO, &parameters, 2,
 			(const struct pg_evidence *[]){termination, suspended}) == witness);
 		if (witness) {
+			assert(pg_evidence_premise_count(witness) == 2);
+			assert(pg_evidence_premise(witness, 0) == termination);
+			assert(pg_evidence_premise(witness, 1) == suspended);
+			assert(!pg_evidence_retained_premise_count(witness));
+			const struct pg_evidence *alternate = pg_prove_reindex(&typing,
+				pg_prove_substitution_projection(&typing, outer, outer), suspended);
+			assert(alternate && alternate != suspended && pg_evidence_subject(alternate) == pg_evidence_subject(suspended));
+			const struct pg_evidence *selected_type = pg_prove_termination_type(&typing, suspended_type, alternate);
+			const struct pg_evidence *selected = pg_prove_termination(&typing, selected_type, alternate);
+			assert(selected_type && selected && selected_type != termination && selected != witness);
+			assert(pg_evidence_subject(selected_type) == pg_evidence_subject(termination));
+			assert(pg_evidence_retained_premise_count(selected_type) == 1);
+			assert(pg_evidence_retained_premise_count(selected) == 2);
+			assert(pg_evidence_premise(selected_type, 1) == alternate);
+			assert(pg_evidence_premise(selected, 0) == selected_type && pg_evidence_premise(selected, 1) == alternate);
+			reconstruct_derivation(&typing, selected_type);
+			reconstruct_derivation(&typing, selected);
+			termination_receipts[i][0] = selected_type;
+			termination_receipts[i][1] = selected;
+			termination_inputs[i][1] = alternate;
 			assert(pg_evidence_classifier(witness) == pg_evidence_subject(termination)->core);
 			assert(pg_prove_classifier(&typing, outer, witness) == termination);
 			struct pg_derivation_parameters parameters;
@@ -6034,6 +6486,14 @@ static void totality_classifier_test(struct pg_graph *graph)
 		}
 	}
 	pg_typing_destroy(&typing);
+	for (size_t i = 0; i < 2; ++i) {
+		assert(pg_evidence_premise(termination_receipts[i][0], 0) == termination_inputs[i][0]);
+		assert(pg_evidence_premise(termination_receipts[i][0], 1) == termination_inputs[i][1]);
+		if (termination_receipts[i][1]) {
+			assert(pg_evidence_premise(termination_receipts[i][1], 0) == termination_receipts[i][0]);
+			assert(pg_evidence_premise(termination_receipts[i][1], 1) == termination_inputs[i][1]);
+		}
+	}
 	puts("totality: distinct contracts, RETURN, directed weakening, APP/FORCE and Fold bounds passed");
 }
 
@@ -6053,6 +6513,7 @@ static void deep_classifier_test(void)
 	}
 	struct pg_typed_query *work = pg_classifier_request(&typing, empty, value);
 	assert(work && !pg_typed_query_advance(work, 0));
+	assert(pg_typed_query_role(work)->size == sizeof(struct pg_occurrence_input *));
 	assert(!pg_typed_query_result(work));
 	while (!pg_typed_query_advance(work, 1)) {}
 	const struct pg_evidence *formation = pg_typed_query_result(work);
@@ -6140,6 +6601,20 @@ static void typed_request_inputs(struct pg_typing *typing, const struct pg_evide
 	}
 }
 
+struct handler_reader_fixture {
+	const struct pg_handler_clause *clauses;
+	size_t count;
+	size_t *visits;
+};
+
+static struct pg_handler_clause checked_handler_clause(const void *owner, size_t i)
+{
+	const struct handler_reader_fixture *fixture = owner;
+	assert(i < fixture->count && i == *fixture->visits);
+	++*fixture->visits;
+	return fixture->clauses[i];
+}
+
 static void request_typing_test(struct pg_graph *graph)
 {
 	struct pg_typing typing;
@@ -6215,6 +6690,42 @@ static void request_typing_test(struct pg_graph *graph)
 	const struct pg_evidence *request = pg_prove_request(&typing, op, payload, k);
 	assert(request && pg_evidence_rule(request) == PG_REQUEST_INTRO);
 	assert(pg_prove_request(&typing, op, payload, k) == request);
+	const struct pg_evidence *identity_map = pg_prove_substitution_projection(&typing, empty, empty);
+	const struct pg_evidence *selected_payload = pg_prove_reindex(&typing, identity_map, payload);
+	const struct pg_evidence *selected_continuation = pg_prove_reindex(&typing, identity_map, k);
+	const struct pg_evidence *returned_payload = pg_prove_return(&typing, payload);
+	const struct pg_evidence *selected_return = pg_prove_reindex(&typing, identity_map, returned_payload);
+	assert(selected_payload != payload && pg_evidence_subject(selected_payload) == pg_evidence_subject(payload));
+	assert(selected_continuation != k && pg_evidence_subject(selected_continuation) == pg_evidence_subject(k));
+	assert(selected_return != returned_payload && pg_evidence_subject(selected_return) == pg_evidence_subject(returned_payload));
+	const struct pg_evidence *receipts[] = {
+		request, pg_prove_request(&typing, op, selected_payload, k),
+		pg_prove_request(&typing, op, payload, selected_continuation),
+		pg_prove_fold(&typing, returned_payload, k),
+		pg_prove_fold(&typing, selected_return, k),
+		pg_prove_fold(&typing, returned_payload, selected_continuation)
+	};
+	const struct pg_evidence *receipt_inputs[][4] = {
+		{pg_operation_payload_type(op), pg_operation_response_type(op), payload, k},
+		{pg_operation_payload_type(op), pg_operation_response_type(op), selected_payload, k},
+		{pg_operation_payload_type(op), pg_operation_response_type(op), payload, selected_continuation},
+		{returned_payload, k}, {selected_return, k}, {returned_payload, selected_continuation}
+	};
+	const size_t retained[] = {0, 1, 1, 0, 1, 1};
+	size_t receipt_proofs = typing.proofs.count, receipt_terms = graph->terms.count;
+	for (size_t i = 0; i < 6; ++i) {
+		size_t count = i < 3 ? 4 : 2;
+		assert(receipts[i] && pg_evidence_premise_count(receipts[i]) == count);
+		assert(pg_evidence_retained_premise_count(receipts[i]) == retained[i]);
+		for (size_t j = 0; j < count; ++j) assert(pg_evidence_premise(receipts[i], j) == receipt_inputs[i][j]);
+		assert(!pg_evidence_premise(receipts[i], count));
+		struct pg_derivation_parameters inputs;
+		assert(!pg_derivation_parameters(receipts[i], &inputs));
+		assert(pg_prove_derivation(&typing, pg_evidence_rule(receipts[i]), &inputs, count, receipt_inputs[i]) == receipts[i]);
+		if (i % 3) assert(receipts[i] != receipts[i - i % 3] &&
+			pg_evidence_subject(receipts[i]) == pg_evidence_subject(receipts[i - i % 3]));
+	}
+	assert(typing.proofs.count == receipt_proofs && graph->terms.count == receipt_terms);
 	const struct pg_object *label;
 	const struct pg_term *a, *continuation;
 	assert(pg_computation_request_view(pg_evidence_subject(request)->core, &label, &a, &continuation));
@@ -6303,6 +6814,30 @@ static void request_typing_test(struct pg_graph *graph)
 	assert(pg_evidence_classifier(handled) == pg_evidence_subject(carrier)->core);
 	assert(pg_prove_classifier(&typing, empty, handled) == carrier);
 	assert(pg_prove_handler(&typing, two, k, carrier, 2, clauses) == handled);
+	{
+		size_t visits = 0;
+		struct pg_handler_clause borrowed_clauses[] = {clauses[0], clauses[1]};
+		const struct handler_reader_fixture borrowed = {borrowed_clauses, 2, &visits};
+		size_t proofs = typing.proofs.count, occurrences = typing.occurrences.count, terms = graph->terms.count;
+		assert(pg_prove_handler_inputs(&typing, two, k, carrier, 2, &borrowed, checked_handler_clause) == handled);
+		assert(visits == 2 && typing.proofs.count == proofs && typing.occurrences.count == occurrences);
+		assert(graph->terms.count == terms);
+		/* The returned receipt borrows typed inputs, never the reader's storage. */
+		borrowed_clauses[0] = (struct pg_handler_clause){0};
+		assert(pg_evidence_premise(handled, 5) == clause);
+		visits = 0;
+		assert(!pg_prove_handler_inputs(&typing, two, k, carrier, 2, &borrowed, checked_handler_clause));
+		assert(visits == 1 && typing.proofs.count == proofs);
+		borrowed_clauses[0] = clauses[0];
+		visits = 0;
+		assert(!pg_prove_handler_inputs(&typing, two, k, carrier, 2, &borrowed, NULL));
+		assert(!pg_prove_handler_inputs(&typing, two, k, carrier, SIZE_MAX, &borrowed, checked_handler_clause));
+		assert(!pg_prove_handler_inputs(&typing, two, k, u1, 2, &borrowed, checked_handler_clause));
+		assert(visits == 0);
+		borrowed_clauses[1].body = payload;
+		assert(!pg_prove_handler_inputs(&typing, two, k, carrier, 2, &borrowed, checked_handler_clause));
+		assert(visits == 2 && typing.proofs.count == proofs);
+	}
 	const struct pg_handler_signature *signature = pg_evidence_handler_signature(handled);
 	assert(signature && pg_handler_signature_count(signature) == 2);
 	assert(pg_handler_signature_label(signature, 0) == pg_operation_label(op));
@@ -6314,6 +6849,49 @@ static void request_typing_test(struct pg_graph *graph)
 	assert(!pg_derivation_parameters(handled, &handler_parameters) && handler_parameters.handler == signature);
 	const struct pg_evidence *handler_premises[9];
 	for (size_t i = 0; i < 9; ++i) handler_premises[i] = pg_evidence_premise(handled, i);
+	/* Typed children retain the structure; only signature proofs and exact
+	 * alternative receipt selections need independent premise edges. */
+	const struct pg_evidence *handler_receipts[7];
+	const struct pg_evidence *handler_inputs[7][9];
+	const struct pg_evidence *handler_selected[] = {
+		pg_prove_reindex(&typing, identity_map, two), selected_continuation,
+		pg_prove_reindex(&typing, identity_map, carrier),
+		pg_prove_reindex(&typing, identity_map, clause),
+		pg_prove_reindex(&typing, identity_map, u1)
+	};
+	const size_t selected_slots[] = {0, 1, 2, 5};
+	for (size_t i = 0; i < 5; ++i) assert(handler_selected[i]);
+	const size_t handler_retained[] = {4, 5, 5, 5, 5, 6, 4};
+	for (size_t i = 0; i < 7; ++i) {
+		memcpy(handler_inputs[i], handler_premises, sizeof(handler_premises));
+		if (i && i < 5) handler_inputs[i][selected_slots[i - 1]] = handler_selected[i - 1];
+		if (i == 5) handler_inputs[i][5] = handler_inputs[i][8] = handler_selected[3];
+		if (i == 6) handler_inputs[i][3] = handler_selected[4];
+		handler_receipts[i] = pg_prove_derivation(&typing, PG_HANDLER_ELIM, &handler_parameters, 9, handler_inputs[i]);
+		assert(handler_receipts[i]);
+		assert(pg_evidence_subject(handler_receipts[i]) == pg_evidence_subject(handled));
+		assert(pg_evidence_premise_count(handler_receipts[i]) == 9);
+		assert(pg_evidence_retained_premise_count(handler_receipts[i]) == handler_retained[i]);
+		for (size_t j = 0; j < 9; ++j) assert(pg_evidence_premise(handler_receipts[i], j) == handler_inputs[i][j]);
+		assert(!pg_evidence_premise(handler_receipts[i], 9));
+		assert(pg_prove_derivation(&typing, PG_HANDLER_ELIM, &handler_parameters, 9, handler_inputs[i]) == handler_receipts[i]);
+		reconstruct_derivation(&typing, handler_receipts[i]);
+		for (size_t j = 0; j < i; ++j) assert(handler_receipts[i] != handler_receipts[j]);
+	}
+	assert(handler_receipts[0] == handled);
+	for (size_t i = 0; i < 7; ++i) {
+		struct pg_handler_clause selected[2];
+		for (size_t j = 0; j < 2; ++j) selected[j] = (struct pg_handler_clause){
+			pg_operation_declaration_at(&typing, pg_operation_label(clauses[j].operation),
+				handler_inputs[i][3 + 3 * j], handler_inputs[i][4 + 3 * j]), handler_inputs[i][5 + 3 * j]};
+		size_t visits = 0;
+		const struct handler_reader_fixture reader = {selected, 2, &visits};
+		assert(pg_prove_handler_inputs(&typing, handler_inputs[i][0], handler_inputs[i][1],
+			handler_inputs[i][2], 2, &reader, checked_handler_clause) == handler_receipts[i]);
+		assert(visits == 2);
+		memset(selected, 0, sizeof(selected));
+		for (size_t j = 0; j < 9; ++j) assert(pg_evidence_premise(handler_receipts[i], j) == handler_inputs[i][j]);
+	}
 	assert(pg_prove_derivation(&typing, PG_HANDLER_ELIM, &handler_parameters, 9, handler_premises) == handled);
 	assert(!pg_prove_derivation(&typing, PG_HANDLER_ELIM, &handler_parameters, 8, handler_premises));
 	handler_premises[3] = u0;
@@ -6396,6 +6974,10 @@ static void request_typing_test(struct pg_graph *graph)
 	clauses[0].operation = other; clauses[1].operation = op;
 	const struct pg_evidence *reordered = pg_prove_handler(&typing, two, k, carrier, 2, clauses);
 	assert(reordered);
+	size_t visits = 0;
+	const struct handler_reader_fixture reversed = {clauses, 2, &visits};
+	assert(pg_prove_handler_inputs(&typing, two, k, carrier, 2, &reversed, checked_handler_clause) == reordered);
+	assert(visits == 2);
 	assert(pg_evidence_handler_signature(reordered) != signature);
 	handler_parameters.handler = pg_evidence_handler_signature(reordered);
 	assert(pg_prove_derivation(&typing, PG_HANDLER_ELIM, &handler_parameters, 9, handler_premises) == reordered);
@@ -6427,7 +7009,11 @@ static void request_typing_test(struct pg_graph *graph)
 	struct pg_handler_clause extra = {op, resume_clause(&typing, op, carrier, other)};
 	assert(extra.body && !pg_prove_handler(&typing, request, k, carrier, 1, &extra));
 	const struct pg_evidence *pure_input = pg_prove_return(&typing, payload);
-	assert(pg_prove_handler(&typing, pure_input, k, carrier, 0, NULL));
+	const struct pg_evidence *zero_handler = pg_prove_handler(&typing, pure_input, k, carrier, 0, NULL);
+	assert(zero_handler);
+	visits = 0;
+	assert(pg_prove_handler_inputs(&typing, pure_input, k, carrier, 0, &reversed, checked_handler_clause) == zero_handler);
+	assert(!visits);
 	const struct pg_object *both_labels[] = {pg_operation_label(op), other_label};
 	const struct pg_evidence *swap_carrier = pg_prove_effect_type(&typing,
 		pg_effect_row(graph, 2, both_labels), u1);
@@ -6445,8 +7031,18 @@ static void request_typing_test(struct pg_graph *graph)
 	struct pg_typing separate;
 	assert(!pg_typing_init(&separate, graph));
 	assert(!pg_prove_request(&separate, op, payload, k));
+	assert(!pg_prove_handler_inputs(&separate, two, k, carrier, 2, &reversed, checked_handler_clause));
+	assert(!visits);
+	assert(!pg_prove_derivation(&separate, PG_HANDLER_ELIM,
+		&handler_parameters, 9, handler_inputs[0]));
 	pg_typing_destroy(&separate);
 	pg_typing_destroy(&typing);
+	for (size_t i = 0; i < 7; ++i)
+		for (size_t j = 0; j < 9; ++j)
+			assert(pg_evidence_premise(handler_receipts[i], j) == handler_inputs[i][j]);
+	for (size_t i = 0; i < 6; ++i)
+		for (size_t j = 0; j < (i < 3 ? 4 : 2); ++j)
+			assert(pg_evidence_premise(receipts[i], j) == receipt_inputs[i][j]);
 	puts("typed effects: signatures, multi-clause handlers, deep resumption, forwarding and effect bounds passed");
 }
 
@@ -6464,6 +7060,7 @@ static void function_signature_inputs(struct pg_graph *graph)
 		const struct pg_evidence *domain = pg_prove_variable(&typing, parameters, a);
 		const struct pg_evidence *scope = pg_prove_context_extension(&typing, parameters, x, domain);
 		const struct pg_evidence *body = pg_prove_return(&typing, pg_prove_variable(&typing, scope, x));
+		const struct pg_evidence *canonical_scope = scope;
 		if (variant & 4) {
 			const struct pg_evidence *unused = pg_prove_context_extension(&typing, parameters, pg_binder(graph),
 				pg_prove_universe(&typing, parameters, 3));
@@ -6474,6 +7071,17 @@ static void function_signature_inputs(struct pg_graph *graph)
 			assert(selected && selected != scope && pg_evidence_context(selected) == pg_evidence_context(scope));
 			scope = selected;
 		}
+		const struct pg_evidence *scoped_inputs[] = {
+			pg_prove_universe(&typing, scope, 0), pg_prove_variable(&typing, scope, x)};
+		assert(pg_evidence_premise_count(u0) == 1 && pg_evidence_retained_premise_count(u0) == 1);
+		assert(pg_evidence_premise(u0, 0) == empty);
+		for (size_t i = 0; i < 2; ++i) {
+			assert(scoped_inputs[i] && pg_evidence_premise_count(scoped_inputs[i]) == 1);
+			assert(pg_evidence_premise(scoped_inputs[i], 0) == scope);
+			assert(pg_evidence_retained_premise_count(scoped_inputs[i]) == !!(variant & 4));
+			reconstruct_derivation(&typing, scoped_inputs[i]);
+		}
+		assert(pg_evidence_for_context(&typing, pg_evidence_context(scope)) == canonical_scope);
 		const struct pg_evidence *pi = pg_prove_pi(&typing, scope, pg_prove_classifier(&typing, scope, body));
 		if (variant & 1) {
 			assert(pg_prove_thunk_content(&typing, pg_prove_thunk_type(&typing, pi)) == pi);
@@ -6518,6 +7126,8 @@ static void function_signature_inputs(struct pg_graph *graph)
 		pg_function_graph_destroy(&generated);
 		pg_whnf_work_destroy(&evaluation);
 		pg_typing_destroy(&typing);
+		for (size_t i = 0; i < 2; ++i) assert(pg_evidence_premise(scoped_inputs[i], 0) == scope);
+		assert(pg_evidence_premise(u0, 0) == empty);
 	}
 	puts("function graph: retained Pi/body, alternate admission, selected Universe and specialization without Lambda rebuilding");
 }
@@ -6634,6 +7244,7 @@ int main(void)
 	context_test(&graph);
 	evidence_test(&graph);
 	evidence_owner_test(&graph);
+	unary_inversion_receipts(&graph);
 	returned_value_rebase_test(&graph);
 	function_signature_inputs(&graph);
 	context_alpha_test(&graph);

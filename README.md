@@ -145,6 +145,13 @@ not new Core tags for every feature.
 | Higher Identity and dimensional action | `dimension.c`, `action.c`, `identity.c` |
 | Program images and CLI | `source_io.c`, `graph_io.c`, `main.c` |
 
+The accepted Job refactor uses checked or pending inputs directly. Unfinished
+work belongs to its function, schema, binding, CBPV or other owning module; the
+common scheduler carries dependency notifications. Completed inputs do not need
+an allocated Evidence Job, and source expressions no longer share the large
+`source_work` state. General frontier persistence and measured peak-memory/time
+improvements remain separate work.
+
 Pure normalization never performs observable host effects. Identity witnesses
 do not extend global definitional equality or change interning.
 
@@ -158,11 +165,22 @@ build/pointer/pointer-check --steps 0 --save pending.a examples/07_add.p
 build/pointer/pointer-check --load --nf main pending.a
 ```
 
-Loading uses ordinary Solve, not a separate proof Replay engine. Stored
-completion claims confer no authority. Default saves retain inputs for
-recomputation. `--retain-reductions` additionally preserves supported reduction
-records; it is not a complete zero-recomputation solver checkpoint. These images
-are not the legacy `.apo`/v90 formats.
+Loading uses ordinary Solve. Stored completion claims confer no checking
+authority. Default `--save` and its `--save-inputs` alias preserve inputs for
+recomputation. `--save-materialized` also preserves available typed construction.
+Neither profile
+is a complete solver checkpoint. The current Source format is APGSRC70; rebuild
+older images from source. `--retain-reductions` has been removed from the CLI.
+The evaluator codecs remain available separately for their supported workloads.
+
+Decoding defaults to an allowance of 1,000,000 records; `--image-limit N` sets
+an explicit allowance for larger images. Materialized saves can be substantially
+larger than the old inputs-only images: the independently synthesized finite
+permutation test grows from 1,365,999 to 20,728,552 bytes and requires an allowance
+of 2,000,000. The default input profile produces 1,369,677 bytes on the same
+fixture and loads under the default allowance. Stored typed results still require
+ordinary checking when explicitly retained.
+Artifact retention and measured peak-memory reduction remain unfinished.
 
 Exit codes: `0` done, `1` rejected/syntax error, `2` input/output/internal error,
 `3` pending, `4` unsupported. `--steps` bounds solver transitions, not

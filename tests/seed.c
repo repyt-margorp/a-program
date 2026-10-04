@@ -95,7 +95,7 @@ int main(int argc, char **argv)
 		rewind(file);
 		assert(fread(bytes, 1, length, file) == length && fgetc(file) == EOF);
 		assert(!ferror(file) && fclose(file) == 0);
-		assert(length > 56 && !memcmp(bytes, "APGSRC\76", 8));
+		assert(length > 56 && !memcmp(bytes, "APGSRC\106", 8));
 		const unsigned char version = bytes[6];
 		assert(bytes[8] == policy);
 		compare(read_bytes(bytes, length, 4096), source, policy);
@@ -131,7 +131,7 @@ int main(int argc, char **argv)
 	assert(file && p);
 	const struct pg_syntax malformed = {.kind = PG_SYNTAX_APPLICATION};
 	struct pg_synthesis_job *root = pg_synthesis_request(&p->synthesis, p->scope, &malformed);
-	assert(root && !pg_sources_write(file, &p->synthesis, 1, &root));
+	assert(root && !pg_sources_write(file, &p->synthesis, 1, (struct pg_synthesis_input[]){{.pending = pg_synthesis_pending(root)}}));
 	rewind(file);
 	assert(!pg_seed_read(file, 4096));
 	assert(!fclose(file));

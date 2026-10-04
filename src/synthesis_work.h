@@ -2,8 +2,19 @@
 #define A_PROGRAM_POINTER_SYNTHESIS_WORK_H
 
 #include "synthesis.h"
+#include "subscription.h"
+#include "pending.h"
 
-struct waiter;
+/* Scheduler edges are shared with artifact transport, not copied into owner
+ * state. The ordered child list determines wake order; dependency is its
+ * reverse link. Domain progress and evidence remain in their existing owners. */
+struct waiter {
+	struct pg_subscription edge;
+	struct pg_synthesis *synthesis;
+	struct pg_synthesis_job *parent;
+	struct pg_synthesis_job *child;
+	int preparation;
+};
 /* Borrowed view of existing construction, never stored acceptance or a second
  * classifier. value_kind: -1 unknown, 0 computation, 1 value, 2 value type. */
 struct pg_synthesis_projection {
@@ -13,15 +24,16 @@ struct pg_synthesis_projection {
 /* Shared scheduling and identity only. Domain state is private to its owner;
  * the result is a borrowed checked value, never a second proof representation. */
 struct pg_synthesis_job {
-	struct pg_index_entry index;
-	const void *owner;
-	const struct pg_synthesis_work_class *role;
+	struct pg_pending pending;
 	size_t input_count;
 	enum pg_synthesis_status status;
 	struct pg_synthesis_job *next;
-	struct waiter *waiters;
+	struct pg_subscription *waiters;
 	struct waiter *dependency;
 	const struct pg_evidence *result;
+	/* Imported descriptive input. Never consulted as accepted evidence. */
+	const struct pg_occurrence *imported;
+	int imported_complete;
 	const void *inputs[];
 };
 
@@ -31,7 +43,10 @@ struct pg_synthesis_job {
  * zero-initialized once, on an interning miss. The arena owns it; destroy
  * releases only separately allocated resources. */
 struct pg_synthesis_work_class {
+	struct pg_pending_class pending;
 	size_t size;
+	/* Lexical source requests borrow (scope, syntax) from their exact key. */
+	int source_key;
 	/* Called once after interning. NULL schedules the initial step directly. */
 	void (*start)(struct pg_synthesis *, struct pg_synthesis_job *);
 	void (*advance)(struct pg_synthesis *, struct pg_synthesis_job *);
@@ -41,19 +56,44 @@ struct pg_synthesis_work_class {
 	struct pg_synthesis_projection (*project)(const struct pg_synthesis_job *);
 	/* Borrowed descriptive output of a completed structural query, not proof. */
 	const struct pg_term *(*structure)(const struct pg_synthesis_job *);
+	/* Exact checked-input key, available only after operand validation. */
+	const void *(*resolved_input)(const struct pg_synthesis_job *, size_t);
+	/* Completed preparation borrows its output owner, never a copied answer.
+	 * Forwarding to that owner does not fill the header's result slot.
+	 * The returned reference must not lead back to this preparation. */
+	struct pg_synthesis_input (*output)(const struct pg_synthesis_job *);
 };
+
+extern const struct pg_pending_ops pg_synthesis_pending_ops;
+/* Ordinary PG_REINDEX checking borrows the canonical Occurrence action. */
+void pg_synthesis_reindex_step(struct pg_synthesis *, struct pg_synthesis_job *,
+	const struct pg_evidence *, const struct pg_evidence *);
+const struct pg_synthesis_work_class *pg_synthesis_work_role(const struct pg_synthesis_job *);
+enum pg_synthesis_status pg_synthesis_pending_status(struct pg_pending *);
+/* Wait for completion; the caller decides whether a failed candidate is fatal. */
+int pg_synthesis_wait_pending(struct pg_synthesis *, struct pg_synthesis_job *, struct pg_pending *);
+int pg_synthesis_await_pending(struct pg_synthesis *, struct pg_synthesis_job *, struct pg_pending *);
 
 struct pg_synthesis_job *pg_synthesis_work_request(struct pg_synthesis *synthesis,
 	const struct pg_synthesis_work_class *kind, size_t count, const void *const *inputs);
-struct pg_synthesis_job *pg_synthesis_work_request_inputs(struct pg_synthesis *synthesis,
-	const struct pg_synthesis_work_class *kind, size_t prefix, const void *const *inputs,
-	size_t count, struct pg_synthesis_job *const *jobs);
+/* Inspect an existing exact request without allocating or scheduling work. */
+struct pg_synthesis_job *pg_synthesis_work_find(const struct pg_synthesis *,
+	const struct pg_synthesis_work_class *, size_t, const void *const *);
+/* Publish a lookup-only resolved key, or reuse its existing owner. No checking
+ * or additional result state is created. Call after validating all operands. */
+struct pg_synthesis_job *pg_synthesis_work_resolve(struct pg_synthesis *, struct pg_synthesis_job *);
+/* Borrow a key projection during lookup; copy its pointers only on an intern
+ * miss. No temporary flattened array or second retained key is required. */
+struct pg_synthesis_job *pg_synthesis_work_request_key(struct pg_synthesis *,
+	const struct pg_synthesis_work_class *, size_t, const void *, const void *(*)(const void *, size_t));
 void pg_synthesis_work_destroy(struct pg_synthesis *synthesis);
 void *pg_synthesis_work_state(const struct pg_synthesis_job *job,
 	const struct pg_synthesis_work_class *kind);
 const void *pg_synthesis_work_input(const struct pg_synthesis_job *job, size_t index);
 size_t pg_synthesis_work_input_count(const struct pg_synthesis_job *job);
+struct pg_synthesis_input pg_synthesis_work_output(const struct pg_synthesis_job *);
 struct pg_synthesis_projection pg_synthesis_work_project(const struct pg_synthesis_job *job);
+struct pg_synthesis_input pg_synthesis_projected_output(const struct pg_synthesis_job *job);
 int pg_synthesis_forward(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
 	struct pg_synthesis_job *canonical);
 void pg_synthesis_enqueue(struct pg_synthesis *synthesis, struct pg_synthesis_job *job);
@@ -61,8 +101,28 @@ void pg_synthesis_finish(struct pg_synthesis *synthesis, struct pg_synthesis_job
 	enum pg_synthesis_status status);
 void pg_synthesis_subscribe(struct pg_synthesis *synthesis, struct pg_synthesis_job *parent,
 	struct pg_synthesis_job *child, int preparation);
+/* Reserve free edges before atomic scheduler replacement. Existing attached
+ * dependencies can then be returned to this same pool without allocation. */
+int pg_synthesis_prepare_waiters(struct pg_synthesis *synthesis, size_t count);
+void pg_synthesis_unsubscribe(struct pg_synthesis_job *job);
+/* Initialize a fresh, unattached ordinary wait edge, also used by checkpoint
+ * restoration. The edge is transport state, never another work owner. */
+void pg_synthesis_subscribe_at(struct pg_synthesis *synthesis, struct pg_synthesis_job *parent,
+	struct pg_synthesis_job *child, int preparation, struct waiter *waiter);
+int pg_synthesis_await_effects(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
+	struct pg_effect_inference *work);
 /* Zero means done; otherwise subscribe once or propagate the failure. */
 int pg_synthesis_await(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
 	struct pg_synthesis_job *dependency);
+int pg_synthesis_input_owned(const struct pg_synthesis *, struct pg_synthesis_input);
+struct pg_synthesis_input pg_synthesis_work_dependency(const struct pg_synthesis_job *, size_t);
+/* Internal immutable operand, already validated by its request factory. */
+int pg_synthesis_await_input(struct pg_synthesis *, struct pg_synthesis_job *, struct pg_synthesis_input);
+/* Borrow existing checked work without a wrapper Job. Any advance consumes
+ * this dispatch; the owner resumes on the next one, even if the query finished. */
+int pg_synthesis_await_query(struct pg_synthesis *, struct pg_synthesis_job *, struct pg_typed_query *);
+/* Yield after advancing an owned pending query. Terminal/absent queries do no
+ * work; their result and failure policy remain with the caller. */
+int pg_synthesis_yield_query(struct pg_synthesis *, struct pg_synthesis_job *, struct pg_typed_query *);
 
 #endif

@@ -1,0 +1,17 @@
+{
+  "broad_exit": 2,
+  "broad_log_sha256": "9e8f73a9516fb31fbdc29f6458d5e58bf02606429a0ebc4e3bfd229881573262",
+  "failure": "Added compact-summary harness mistakenly expected one root; selected NF creates two roots. Corrected assertion preserves both roots. No implementation failure or gate waiver.",
+  "corrected_image_CLI": {
+    "exit": 0,
+    "log_sha256": "6fa8ffc84a086cbe6e853eba55767829a2cf9fe993f6f29ee4c9d4360793dd64",
+    "profile": "default compact, explicit materialized, alias/REPL preservation"
+  },
+  "syntax_inventory_missing_recipe": {
+    "exit": 0,
+    "reviewed_results": 158
+  },
+  "all_acceptance_requirements_pass_after_targeted_followup": true,
+  "full_replay_not_claimed": true,
+  "all_other_33_started_script_recipes_completed": true
+}

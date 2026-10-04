@@ -74,9 +74,9 @@ for binary in "$plain" "$linked"; do
 		--save "$directory/pending.a" "$theorem"
 	check 0 resumed-sorted --load "$directory/pending.a"
 	check 0 retained-sorted --legacy-intrinsic-dot --imports "$provider" \
-		--retain-reductions --save "$directory/retained.a" "$theorem"
+		--save "$directory/retained.a" "$theorem"
 	check 0 reloaded-sorted --load "$directory/retained.a"
-	check 3 inert-sorted --load --steps 0 --retain-reductions \
+	check 3 inert-sorted --load --steps 0 \
 		--save "$directory/resaved.a" "$directory/retained.a"
 	cmp "$directory/retained.a" "$directory/resaved.a"
 

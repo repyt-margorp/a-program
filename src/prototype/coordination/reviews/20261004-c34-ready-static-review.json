@@ -1,0 +1,74 @@
+{
+  "notice_sha256": "d28eb9ad75bd171a895c09a705ea79dd6138992db694dc7f22e7a26315bf1714",
+  "manifest_sha256": "7b39780d167120153200329e1bd3c7378d41f87fd4024b5ff1eeb790db380bed",
+  "tar_sha256": "26138ad62d6e819a722b3264c6d050d6d906a208190985158a68c86055d6ad77",
+  "frozen_files": [
+    {
+      "path": "doc/2026-10-03-C-BACKEND-GOAL.md",
+      "sha256": "a3e976f432bce669ea85219d09d512ad1dbb0f56e612a1f49f1caab7002dcf18"
+    },
+    {
+      "path": "doc/2026-10-04-C-BACKEND-INDEXED-VIEWS-PLAN.md",
+      "sha256": "6c9bbc845e917b9674611bb43f1675f22009797970077473095d66652fc36201"
+    },
+    {
+      "path": "doc/2026-10-04-C-BACKEND-EPOCH34-HANDOFF.md",
+      "sha256": "32ee850f156d8c43d6daa2353139218ca3f506cf3bcc88d624515e89a029630b"
+    },
+    {
+      "path": "src/prototype/c_backend/indexed_views/README.md",
+      "sha256": "be6809a821c436bbd4106700d180935faa1459ccd601e52005fa451697cbb08a"
+    },
+    {
+      "path": "src/prototype/c_backend/indexed_views/build.mk",
+      "sha256": "5c0ccf4fef33eb92dba67e1045932c90ec6ba476145b5635146327cdbace22a3"
+    },
+    {
+      "path": "src/prototype/c_backend/indexed_views/check.sh",
+      "sha256": "983af4ae429bbae541ad445b48e3e04d910144dc91bfddf168456c1dcb0a6f47"
+    },
+    {
+      "path": "src/prototype/c_backend/indexed_views/client.c",
+      "sha256": "1070bb253d558d8ba6f6533f19afd81b560de9b936d0ec2baa3c85583a26d6c8"
+    },
+    {
+      "path": "src/prototype/c_backend/indexed_views/emit.c",
+      "sha256": "54419f57fd285246131ea23510b49997a01b33c8412f57743b06e7c7ab98347f"
+    },
+    {
+      "path": "src/prototype/c_backend/indexed_views/emit.h",
+      "sha256": "6d01635f252f2715b34cd5999c0faa5a054aeed153616f3e0938ebfae0cb2e0f"
+    },
+    {
+      "path": "src/prototype/c_backend/indexed_views/emit_test.c",
+      "sha256": "8f3546cd65fe60d6d446864fc2242a9188aaef712ab675815448e02968026bdd"
+    },
+    {
+      "path": "src/prototype/c_backend/indexed_views/fixture.p",
+      "sha256": "a297e839c94367ff082b416e28b63bb72dc2acb7f41e3f75436a1809fe3c2d7e"
+    },
+    {
+      "path": "src/prototype/c_backend/indexed_views/probe.c",
+      "sha256": "5c03392c809cda850052ef82623f40d4534b33397a4fb1b9552a5e9964119da5"
+    },
+    {
+      "path": "src/prototype/c_backend/indexed_views/view.c",
+      "sha256": "119732398c5b03c72af7f00dcb208ae99bba316cb76b3c381df19ceb1d792518"
+    },
+    {
+      "path": "src/prototype/c_backend/indexed_views/view.h",
+      "sha256": "5143e90b6b1564d6cbb3d6fdcc747b5218a6dc39b8f385166b7a096a691726d5"
+    },
+    {
+      "path": "src/prototype/c_backend/indexed_views/wrong_relation.c",
+      "sha256": "90cea84fd73dc52293f8dd3545294317d695af4b7af1046c9dc5056f7be32978"
+    }
+  ],
+  "Root_assessment": "Declaration-only indexed view prototype, not executable lowering. Ordered C32 dependency is parked; C33 executable separate and already current-qualified. Worker E8 O2/SAN reports do not establish final accepted-producer qualification. No accepted adoption or new blocker inferred. Current qualification/publication pending.",
+  "raw_manifest": {
+    "sha256": "a779801c4033639b6634ec0dddcff103372bd46f965f533a84283b9d0e27696e",
+    "count": 332,
+    "all_exact": true,
+    "anchor": "/home/repyt/workspace/a-program-workers/c-backend"
+  }
+}

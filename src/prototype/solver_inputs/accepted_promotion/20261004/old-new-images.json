@@ -1,0 +1,56 @@
+{
+  "old": {
+    "parent": "a8418715b81a50f87ea5423067e5f5dbd2cf9921",
+    "bytes": 1365999,
+    "sha256": "0f9e88c91449215af3369d63708f66d47ba0eff878a369e3d38dacee1fa2fb9b",
+    "format_byte": 62,
+    "graph_tables": [
+      {
+        "offset": 1365186,
+        "objects": 21,
+        "terms": 21,
+        "roots": 21
+      }
+    ]
+  },
+  "promoted": {
+    "parent": "runtime120:9f5ba63c99139fc0b9f313b426a121d0d91659f8069ca21026d6065790043368",
+    "bytes": 20728552,
+    "sha256": "5ec335b56506169e612abc318a4b56ec992331ab3cb903b24296f4b50fb35eee",
+    "format_byte": 70,
+    "graph_tables": [
+      {
+        "offset": 7985452,
+        "objects": 211600,
+        "terms": 804267,
+        "roots": 23963
+      }
+    ]
+  },
+  "input_sha256": "cacba85ac574b55d8e1e7068a08540abccfb6d97af317fe9342a15a71d447be3",
+  "delta_bytes": 19362553,
+  "old_decode_default_exit": 0,
+  "new_decode_default_exit": 2,
+  "new_decode_2000000_equal_exit": 0,
+  "final_default": {
+    "bytes": 1369677,
+    "sha256": "16ef113922064b7703f07bd1680f6e69ba937dcc696c9453adf51eb516be4458",
+    "objects_terms_roots": [
+      21,
+      21,
+      21
+    ]
+  },
+  "final_materialized": {
+    "bytes": 20728552,
+    "sha256": "5ec335b56506169e612abc318a4b56ec992331ab3cb903b24296f4b50fb35eee",
+    "objects_terms_roots": [
+      211600,
+      804267,
+      23963
+    ]
+  },
+  "final_default_delta_bytes": 3678,
+  "final_default_load_exit": 0,
+  "profile_decision": "Keep compact/recomputable default; typed-retention profile explicit. Growth has not been deleted."
+}

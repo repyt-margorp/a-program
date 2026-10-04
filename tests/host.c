@@ -42,6 +42,8 @@ static void arithmetic(struct pg_typing *typing)
 		const struct pg_evidence *pi = signature(typing, type, result_type, arity);
 		const struct pg_evidence *proof = pg_prove_host_function(typing, pi, function);
 		assert(proof && pg_prove_classifier(typing, pg_prove_empty_context(typing), proof) == pi);
+		assert(pg_evidence_premise_count(proof) == 1 && !pg_evidence_retained_premise_count(proof));
+		assert(pg_evidence_premise(proof, 0) == pi);
 		assert(!pg_prove_host_function(typing, pi, pg_binder(graph)));
 		assert(!pg_prove_host_function(typing, pi, pg_host_integer(graph, type, 0)));
 		struct pg_derivation_parameters parameters;
@@ -141,6 +143,35 @@ int main(void)
 	const struct pg_evidence *t32 = pg_prove_host_type(&typing, empty, i32);
 	const struct pg_evidence *t64 = pg_prove_host_type(&typing, empty, i64);
 	assert(t32 && t64 && t32 != t64);
+	assert(pg_evidence_premise_count(t64) == 1 && pg_evidence_retained_premise_count(t64) == 1);
+	assert(pg_evidence_premise(t64, 0) == empty);
+	const struct pg_evidence *scope = pg_prove_context_extension(&typing, empty, pg_binder(&graph), t32);
+	const struct pg_evidence *scoped_type = pg_prove_host_type(&typing, scope, i64);
+	assert(scoped_type && !pg_evidence_retained_premise_count(scoped_type));
+	assert(pg_evidence_premise(scoped_type, 0) == scope);
+	const struct pg_evidence *alternate_type = pg_prove_reindex(&typing,
+		pg_prove_substitution_projection(&typing, empty, empty), t64);
+	assert(alternate_type && alternate_type != t64 && pg_evidence_subject(alternate_type) == pg_evidence_subject(t64));
+	const struct pg_evidence *selected_value = pg_prove_host_value(&typing, alternate_type, pg_host_integer(&graph, i64, 0));
+	assert(selected_value && pg_evidence_retained_premise_count(selected_value) == 1);
+	assert(pg_evidence_premise_count(selected_value) == 1 && pg_evidence_premise(selected_value, 0) == alternate_type);
+	const struct pg_evidence *pi = signature(&typing, i64, text, 1);
+	const struct pg_evidence *alternate_pi = pg_prove_reindex(&typing,
+		pg_prove_substitution_projection(&typing, empty, empty), pi);
+	assert(alternate_pi && alternate_pi != pi && pg_evidence_subject(alternate_pi) == pg_evidence_subject(pi));
+	const struct pg_evidence *selected_function = pg_prove_host_function(&typing, alternate_pi, pg_host_function(9));
+	assert(selected_function && pg_evidence_retained_premise_count(selected_function) == 1);
+	assert(pg_evidence_premise(selected_function, 0) == alternate_pi);
+	struct pg_derivation_parameters selected_parameters;
+	assert(!pg_derivation_parameters(selected_value, &selected_parameters));
+	assert(pg_prove_derivation(&typing, PG_HOST_VALUE_INTRO, &selected_parameters, 1, &alternate_type) == selected_value);
+	assert(!pg_derivation_parameters(selected_function, &selected_parameters));
+	assert(pg_prove_derivation(&typing, PG_HOST_FUNCTION_INTRO, &selected_parameters, 1, &alternate_pi) == selected_function);
+	size_t proof_count = typing.proofs.count, term_count = graph.terms.count;
+	assert(pg_prove_host_function(&typing, alternate_pi, pg_host_function(9)) == selected_function);
+	assert(typing.proofs.count == proof_count && graph.terms.count == term_count);
+	assert(!pg_prove_host_value(&foreign, alternate_type, pg_host_integer(&graph, i64, 0)));
+	assert(!pg_prove_host_function(&foreign, alternate_pi, pg_host_function(9)));
 	const struct pg_evidence *text_proof = pg_prove_host_type(&typing, empty, text);
 	const struct pg_object *print = pg_host_print(&graph);
 	assert(print && print == pg_host_print(&graph));
@@ -161,6 +192,8 @@ int main(void)
 		assert(pg_host_integer_view(value, &result) && result == cases[i]);
 		const struct pg_evidence *proof = pg_prove_host_value(&typing, t64, value);
 		assert(proof && !pg_prove_host_value(&typing, t32, value));
+		assert(pg_evidence_premise_count(proof) == 1 && !pg_evidence_retained_premise_count(proof));
+		assert(pg_evidence_premise(proof, 0) == t64);
 		assert(pg_prove_classifier(&typing, empty, proof) == t64);
 		struct pg_derivation_parameters parameters;
 		assert(!pg_derivation_parameters(proof, &parameters) && parameters.constant == value);
@@ -220,6 +253,9 @@ int main(void)
 	assert(!pg_builtin_graph_codec.restore(NULL, &graph, "host/literal/v1", 1, types, 2, scalars));
 	fclose(file);
 	pg_typing_destroy(&foreign); pg_typing_destroy(&typing);
+	assert(pg_evidence_premise(t64, 0) == empty && pg_evidence_premise(scoped_type, 0) == scope);
+	assert(pg_evidence_premise(selected_value, 0) == alternate_type);
+	assert(pg_evidence_premise(selected_function, 0) == alternate_pi);
 	pg_graph_destroy(&loaded); pg_graph_destroy(&graph);
 	puts("host: typed literals, modular arithmetic, ordinary evidence and descriptor relocation passed");
 }

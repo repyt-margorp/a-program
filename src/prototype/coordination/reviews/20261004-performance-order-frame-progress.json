@@ -1,0 +1,100 @@
+{
+  "notice": "/home/repyt/workspace/a-program-workers/performance/src/prototype/coordination/outbox/performance-critical-order-controls-frame-composition-20261004.txt",
+  "sha256": "7f4fbe6f28b5171fdb18116131f9832911d480ac1d6aab074fdac3cb5346b64d",
+  "worker_reported": {
+    "order_focused_commands": 28,
+    "historical_repeated_commands": 148,
+    "candidate_original_inert_failures": "0/10 O2/SAN",
+    "parent_original_inert_failures": "7/10",
+    "candidate_repeated_inert_failures": "0/16",
+    "parent_repeated_inert_failures": "8/16",
+    "composed_frame_focused_commands": 14,
+    "full146_pairs_584_resaves": "running"
+  },
+  "Root_assessment": "Causal progress against old frozen E25; not final current accepted producer qualification, READY, actual matched RSS/time or slot grant. Retain entry/array/writer +8*n costs and all strict3.",
+  "accepted_promotion_excluded": true,
+  "Goal_lifecycle_unchanged": true,
+  "frozen_controls": {
+    "manifest_sha256": "b4d049488873cd0d7a585fecfac2c40ac6a2f6443e5dea2d28900fc3150af4ba",
+    "records": [
+      {
+        "file": "analysis.md",
+        "sha256": "2a506e56d09701c715e28931282260bd8f8d63d3b4122bca0fd7deb8b0f2668d"
+      },
+      {
+        "file": "focused-inputs-after.json",
+        "sha256": "d47fb9d6219098aed9e261af2dd41824fdd2ca0df6008de661d22f5957adba5a"
+      },
+      {
+        "file": "focused-inputs-before.json",
+        "sha256": "8f5bb387ba9fb409109bf0365e6382cd18f3ea494ee750da06f4a20b0a60196b"
+      },
+      {
+        "file": "focused-output-comparisons.json",
+        "sha256": "9767b75bcc6a85dc82e60f596f2230fcd389c29011373e7013da9b4893ba4027"
+      },
+      {
+        "file": "focused-records.json",
+        "sha256": "6c5d494bbd838f8517a8044b926fd2a74080c76fbd2a76a0d745a4707970052b"
+      },
+      {
+        "file": "focused-summary.json",
+        "sha256": "ee0643cbe26ade2be64821faa1c59dfe7334615b2de58400b1284d9fab548e86"
+      },
+      {
+        "file": "focused-verification.sha256",
+        "sha256": "e76e1735469c50f11b6cb5bb7979a0a4ba6f5d3c5d6d34bb2815e043da48b855"
+      },
+      {
+        "file": "freeze_readback_order_controls.py",
+        "sha256": "41aaf8f5f02b465c022f4f4e9742aec1d9d08fd4ffbe4f32015a95b81d0b8aca"
+      },
+      {
+        "file": "handoff.json",
+        "sha256": "bbfdbc67d6434967a9c4fe2e3c35f614aeabd54fee5472324e3ad8068f696682"
+      },
+      {
+        "file": "qualify_readback_order_focused.py",
+        "sha256": "2727216785f406ff9f2c670fc6fae7cb0899f42d4322ad761217d8c604cb8119"
+      },
+      {
+        "file": "qualify_readback_order_variants.py",
+        "sha256": "b16545c95f94a4d7ef3ae019bad1e7332be70254f2b084b237d0d88979dfa7c7"
+      },
+      {
+        "file": "source-layout-proposal-manifest.sha256",
+        "sha256": "52e67bc49fc0d238f0bdb1573fe030ce99ea85262a8cfd76f34587a95de8dee3"
+      },
+      {
+        "file": "variants-byte-rows.json",
+        "sha256": "6e7b06723bc1bdd65b3b9d49c36992231b9dd768d8c4007c64b053835970c76b"
+      },
+      {
+        "file": "variants-inputs-after.json",
+        "sha256": "b7c230183884adc9c3261a53ab807e311d1e1fe5c001ae3a8ca9b0042dd5eddc"
+      },
+      {
+        "file": "variants-inputs-before.json",
+        "sha256": "b7c230183884adc9c3261a53ab807e311d1e1fe5c001ae3a8ca9b0042dd5eddc"
+      },
+      {
+        "file": "variants-original32-verified-unique5.json",
+        "sha256": "61d7fba3b52f6b91e96e208612cf424e9f33f86cc6902cabaf3ff8596a8523e1"
+      },
+      {
+        "file": "variants-records.json",
+        "sha256": "3a91e3af32f7a6d6b064f3fd1cf33cb74cba9e1359fc43fba6022964dc689289"
+      },
+      {
+        "file": "variants-summary.json",
+        "sha256": "4ccaf2e27e73aeffa7f7e68910bc3eaaee8a1e31e37348d47bff4840fd61efbf"
+      },
+      {
+        "file": "variants-verification.sha256",
+        "sha256": "c4a327b148bccdf61de68bfcfd249c787f09b9905ddcbe4ec60f109b72cb09cb"
+      }
+    ],
+    "verified_count": 19,
+    "scope": "Exact worker frozen evidence verification, worker runtime reports retained; Root has not rerun this trial or adopted it."
+  }
+}

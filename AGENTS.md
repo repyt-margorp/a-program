@@ -29,6 +29,10 @@ accepted as part of promotion. Future code changes still require the task's
 explicit authorization to edit accepted code; new alternatives belong in
 `src/prototype/`, not in the frozen archive.
 
+On 2026-10-04 the user explicitly authorized replacing the accepted Job
+implementation with the reviewed prototype Job refactor and its necessary
+dependencies. Later Job alternatives still follow the default prototype boundary.
+
 ## Default Write Boundary for AI Agents
 
 AI agents must write code only under `src/prototype/` unless the user explicitly

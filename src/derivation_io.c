@@ -10,23 +10,68 @@
 #include <string.h>
 
 static const char magic[8] = {'A', 'P', 'G', 'D', 'R', 'V', 0, 16};
+static const char header_magic[8] = {'A', 'P', 'G', 'D', 'R', 'H', 0, 1};
 
-static int premise(void *owner, const void *key, size_t index, const void **child)
+struct proof_view {
+	const struct pg_typing *typing;
+	const struct pg_evidence *const *roots;
+};
+
+static const void *proof_root(const void *owner, size_t index)
 {
-	const struct pg_typing *const *typing = owner;
+	const struct proof_view *view = owner;
+	return view->roots[index];
+}
+
+static int proof_header(const void *unused, const void *key, struct pg_derivation_input *header)
+{
+	(void)unused;
+	return pg_derivation_input_header(key, header);
+}
+
+static int proof_child(const void *owner, const void *key, size_t index, const void **child)
+{
+	const struct proof_view *view = owner;
 	const struct pg_evidence *input = NULL;
-	int status = pg_derivation_input_dependency(*typing, key, index, &input);
+	int status = pg_derivation_input_dependency(view->typing, key, index, &input);
 	*child = input;
 	return status;
 }
 
-static int input_premise(void *unused, const void *key, size_t index, const void **child)
+static const void *input_root(const void *owner, size_t index)
+{
+	const struct pg_derivation_input *const *roots = owner;
+	return roots ? roots[index] : NULL;
+}
+
+static int input_header(const void *unused, const void *key, struct pg_derivation_input *header)
+{
+	(void)unused;
+	if (!key) return -1;
+	*header = *(const struct pg_derivation_input *)key;
+	return 0;
+}
+
+static int input_child(const void *unused, const void *key, size_t index, const void **child)
 {
 	(void)unused;
 	const struct pg_derivation_input *input = key;
+	if (!input || index > input->count) return -1;
 	if (index == input->count) return 0;
 	*child = input->premises[index];
-	return 1;
+	return *child ? 1 : -1;
+}
+
+struct pg_derivation_view pg_derivation_input_view(size_t count,
+	const struct pg_derivation_input *const *roots)
+{
+	return (struct pg_derivation_view){count, roots, input_root, input_header, input_child};
+}
+
+static int view_child(void *owner, const void *key, size_t index, const void **child)
+{
+	const struct pg_derivation_view *const *view = owner;
+	return (*view)->child((*view)->owner, key, index, child);
 }
 
 static int term_reference(FILE *file, const struct pg_term *term,
@@ -121,8 +166,10 @@ int pg_derivation_inputs_collect_objects(struct pg_dag *objects, size_t count,
 {
 	if (!objects || (count && !roots)) return -1;
 	struct pg_dag inputs = {0}, terms = {0}, contexts = {0};
+	struct pg_derivation_view view = pg_derivation_input_view(count, roots);
+	const struct pg_derivation_view *reader = &view;
 	int status = -1;
-	if (pg_dag_init(&inputs, input_premise, NULL) || pg_dag_init(&contexts, pg_context_dependency, NULL)
+	if (pg_dag_init(&inputs, view_child, &reader) || pg_dag_init(&contexts, pg_context_dependency, NULL)
 		|| pg_graph_dependencies_init(&terms, objects, codec, owner)) goto done;
 	for (size_t i = 0; i < count; ++i) if (pg_dag_add(&inputs, roots[i])) goto done;
 	for (const struct pg_dag_node *node = inputs.first; node; node = node->next)
@@ -143,31 +190,26 @@ int pg_derivations_write(FILE *file, const struct pg_typing *typing,
 	return pg_derivations_write_descriptors(file, typing, count, roots, &codec, owner);
 }
 
-static int write_dag(FILE *file, const struct pg_typing *typing,
-	size_t count, const struct pg_evidence *const *proofs,
-	const struct pg_derivation_input *const *inputs, const struct pg_effect_inference *work,
-	const struct pg_graph_codec *codec, void *owner)
+static int write_dag(FILE *file, const struct pg_derivation_view *view, const struct pg_effect_inference *work,
+	const struct pg_graph_codec *codec, void *owner, int headers)
 {
-	if (!file || (count && !proofs && !inputs)) return -1;
+	if (!file || !view || !view->root || !view->header || (!headers && !view->child)) return -1;
+	size_t count = view->count;
 	struct pg_dag dag = {0};
 	struct pg_dag term_roots = {0};
 	struct pg_graph arena = {0};
 	int status = -1;
-	if (pg_dag_init(&dag, inputs ? input_premise : premise, &typing) || pg_dag_init(&term_roots, NULL, NULL)
+	if (pg_dag_init(&dag, headers ? NULL : view_child, &view) || pg_dag_init(&term_roots, NULL, NULL)
 		|| pg_graph_init(&arena)) goto done;
 	for (size_t i = 0; i < count; ++i)
-		if (pg_dag_add(&dag, inputs ? (const void *)inputs[i] : proofs[i])) goto done;
-	if (fwrite(magic, 1, 8, file) != 8 || pg_wire_write_u64(file, dag.count) || pg_wire_write_u64(file, count)) goto done;
+		if (pg_dag_add(&dag, view->root(view->owner, i))) goto done;
+	if (fwrite(headers ? header_magic : magic, 1, 8, file) != 8
+		|| pg_wire_write_u64(file, dag.count) || pg_wire_write_u64(file, count)) goto done;
 	for (const struct pg_dag_node *node = dag.first; node; node = node->next) {
 		struct pg_derivation_input input = {0};
-		if (inputs) {
-			input = *(const struct pg_derivation_input *)node->key;
-			if (input.parameters.conversion || input.parameters.reduction) goto done;
-			if (input.effect_parameter) {
-				if (input.rule != PG_RETURN_TYPE_FORM || input.parameters.effects) goto done;
-				if (!pg_effect_equation_find(work, input.effect_parameter)) goto done;
-			}
-		} else if (pg_derivation_input_header(node->key, &input)) goto done;
+		if (view->header(view->owner, node->key, &input) || input.parameters.conversion || input.parameters.reduction) goto done;
+		if (input.effect_parameter && (input.rule != PG_RETURN_TYPE_FORM || input.parameters.effects
+			|| !pg_effect_equation_find(work, input.effect_parameter))) goto done;
 		struct pg_derivation_parameters parameters = input.parameters;
 		if (pg_wire_write_u64(file, input.rule)
 			|| pg_wire_write_u64(file, parameters.level) || pg_wire_write_u64(file, parameters.direction)) goto done;
@@ -185,15 +227,17 @@ static int write_dag(FILE *file, const struct pg_typing *typing,
 			if (term_reference(file, payload.terms[i], &term_roots)) goto done;
 		size_t arity = input.count;
 		if (pg_wire_write_u64(file, arity)) goto done;
-		for (size_t i = 0; i < arity; ++i) {
+		for (size_t i = 0; !headers && i < arity; ++i) {
 			const void *child;
 			if (dag.child(dag.context, node->key, i, &child) != 1) goto done;
 			const struct pg_dag_node *p = pg_dag_find(&dag, child);
 			if (!p || pg_wire_write_u64(file, p->id)) goto done;
 		}
+		const void *past_end;
+		if (!headers && dag.child(dag.context, node->key, arity, &past_end) != 0) goto done;
 	}
 	for (size_t i = 0; i < count; ++i) {
-		const struct pg_dag_node *node = pg_dag_find(&dag, inputs ? (const void *)inputs[i] : proofs[i]);
+		const struct pg_dag_node *node = pg_dag_find(&dag, view->root(view->owner, i));
 		if (!node || pg_wire_write_u64(file, node->id)) goto done;
 	}
 	size_t equations = 0, effect_count = 0;
@@ -219,7 +263,10 @@ int pg_derivations_write_descriptors(FILE *file, const struct pg_typing *typing,
 	size_t count, const struct pg_evidence *const *roots,
 	const struct pg_graph_codec *codec, void *owner)
 {
-	return write_dag(file, typing, count, roots, NULL, NULL, codec, owner);
+	if (count && !roots) return -1;
+	struct proof_view inputs = {typing, roots};
+	struct pg_derivation_view view = {count, &inputs, proof_root, proof_header, proof_child};
+	return pg_derivation_view_write(file, &view, NULL, codec, owner);
 }
 
 int pg_derivation_inputs_write(FILE *file, size_t count, const struct pg_derivation_input *const *roots,
@@ -232,7 +279,24 @@ int pg_derivation_inputs_write_inference(FILE *file, size_t count,
 	const struct pg_derivation_input *const *roots, const struct pg_effect_inference *work,
 	const struct pg_graph_codec *codec, void *owner)
 {
-	return write_dag(file, NULL, count, NULL, roots, work, codec, owner);
+	if (count && !roots) return -1;
+	struct pg_derivation_view view = pg_derivation_input_view(count, roots);
+	return pg_derivation_view_write(file, &view, work, codec, owner);
+}
+
+int pg_derivation_view_write(FILE *file, const struct pg_derivation_view *view,
+	const struct pg_effect_inference *work, const struct pg_graph_codec *codec, void *owner)
+{
+	return write_dag(file, view, work, codec, owner, 0);
+}
+
+int pg_derivation_headers_write(FILE *file, size_t count,
+	const struct pg_derivation_input *const *roots,
+	const struct pg_graph_codec *codec, void *owner)
+{
+	if (count && !roots) return -1;
+	struct pg_derivation_view view = pg_derivation_input_view(count, roots);
+	return write_dag(file, &view, NULL, codec, owner, 1);
 }
 
 struct input_record {
@@ -250,20 +314,20 @@ int pg_derivations_read(FILE *file, struct pg_typing *typing, size_t limit, size
 	return pg_derivations_read_descriptors(file, typing, limit, name_limit, &codec, owner, count, roots);
 }
 
-static int read_dag(FILE *file, struct pg_typing *typing, size_t limit, size_t name_limit,
+static int read_dag(FILE *file, struct pg_typing *typing, struct pg_graph *inputs, size_t limit, size_t name_limit,
 	struct pg_effect_inference *work, const struct pg_graph_codec *codec, void *owner,
-	size_t *count, const struct pg_derivation_input *const **roots, struct pg_graph *scratch)
+	size_t *count, const struct pg_derivation_input *const **roots, struct pg_graph *scratch, int headers)
 {
-	if (!typing || !typing->contexts.capacity) return -1;
+	if (!typing || !typing->contexts.capacity || !inputs) return -1;
 	struct pg_graph *graph = typing->graph;
 	if (!file || !graph || !graph->terms.capacity || !count || !roots) return -1;
 	if (work && (work->rows != graph || work->sealed || work->failed || work->row_sources.count)) return -1;
 	char header[8];
 	uint64_t n, nr;
-	if (fread(header, 1, 8, file) != 8 || memcmp(header, magic, 8)) return -1;
+	if (fread(header, 1, 8, file) != 8 || memcmp(header, headers ? header_magic : magic, 8)) return -1;
 	if (pg_wire_read_u64(file, &n) || pg_wire_read_u64(file, &nr)) return -1;
-	if (n > limit || nr > limit - n || limit > SIZE_MAX / sizeof(struct input_record)) return -1;
-	struct input_record *records = pg_alloc(scratch, (size_t)n * sizeof(*records));
+	if (n > limit || nr > limit - n) return -1;
+	struct input_record *records = pg_wire_array(scratch, n, sizeof(*records));
 	if (!records) return -1;
 	size_t available = limit - (size_t)n - (size_t)nr;
 	for (size_t i = 0; i < n; ++i) {
@@ -287,15 +351,16 @@ static int read_dag(FILE *file, struct pg_typing *typing, size_t limit, size_t n
 		available -= (size_t)(nm + na);
 		records[i].metadata_count = (size_t)nm;
 		records[i].allocation_count = (size_t)na;
-		records[i].metadata = pg_alloc(scratch, (size_t)nm * sizeof(uint64_t));
-		records[i].allocation = pg_alloc(scratch, (size_t)na * sizeof(uint64_t));
+		records[i].metadata = pg_wire_array(scratch, nm, sizeof(uint64_t));
+		records[i].allocation = pg_wire_array(scratch, na, sizeof(uint64_t));
 		if (!records[i].metadata || !records[i].allocation) return -1;
 		for (size_t j = 0; j < nm; ++j) if (pg_wire_read_u64(file, &records[i].metadata[j])) return -1;
 		for (size_t j = 0; j < na; ++j) if (pg_wire_read_u64(file, &records[i].allocation[j])) return -1;
 		if (pg_wire_read_u64(file, &arity)) return -1;
 		if (arity > available || arity > (SIZE_MAX - sizeof(struct pg_derivation_input)) / sizeof(void *)) return -1;
 		available -= (size_t)arity;
-		struct pg_derivation_input *input = pg_alloc(graph, sizeof(*input) + (size_t)arity * sizeof(*input->premises));
+		size_t edges = headers ? 0 : (size_t)arity;
+		struct pg_derivation_input *input = pg_alloc(inputs, sizeof(*input) + edges * sizeof(*input->premises));
 		if (!input) return -1;
 		records[i].input = input;
 		input->rule = (enum pg_evidence_rule)rule;
@@ -304,13 +369,13 @@ static int read_dag(FILE *file, struct pg_typing *typing, size_t limit, size_t n
 		input->parameters.direction = (enum pg_identity_direction)direction;
 		input->reduction_kind = (enum pg_reduction_kind)reduction_kind;
 		input->count = (size_t)arity;
-		for (size_t j = 0; j < arity; ++j) {
+		for (size_t j = 0; j < edges; ++j) {
 			uint64_t id;
 			if (pg_wire_read_u64(file, &id) || !id || id > i) return -1;
 			input->premises[j] = records[id - 1].input;
 		}
 	}
-	const struct pg_derivation_input **result = pg_alloc(graph, (size_t)nr * sizeof(*result));
+	const struct pg_derivation_input **result = pg_wire_array(inputs, nr, sizeof(*result));
 	if (!result) return -1;
 	for (size_t i = 0; i < nr; ++i) {
 		uint64_t id;
@@ -321,8 +386,8 @@ static int read_dag(FILE *file, struct pg_typing *typing, size_t limit, size_t n
 	if (pg_wire_read_u64(file, &equations) || pg_wire_read_u64(file, &effect_count)) return -1;
 	if (effect_count > available || equations > effect_count / 2) return -1;
 	if ((effect_count - 2 * equations) % 3 || (effect_count && !work)) return -1;
-	uint64_t *effect_ids = pg_alloc(scratch, (size_t)effect_count * sizeof(*effect_ids));
-	const struct pg_term **effect_roots = pg_alloc(scratch, (size_t)effect_count * sizeof(*effect_roots));
+	uint64_t *effect_ids = pg_wire_array(scratch, effect_count, sizeof(*effect_ids));
+	const struct pg_term **effect_roots = pg_wire_array(scratch, effect_count, sizeof(*effect_roots));
 	if (!effect_ids || !effect_roots) return -1;
 	for (size_t i = 0; i < effect_count; ++i)
 		if (pg_wire_read_u64(file, &effect_ids[i])) return -1;
@@ -337,7 +402,7 @@ static int read_dag(FILE *file, struct pg_typing *typing, size_t limit, size_t n
 	for (size_t i = 0; i < n; ++i) {
 		const struct input_record *r = &records[i];
 		if (r->metadata_count || r->allocation_count) {
-			const struct pg_term **allocation = pg_alloc(scratch, r->allocation_count * sizeof(*allocation));
+			const struct pg_term **allocation = pg_wire_array(scratch, r->allocation_count, sizeof(*allocation));
 			struct pg_induction_allocation *a = pg_alloc(graph, sizeof(*a));
 			if (!allocation || !a) return -1;
 			for (size_t j = 0; j < r->allocation_count; ++j) {
@@ -423,17 +488,27 @@ int pg_derivations_read_descriptors(FILE *file, struct pg_typing *typing, size_t
 	const struct pg_graph_codec *codec, void *owner,
 	size_t *count, const struct pg_derivation_input *const **roots)
 {
-	return pg_derivations_read_inference(file, typing, limit, name_limit, NULL, codec, owner, count, roots);
+	return pg_derivations_read_inference(file, typing, typing ? typing->graph : NULL, limit, name_limit, NULL, codec, owner, count, roots);
 }
 
-int pg_derivations_read_inference(FILE *file, struct pg_typing *typing, size_t limit, size_t name_limit,
+int pg_derivations_read_inference(FILE *file, struct pg_typing *typing, struct pg_graph *inputs, size_t limit, size_t name_limit,
 	struct pg_effect_inference *work, const struct pg_graph_codec *codec, void *owner,
 	size_t *count, const struct pg_derivation_input *const **roots)
 {
-	/* Keep rule inputs, but discard the wire-index and relocation workspace. */
+	/* The caller chooses the rule-input lifetime independently of semantic data. */
 	struct pg_graph scratch = {0};
-	int status = read_dag(file, typing, limit, name_limit, work, codec, owner, count, roots, &scratch);
+	int status = read_dag(file, typing, inputs, limit, name_limit, work, codec, owner, count, roots, &scratch, 0);
 	pg_graph_destroy(&scratch);
 	if (status && work) work->failed = 1;
+	return status;
+}
+
+int pg_derivation_headers_read(FILE *file, struct pg_typing *typing, size_t limit, size_t name_limit,
+	const struct pg_graph_codec *codec, void *owner,
+	size_t *count, const struct pg_derivation_input *const **roots)
+{
+	struct pg_graph scratch = {0};
+	int status = read_dag(file, typing, typing ? typing->graph : NULL, limit, name_limit, NULL, codec, owner, count, roots, &scratch, 1);
+	pg_graph_destroy(&scratch);
 	return status;
 }

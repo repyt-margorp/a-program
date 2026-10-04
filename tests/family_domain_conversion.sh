@@ -43,27 +43,23 @@ negative wrong-result 'bad:=\k:Nat=>\b:Box k=>b;
 	bad :: (k:Nat)->Box k->Box (Nat.succ k);'
 negative effectful-index 'bad:=Family Nat.zero {#print #"not a type-level computation"; Box.mk Nat.zero;};' 4
 
-for mode in ordinary retained; do
-	options=()
-	if [[ $mode == retained ]]; then options+=(--retain-reductions); fi
-	check 0 "$mode-index-declaration" "${options[@]}" --save "$directory/index.a" \
-		"$root/acceptance/family-index-domain.p"
-	check 0 "$mode-index-load" --load "$directory/index.a"
-	check 0 "$mode-save" "${options[@]}" --save "$directory/complete.a" "$source"
-	check 0 "$mode-load" --load "$directory/complete.a"
-	for budget in 0 100; do
-		check 3 "$mode-partial-$budget" --steps "$budget" "${options[@]}" \
-			--save "$directory/partial.a" "$source"
-		check 3 "$mode-inert-$budget" --load --steps 0 "${options[@]}" \
-			--save "$directory/copy.a" "$directory/partial.a"
-		cmp "$directory/partial.a" "$directory/copy.a"
-		check 0 "$mode-resume-$budget" --load "$directory/copy.a"
-		"$compare" --equal-image "$directory/copy.a" main expected
-	done
-	check 3 "$mode-invalid-partial" --imports "$source" --steps 0 "${options[@]}" \
-		--save "$directory/wrong.a" "$directory/wrong-bound.p"
-	check 1 "$mode-invalid-resume" --load "$directory/wrong.a"
+check 0 "semantic-index-declaration" --save "$directory/index.a" \
+	"$root/acceptance/family-index-domain.p"
+check 0 "semantic-index-load" --load "$directory/index.a"
+check 0 "semantic-save" --save "$directory/complete.a" "$source"
+check 0 "semantic-load" --load "$directory/complete.a"
+for budget in 0 100; do
+	check 3 "semantic-partial-$budget" --steps "$budget" \
+		--save "$directory/partial.a" "$source"
+	check 3 "semantic-inert-$budget" --load --steps 0 \
+		--save "$directory/copy.a" "$directory/partial.a"
+	cmp "$directory/partial.a" "$directory/copy.a"
+	check 0 "semantic-resume-$budget" --load "$directory/copy.a"
+	"$compare" --equal-image "$directory/copy.a" main expected
 done
+check 3 "semantic-invalid-partial" --imports "$source" --steps 0 \
+	--save "$directory/wrong.a" "$directory/wrong-bound.p"
+check 1 "semantic-invalid-resume" --load "$directory/wrong.a"
 # The repaired conversion is also needed by a general indexed lookup proof.
 sed '/^import /d' "$root/fixtures/sorted-proof-provider.p" "$root/fixtures/finite_positions.p" \
 	"$root/fixtures/finite_vectors.p" > "$directory/fin.p"
@@ -75,15 +71,11 @@ done
 sed '/ :: /{ :next; /;$/d; N; b next; }' "$vector" > "$directory/vector-independent.p"
 sed '/ :: /{ :next; /;$/d; N; b next; }' "$directory/fin.p" > "$directory/independent-provider.p"
 check 0 vector-independent --imports "$directory/independent-provider.p" "$directory/vector-independent.p"
-for mode in ordinary retained; do
-	options=()
-	if [[ $mode == retained ]]; then options+=(--retain-reductions); fi
-	check 0 "$mode-vector-save" --imports "$directory/fin.p" "${options[@]}" --save "$directory/vector.a" "$vector"
-	check 0 "$mode-vector-load" --load "$directory/vector.a"
-	check 3 "$mode-vector-partial" --imports "$directory/fin.p" --steps 100 "${options[@]}" \
-		--save "$directory/vector-partial.a" "$vector"
-	check 0 "$mode-vector-resume" --load "$directory/vector-partial.a"
-done
+check 0 "semantic-vector-save" --imports "$directory/fin.p" --save "$directory/vector.a" "$vector"
+check 0 "semantic-vector-load" --load "$directory/vector.a"
+check 3 "semantic-vector-partial" --imports "$directory/fin.p" --steps 100 \
+	--save "$directory/vector-partial.a" "$vector"
+check 0 "semantic-vector-resume" --load "$directory/vector-partial.a"
 sed '/^import /d' "$directory/fin.p" "$vector" > "$directory/vector-provider.p"
 printf '%s\n' 'import Nat; import Fin; import Vec; import vec_lookup; import sample; import two;' \
 	'bad:=vec_lookup Nat two sample (Fin.zero two);' > "$directory/vector-bound.p"

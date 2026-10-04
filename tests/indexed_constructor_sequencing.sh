@@ -52,17 +52,13 @@ done
 for fixture in inferred-index-earlier-wrong inferred-index-disagreement inferred-index-wrong-family inferred-index-partial-dependent; do
 	check 1 "$fixture" "$root/acceptance/$fixture.p"
 done
-for mode in ordinary retained; do
-	options=()
-	if [[ $mode == retained ]]; then options+=(--retain-reductions); fi
-	check 0 "$mode-save" "${options[@]}" --save "$directory/full.a" "$source"
-	check 0 "$mode-load" --load "$directory/full.a"
-	results "$directory/full.a"
-	for budget in 0 100 1000; do
-		check 3 "$mode-pending-$budget" --steps "$budget" "${options[@]}" --save "$directory/partial.a" "$source"
-		check 0 "$mode-resume-$budget" --load "$directory/partial.a"
-	done
-	check 3 "$mode-invalid-pending" --steps 100 "${options[@]}" --save "$directory/wrong.a" "$directory/wrong-proof.p"
-	check 1 "$mode-invalid-resume" --load "$directory/wrong.a"
+check 0 "semantic-save" --save "$directory/full.a" "$source"
+check 0 "semantic-load" --load "$directory/full.a"
+results "$directory/full.a"
+for budget in 0 100 1000; do
+	check 3 "semantic-pending-$budget" --steps "$budget" --save "$directory/partial.a" "$source"
+	check 0 "semantic-resume-$budget" --load "$directory/partial.a"
 done
+check 3 "semantic-invalid-pending" --steps 100 --save "$directory/wrong.a" "$directory/wrong-proof.p"
+check 1 "semantic-invalid-resume" --load "$directory/wrong.a"
 printf '%s\n' 'indexed constructor sequencing: dependent proofs, recovery, partial calls, effects and images passed'

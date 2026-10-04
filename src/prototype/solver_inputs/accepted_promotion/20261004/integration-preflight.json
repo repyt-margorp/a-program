@@ -1,0 +1,8 @@
+{
+  "Main": "a8418715b81a50f87ea5423067e5f5dbd2cf9921",
+  "original_protected9_exact": true,
+  "Job_HEAD": "a8f52a015f73fe7cfa067c3d5b122bef7e4532b4",
+  "Job_index_sha256": "cbfc1f1b86deacab0f25f6c57f3c977e74cb00c9eac10997e8e1d1643832ba2a",
+  "Job_index_matches_HEAD": true,
+  "Job_index_metadata_note": "Earlier cf21c780 pin superseded by cbfc1f1b stat-cache refresh. Root ran git status for progress, which can refresh index metadata. HEAD/staged entries unchanged; no index byte-preservation claim. Further worker reads use GIT_OPTIONAL_LOCKS=0."
+}

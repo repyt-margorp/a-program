@@ -38,7 +38,7 @@ check 0 general-result-reloaded --load "$directory/complete.a"
 check 3 pending-result --legacy-intrinsic-dot --imports "$provider" --steps 100 \
 	--save "$directory/pending.a" "$theorem"
 check 0 resumed-result --load "$directory/pending.a"
-check 0 retained-result --legacy-intrinsic-dot --imports "$provider" --retain-reductions \
+check 0 retained-result --legacy-intrinsic-dot --imports "$provider" \
 	--save "$directory/retained.a" "$theorem"
 check 0 retained-result-reloaded --load "$directory/retained.a"
 

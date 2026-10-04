@@ -435,25 +435,35 @@ const struct pg_term *pg_eval_readback(struct pg_eval *machine, struct pg_graph 
 	return result;
 }
 
+struct pg_binding_value pg_binding_input(struct pg_binding_inputs inputs, size_t i)
+{
+	if (i > SIZE_MAX - inputs.first) return (struct pg_binding_value){0};
+	i += inputs.first;
+	if (inputs.at) return inputs.at(inputs.owner, i);
+	return inputs.owner ? ((const struct pg_binding_value *)inputs.owner)[i] : (struct pg_binding_value){0};
+}
+
 static int substitution_inputs(const struct pg_term *term, size_t *length,
-	const struct pg_binding_value **images)
+	struct pg_binding_inputs *images)
 {
 	size_t count = *length;
-	const struct pg_binding_value *bindings = *images;
+	struct pg_binding_inputs bindings = *images;
 	if (!term) return -1;
-	if (count && !bindings) return -1;
 	if (count > SIZE_MAX / sizeof(struct pg_environment)) return -1;
+	size_t prefix = 0;
 	for (size_t i = 0; i < count; ++i) {
-		if (!bindings[i].binder || !bindings[i].value) return -1;
-		if (bindings[i].binder->kind != PG_BINDER) return -1;
+		struct pg_binding_value binding = pg_binding_input(bindings, i);
+		if (!binding.binder || !binding.value) return -1;
+		if (binding.binder->kind != PG_BINDER) return -1;
+		if (i == prefix && binding.value->kind == PG_REFERENCE && binding.value->as.reference == binding.binder)
+			++prefix;
 	}
 	if (term->kind == PG_REFERENCE && term->as.reference->kind == PG_SEMANTIC_OBJECT) count = 0;
 	/* An identity prefix is the empty substitution. Keep later identities:
 	 * they can shadow a preceding nonidentity image of the same binder. */
-	while (count && bindings->value->kind == PG_REFERENCE &&
-		bindings->value->as.reference == bindings->binder) {
-		++bindings;
-		--count;
+	else {
+		if (prefix) bindings.first += prefix - (prefix == count);
+		count -= prefix;
 	}
 	*length = count;
 	*images = bindings;
@@ -483,7 +493,7 @@ static const struct pg_environment *substitution_environment(struct pg_substitut
 }
 
 static int substitution_init(struct pg_substitution *work, struct pg_graph *graph,
-	const struct pg_term *term, size_t count, const struct pg_binding_value *bindings,
+	const struct pg_term *term, size_t count, struct pg_binding_inputs bindings,
 	struct pg_substitution_work *shared)
 {
 	struct pg_graph *input_storage = shared ? &shared->storage : NULL;
@@ -499,9 +509,10 @@ static int substitution_init(struct pg_substitution *work, struct pg_graph *grap
 	if (!shared && count && !owned) goto failure;
 	const struct pg_environment *environment = NULL;
 	for (size_t i = 0; i < count; ++i) {
-		if (shared) environment = substitution_environment(shared, environment, bindings[i]);
+		struct pg_binding_value binding = pg_binding_input(bindings, i);
+		if (shared) environment = substitution_environment(shared, environment, binding);
 		else {
-			owned[i] = (struct pg_environment){bindings[i].binder, {bindings[i].value, NULL}, environment};
+			owned[i] = (struct pg_environment){binding.binder, {binding.value, NULL}, environment};
 			environment = &owned[i];
 		}
 		if (!environment) goto failure;
@@ -520,8 +531,9 @@ int pg_substitution_init(struct pg_substitution *work, struct pg_graph *graph,
 	const struct pg_term *term, size_t count, const struct pg_binding_value *bindings)
 {
 	work->state = NULL;
-	if (!graph || substitution_inputs(term, &count, &bindings)) return -1;
-	return substitution_init(work, graph, term, count, bindings, NULL);
+	struct pg_binding_inputs inputs = {.owner = bindings};
+	if (!graph || substitution_inputs(term, &count, &inputs)) return -1;
+	return substitution_init(work, graph, term, count, inputs, NULL);
 }
 
 void pg_substitution_destroy(struct pg_substitution *work)
@@ -615,13 +627,14 @@ void pg_substitution_work_destroy(struct pg_substitution_work *work)
 }
 
 struct pg_substitution *pg_substitution_request(struct pg_substitution_work *work,
-	const struct pg_term *term, size_t count, const struct pg_binding_value *bindings)
+	const struct pg_term *term, size_t count, struct pg_binding_inputs bindings)
 {
 	if (!work || !work->graph || substitution_inputs(term, &count, &bindings)) return NULL;
 	uint64_t hash = ((uintptr_t)term ^ count) * UINT64_C(1099511628211);
 	for (size_t i = 0; i < count; ++i) {
-		hash = (hash ^ (uintptr_t)bindings[i].binder) * UINT64_C(1099511628211);
-		hash = (hash ^ (uintptr_t)bindings[i].value) * UINT64_C(1099511628211);
+		struct pg_binding_value binding = pg_binding_input(bindings, i);
+		hash = (hash ^ (uintptr_t)binding.binder) * UINT64_C(1099511628211);
+		hash = (hash ^ (uintptr_t)binding.value) * UINT64_C(1099511628211);
 	}
 	for (struct pg_index_entry *entry = pg_index_candidates(&work->jobs, hash); entry; entry = entry->next) {
 		struct substitution_request *request = (struct substitution_request *)entry;
@@ -629,7 +642,9 @@ struct pg_substitution *pg_substitution_request(struct pg_substitution_work *wor
 		if (entry->hash != hash || input->term != term || request->count != count) continue;
 		const struct pg_environment *image = input->environment;
 		size_t i = count;
-		while (i && image->binder == bindings[i - 1].binder && image->value.term == bindings[i - 1].value) {
+		while (i) {
+			struct pg_binding_value binding = pg_binding_input(bindings, i - 1);
+			if (image->binder != binding.binder || image->value.term != binding.value) break;
 			--i;
 			image = image->parent;
 		}
@@ -649,7 +664,7 @@ struct pg_substitution *pg_substitution_request(struct pg_substitution_work *wor
 }
 
 const struct pg_term *pg_substitution_compute(struct pg_substitution_work *work,
-	const struct pg_term *term, size_t count, const struct pg_binding_value *bindings)
+	const struct pg_term *term, size_t count, struct pg_binding_inputs bindings)
 {
 	struct pg_substitution *request = pg_substitution_request(work, term, count, bindings);
 	if (!request) return NULL;

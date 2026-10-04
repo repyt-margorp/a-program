@@ -1,0 +1,12 @@
+[
+  {
+    "mode": "o2",
+    "exit": 0,
+    "log_sha256": "acb64e84922f7b0762a596c005bc3c01c92ac6bcedaafb53e1d162497b41334b"
+  },
+  {
+    "mode": "san",
+    "exit": 0,
+    "log_sha256": "acb64e84922f7b0762a596c005bc3c01c92ac6bcedaafb53e1d162497b41334b"
+  }
+]

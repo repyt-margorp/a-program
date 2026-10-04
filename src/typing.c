@@ -1,5 +1,6 @@
 #include "typing.h"
 #include "classifier.h"
+#include "typed_query.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -24,7 +25,6 @@ int pg_typing_init(struct pg_typing *typing, struct pg_graph *graph)
 	if (pg_index_init(&typing->occurrence_inputs) != 0) goto fail;
 	if (pg_index_init(&typing->typed_queries) != 0) goto fail;
 	if (pg_index_init(&typing->proofs) != 0) goto fail;
-	if (pg_index_init(&typing->evidence_conclusions) != 0) goto fail;
 	if (pg_substitution_work_init(&typing->substitutions, graph) == 0) return 0;
 fail:
 	pg_typing_destroy(typing);
@@ -33,6 +33,7 @@ fail:
 
 void pg_typing_destroy(struct pg_typing *typing)
 {
+	pg_typed_query_destroy(typing);
 	pg_index_destroy(&typing->contexts);
 	pg_index_destroy(&typing->scopes);
 	pg_index_destroy(&typing->occurrences);
@@ -44,7 +45,6 @@ void pg_typing_destroy(struct pg_typing *typing)
 	pg_index_destroy(&typing->typed_queries);
 	pg_index_destroy(&typing->induction_requests);
 	pg_index_destroy(&typing->proofs);
-	pg_index_destroy(&typing->evidence_conclusions);
 	pg_substitution_work_destroy(&typing->substitutions);
 	memset(typing, 0, sizeof(*typing));
 }
@@ -82,6 +82,23 @@ static uint64_t context_hash(const struct pg_context *parent,
 	return (hash ^ (uintptr_t)declared_type) * UINT64_C(1099511628211);
 }
 
+static uint64_t declaration_hash(const struct pg_context *context)
+{
+	uint64_t hash = context_hash(context->parent, context->binder, context->declared_type);
+	hash = (hash ^ context->judgement) * UINT64_C(1099511628211);
+	return (hash ^ (uintptr_t)context->indices) * UINT64_C(1099511628211);
+}
+
+int pg_context_owned_by(const struct pg_context *context, const struct pg_typing *typing)
+{
+	if (!typing || !typing->owner_key) return 0;
+	if (!context) return 1;
+	uint64_t hash = declaration_hash(context);
+	for (const struct pg_index_entry *entry = pg_index_candidates(&typing->contexts, hash); entry; entry = entry->next)
+		if (entry->hash == hash && &((const struct context_entry *)entry)->context == context) return 1;
+	return 0;
+}
+
 const struct pg_context *pg_context_bind(struct pg_typing *typing,
 	const struct pg_context *parent, const struct pg_object *binder,
 	const struct pg_term *declared_type, enum pg_evidence_judgement judgement)
@@ -106,9 +123,7 @@ const struct pg_context *pg_context_intern(struct pg_typing *typing,
 		if (judgement != PG_JUDGEMENT_TYPE_FAMILY) return NULL;
 		if (pg_context_extension_size(declaration->indices, parent, &count) || !count) return NULL;
 	}
-	uint64_t hash = context_hash(parent, binder, declared_type);
-	hash = (hash ^ judgement) * UINT64_C(1099511628211);
-	hash = (hash ^ (uintptr_t)declaration->indices) * UINT64_C(1099511628211);
+	uint64_t hash = declaration_hash(declaration);
 	for (struct pg_index_entry *candidate = pg_index_candidates(&typing->contexts, hash); candidate; candidate = candidate->next) {
 		if (candidate->hash != hash) continue;
 		const struct context_entry *entry = (const struct context_entry *)candidate;
@@ -121,6 +136,7 @@ const struct pg_context *pg_context_intern(struct pg_typing *typing,
 	struct context_entry *entry = pg_alloc(typing->graph, sizeof(*entry));
 	if (!entry) return NULL;
 	entry->context = *declaration;
+	entry->context.receipts = NULL;
 	if (pg_index_insert(&typing->contexts, &entry->index, hash) != 0) return NULL;
 	return &entry->context;
 }
@@ -274,6 +290,7 @@ const struct pg_occurrence *pg_occurrence_intern(struct pg_typing *typing,
 	struct pg_occurrence *result = pg_alloc(typing->graph, size);
 	if (!result) return NULL;
 	*result = *header;
+	result->receipts = NULL;
 	result->induction = NULL;
 	for (size_t i = 0; i < operand_count; ++i) result->operands[i] = operands[i];
 	if (map_count) memcpy(result->operands + operand_count, maps, map_count * sizeof(*maps));
@@ -370,18 +387,30 @@ const struct pg_occurrence *pg_occurrence_selected(struct pg_typing *typing,
 		.type = source->classifier == classifier ? source->type : NULL}, argument ? &argument : NULL, NULL);
 }
 
-const struct pg_binding_value *pg_context_map_bindings(const struct pg_context_map *map)
+static const struct pg_object *const *map_binders(const struct pg_context_map *map)
 {
-	return (const struct pg_binding_value *)(map->images + map->count);
+	return (const struct pg_object *const *)(map->images + map->count);
+}
+
+static struct pg_binding_value map_binding(const void *owner, size_t i)
+{
+	const struct pg_context_map *map = owner;
+	if (!map || i >= map->count) return (struct pg_binding_value){0};
+	return (struct pg_binding_value){map_binders(map)[i], map->images[i]->core};
+}
+
+struct pg_binding_inputs pg_context_map_bindings(const struct pg_context_map *map)
+{
+	return (struct pg_binding_inputs){.owner = map, .at = map_binding};
 }
 
 const struct pg_occurrence *pg_context_map_lookup(const struct pg_context_map *map,
 	const struct pg_object *binder, size_t *index)
 {
 	if (!map) return NULL;
-	const struct pg_binding_value *bindings = pg_context_map_bindings(map);
+	const struct pg_object *const *binders = map_binders(map);
 	for (size_t i = 0; i < map->count; ++i) {
-		if (bindings[i].binder != binder) continue;
+		if (binders[i] != binder) continue;
 		if (index) *index = i;
 		return map->images[i];
 	}
@@ -393,7 +422,7 @@ const struct pg_context_map *pg_context_map(struct pg_typing *typing,
 	size_t count, const struct pg_occurrence *const *images)
 {
 	if (count && !images) return NULL;
-	size_t stride = sizeof(*images) + sizeof(struct pg_binding_value);
+	size_t stride = sizeof(*images) + sizeof(struct pg_object *);
 	if (count > (SIZE_MAX - sizeof(struct pg_context_map)) / stride) return NULL;
 	uint64_t hash = (uintptr_t)source;
 	hash = (hash ^ (uintptr_t)destination) * UINT64_C(1099511628211);
@@ -414,11 +443,11 @@ const struct pg_context_map *pg_context_map(struct pg_typing *typing,
 	map->source = source;
 	map->destination = destination;
 	map->count = count;
-	struct pg_binding_value *bindings = (struct pg_binding_value *)(map->images + count);
+	const struct pg_object **binders = (const struct pg_object **)(map->images + count);
 	const struct pg_context *scope = source;
 	for (size_t i = count; i; --i, scope = scope->parent) {
 		map->images[i - 1] = images[i - 1];
-		bindings[i - 1] = (struct pg_binding_value){scope->binder, images[i - 1]->core};
+		binders[i - 1] = scope->binder;
 	}
 	return pg_index_insert(&typing->context_maps, &map->index, hash) ? NULL : map;
 }
@@ -660,10 +689,11 @@ static const struct pg_occurrence *action_result(struct pg_typing *typing,
 		return pg_occurrence_mapped(typing, source->judgement, core, classifier,
 			annotation, source, map);
 	}
-	const struct pg_binding_value *bindings = pg_context_map_bindings(map);
 	int identity = map->source == map->destination;
-	for (size_t i = 0; identity && i < map->count; ++i)
-		identity = bindings[i].value->kind == PG_REFERENCE && bindings[i].value->as.reference == bindings[i].binder;
+	for (size_t i = 0; identity && i < map->count; ++i) {
+		struct pg_binding_value binding = map_binding(map, i);
+		identity = binding.value->kind == PG_REFERENCE && binding.value->as.reference == binding.binder;
+	}
 	return identity ? source : pg_occurrence_mapped(typing,
 		source->judgement, core, classifier, annotation, source, map);
 }
@@ -674,10 +704,10 @@ const struct pg_occurrence *pg_occurrence_projection(struct pg_typing *typing,
 	size_t count;
 	if (!map || !source || source->context != map->source) return NULL;
 	if (pg_context_extension_size(map->destination, map->source, &count)) return NULL;
-	const struct pg_binding_value *bindings = pg_context_map_bindings(map);
 	for (size_t i = 0; i < map->count; ++i) {
-		if (bindings[i].value->kind != PG_REFERENCE) return NULL;
-		if (bindings[i].value->as.reference != bindings[i].binder) return NULL;
+		struct pg_binding_value binding = map_binding(map, i);
+		if (binding.value->kind != PG_REFERENCE) return NULL;
+		if (binding.value->as.reference != binding.binder) return NULL;
 	}
 	return action_result(typing, map, source, source->core, source->classifier, source->annotation);
 }
@@ -762,13 +792,12 @@ static enum pg_substitution_status occurrence_action_step(struct pg_occurrence_a
 		work->result = pg_occurrence_projection(work->typing, map, source);
 		if (work->result) return PG_SUBSTITUTION_DONE;
 	}
-	const struct pg_binding_value *bindings = pg_context_map_bindings(map);
 	if (work->next < 3) {
 		const struct pg_term *inputs[] = {source->core, source->classifier, source->annotation};
 		if (!inputs[work->next]) { ++work->next; return PG_SUBSTITUTION_PENDING; }
 		if (!work->substitution) {
 			work->substitution = pg_substitution_request(&work->typing->substitutions,
-				inputs[work->next], map->count, bindings);
+				inputs[work->next], map->count, pg_context_map_bindings(map));
 			return work->substitution ? PG_SUBSTITUTION_PENDING : PG_SUBSTITUTION_ERROR;
 		}
 		enum pg_substitution_status status = pg_substitution_advance(work->substitution, 1);
