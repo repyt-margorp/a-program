@@ -1,0 +1,280 @@
+{
+  "review_UTC": "2026-10-04T00:46:54.513113+00:00",
+  "Main_at_review": "a2456469be98a62e139cf7a65781257223a8528a",
+  "owners": {
+    "C": {
+      "pane": "%0",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/fresh-argument-pairs-owner-status/C.txt",
+      "capture_sha256": "2f3516e297cbf57fad849ad07ad032c219057aa74070650e53c3f62c6a06fffe",
+      "last_status_lines": [
+        "    141 +    return 0;",
+        "    142 +}",
+        "",
+        "\u2022 Working (26m 14s \u2022 esc to interrupt)",
+        "",
+        "\u2022 Queued follow-up inputs",
+        "  \u21b3 Root C20 release: exact10 task7b883a8eb123faab0e288661229196ffdebfe232 / prototype Mainf8134616dd29ff9dca11d307a302f27f4bc3a958 pushed/remote exact. All1815",
+        "    prior tracked live bytes preserved; C21 lowering excluded. Fresh E18+MEM9 source128c414202a backend O2 rebuilt, exact MEM9 producer reused. Integer77",
+        "    expected rows each O2/client-source SAN (26zero/1no-fuel3/50refusal4), parent C19 unit119 each pass;48 generated C/H bytes exact. Retained142/raw1416 all",
+        "    \u2026",
+        "    shift+\u2190 edit last queued message",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/c-backend \u00b7 Verify Surface index.lock handoff           Pursuing goal (17h 53m)    \u26a0 1 warning \u00b7 f2 to view"
+      ],
+      "stopped_bounded": false
+    },
+    "Performance": {
+      "pane": "%1",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/fresh-argument-pairs-owner-status/Performance.txt",
+      "capture_sha256": "d7443d42130c700cce184e52dceda756e9dbf13e51c7748eabb8952707943012",
+      "last_status_lines": [
+        "  \u2514 Read qualify_targeted.py, qualify_affected.py, fold_spine_test.c, direct_test.c, total_result_cuts.py",
+        "",
+        "\u25e6 Waiting for background terminal (56m 10s \u2022 esc to interrupt) \u00b7 1 background terminal running \u00b7 /ps to view \u00b7 /stop to close",
+        "  \u2514 python3 src/prototype/performance_mem10/qualify_transport_v2.py",
+        "",
+        "\u2022 Queued follow-up inputs",
+        "  \u21b3 Root MEM9 release: exact17 task e71528fa286e263c568d4f78f3f1281f90b5e86d and prototype Main b9e68c278b94c151160ae0d49f483ea19eea3ab6 pushed/remote exact.",
+        "    All2133 prior tracked live bytes preserved. Frozen17 remain exact; separate Root current-E18 qualification source128c414202a passes focused454/0 including88",
+        "    writes/352 cross-reads, Core/eval-IO O2/SAN, full synthesis/source-checkpoint O2/SAN and CLI-public52/full TSV exact E18; strict3 remain. Root raw merge-",
+        "    \u2026",
+        "    shift+\u2190 edit last queued message",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/performance \u00b7 Verify Surface index.lock issue           Pursuing goal (22h 40m)    \u26a0 1 warning \u00b7 f2 to view"
+      ],
+      "stopped_bounded": false
+    },
+    "Job": {
+      "pane": "%4",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/fresh-argument-pairs-owner-status/Job.txt",
+      "capture_sha256": "87eba9e030c73b4ac2808be1dbb4a17567e8ec77d9c6e4ef7e8f4c66ab741395",
+      "last_status_lines": [
+        "  workers/merge-storage-20261003/mem6-byte-baseline-root-review.json. E17 remains separate. Owner coordination evidence, not new human approval.",
+        "",
+        "",
+        "\u2022 Queued follow-up inputs",
+        "  \u21b3 Root release: E18 exact26 task a8f52a015f73fe7cfa067c3d5b122bef7e4532b4 and prototype Main165789434f528e1c55cb446af831475652c54ca4 are pushed/remote exact.",
+        "    Current Root E18 source128efcdeaa4 full synthesis/source-checkpoint O2+SAN/CLI0; strict1 expected original three unwaived; public52/full TSV byte exact E17.",
+        "    Frozen26 unchanged; explicit existing-current named-field syntax bridges/canonical alignment are recorded. Root report merge-storage-20261003/e18-current-",
+        "    \u2026",
+        "    shift+\u2190 edit last queued message",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/job-evidence \u00b7 Implement remaining SE1-SE5 simpl    Goal stalled (/goal resume)    \u26a0 1 warning \u00b7 f2 to view",
+        "",
+        ""
+      ],
+      "stopped_bounded": false
+    },
+    "Static": {
+      "pane": "%10",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/fresh-argument-pairs-owner-status/Static.txt",
+      "capture_sha256": "73a59b10e70d43f4ab9acab1ff48cefd68f796ed35ffcc9b93d9ede1f4b6e377",
+      "last_status_lines": [
+        "  \u2502 import hashlib",
+        "  \u2502 \u2026 +5 lines",
+        "  \u2514 Review receipt: 1191 bytes; SHA-256 1e8b99182da029cc62daacc9ce2cb6bbb79e5b79ba173b9aeba6c7f79dc5569f",
+        "",
+        "\u2022 Review receipt recorded for Merge (src/prototype/coordination/outbox/verification-audit-11-review-receipt.txt). Config and key remain unchanged; no audit",
+        "  outputs or timing exist.",
+        "",
+        "  Bounded static delivery remains complete. Cost is deferred and unmeasured; full Issue 59 stays open pending later exclusive scheduling.",
+        "",
+        "  Worked for 1m 15s \u2022 17:54",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/verification-audit \u00b7 Hand off static inventory              Goal achieved (50m)    \u26a0 1 warning \u00b7 f2 to view"
+      ],
+      "stopped_bounded": true
+    },
+    "Sort": {
+      "pane": "%11",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/fresh-argument-pairs-owner-status/Sort.txt",
+      "capture_sha256": "64fb01556963d638b415e844466cdd4838cdbcd52b02f0f7c07f57c6368c148b",
+      "last_status_lines": [
+        "    FINAL_MANIFEST_SHA256 e0adf408179cfde0a98ec11c448ef5967c3d945c2c198e7e79a93456208f21eb",
+        "    FINAL_NOTICE_SHA256 2f7c99e62b67d5a9eecc61ae7878d35023244d7bdeeb1f375b0073f558344259",
+        "    +1 line (ctrl+t to view transcript)",
+        "",
+        "\u2022 Corrected provenance in the SOAP snapshot and owning plan: Merge\u2019s follow-up is agent operational direction; human requirements explicitly cite F0.",
+        "",
+        "  Refrozen and wrote the final corrected ready notice (src/prototype/coordination/outbox/finite-functions-ready-provenance-final.txt). All +301 implementation/",
+        "  fixture/runner lines and test logs remain byte-identical. No rerun, accepted changes, new Goal, or duplicate worker.",
+        "",
+        "  Worked for 6m 44s \u2022 19:14",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/sort-library \u00b7 Start authorized sort worker                 Goal achieved (24m)    \u26a0 1 warning \u00b7 f2 to view"
+      ],
+      "stopped_bounded": true
+    },
+    "Tests": {
+      "pane": "%12",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/fresh-argument-pairs-owner-status/Tests.txt",
+      "capture_sha256": "b60eee60d2b30d43f203a9b09e5aba8a340de063e4228b7c273d1a9533dda2f4",
+      "last_status_lines": [
+        "",
+        "  Original/reduced outcomes match; ten injection checks pass. All 47 completed combined recipes pass. E9/E10 controls, strict3 and unsafe E11 failures remain",
+        "  preserved. The unchanged derived-LT run is recorded as incomplete after its 600-second cap. Wall/RSS savings are unmeasured.",
+        "",
+        "  Exact Merge handoff and full per-file counts (src/prototype/coordination/outbox/test-suite-20261003-final-handoff.txt) are frozen. Git staging is blocked by",
+        "  read-only shared metadata. Accepted files remain untouched; Issue59 stays open.",
+        "",
+        "  Goal complete; elapsed time approximately 38 minutes.",
+        "",
+        "  Worked for 38m 29s \u2022 22:34",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/test-suite \u00b7 Simplify and deduplicate tests                 Goal achieved (37m)    \u26a0 1 warning \u00b7 f2 to view"
+      ],
+      "stopped_bounded": true
+    },
+    "Issues": {
+      "pane": "%14",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/fresh-argument-pairs-owner-status/Issues.txt",
+      "capture_sha256": "420e1da1ab345bf1a3596379c58301dfb5f9c5db83bb0aa71bcc1abe97103692",
+      "last_status_lines": [
+        "  coordination. No new semantic/accepted policy.",
+        "",
+        "",
+        "\u2022 I\u2019ll confirm the completion accounting. The audit remains stopped, and Root has resumed coordination.",
+        "",
+        "\u2022 Goal confirmed complete. Recorded usage: 216,461 tokens, 23m 50s.",
+        "",
+        "  The audit remains stopped and available for follow-up. Root owns coordination; no further dispositions will run.",
+        "",
+        "  Worked for 26s \u2022 22:31",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/issue-audit \u00b7 Record audit ownership receipt                Goal achieved (23m)    \u26a0 1 warning \u00b7 f2 to view"
+      ],
+      "stopped_bounded": true
+    }
+  },
+  "issues": [
+    {
+      "number": 61,
+      "title": "C backend residuals: selected-export admission, Identity and native lowering",
+      "updatedAt": "2026-10-03T13:11:54Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/61",
+      "body_sha256": "41872697f2356c60e77c7f4d5c481705f03d5d3ae5d83618194b090a76e7451a"
+    },
+    {
+      "number": 59,
+      "title": "Audit verification debt: semantic test inventory, lifecycle and implementation progress accounting",
+      "updatedAt": "2026-10-03T13:08:50Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/59",
+      "body_sha256": "7c8c563717262b330d0bcb2fdb7ec3454b206d223e9461c7fcbe518b74e07657"
+    },
+    {
+      "number": 57,
+      "title": "Correct Function Graph named-binding polarity and define explicit syntax migration",
+      "updatedAt": "2026-10-03T13:08:54Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/57",
+      "body_sha256": "5cc775e0494e7fe6b2c53cb5da989ad857f0f16afa794d24827db6a997cb0279"
+    },
+    {
+      "number": 56,
+      "title": "Recover and revalidate checker head/readback optimizations with Effort and persistence gates",
+      "updatedAt": "2026-10-03T13:08:58Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/56",
+      "body_sha256": "52d4c5e60b5b499ff1d99b64d5ac4367bbd5119b2beb9a245f17ce9fbc3afd2f"
+    },
+    {
+      "number": 52,
+      "title": "Design: checked equality reuse before adaptive compilation and equality saturation",
+      "updatedAt": "2026-10-03T13:09:06Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/52",
+      "body_sha256": "a270ef5933cab792d4e511eed2561b3bcffde014f13ffbf757e08df9a254c806"
+    },
+    {
+      "number": 51,
+      "title": "Audit follow-up: reproducible size and semantic-owner anti-regression gates",
+      "updatedAt": "2026-10-03T13:09:01Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/51",
+      "body_sha256": "b52ce7f7e49279990ba5b8b53a739436d153b62f6af8c6feef75a829bd7e589e"
+    },
+    {
+      "number": 47,
+      "title": "Design runtime relevance and safe compilation admissibility for partial artifacts",
+      "updatedAt": "2026-10-03T13:09:14Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/47",
+      "body_sha256": "bb2b1b52fbdbdba494a4a5a5cb369bb4b10500a0a1ec577a271a3aa147af6dd8"
+    },
+    {
+      "number": 43,
+      "title": "Open question: computation-level general recursion, loop syntax and logical boundaries",
+      "updatedAt": "2026-10-03T13:09:10Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/43",
+      "body_sha256": "ecd1df90dd66e3b3f4df97abceb23eaf8047e03f74932c4a8982d3ace3fa9f9e"
+    },
+    {
+      "number": 41,
+      "title": "Design audit: finite-container sorting, lawful views and position permutations",
+      "updatedAt": "2026-10-03T13:09:17Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/41",
+      "body_sha256": "e539925b68f41a5e3b22f95f8b53f763aec5d86f10f1a190fbdd984cb092e72c"
+    }
+  ],
+  "open_PRs": [],
+  "issue_criteria_unchanged_since_C20": true,
+  "timer_PID": 1674731,
+  "timer_capture": "    PID                  STARTED COMMAND\n1674731 Sat Oct  3 18:31:03 2026 node /home/repyt/workspace/a-program/src/prototype/coordination/watch_core.cjs 01a100b3-1d83-7090-bbf6-62544c39ec4b --new-only --heartbeat-seconds=21600 --heartbeat-first-seconds=15197.714 /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/coordination/outbox /home/repyt/workspace/a-program-workers/performance/src/prototype/coordination/outbox /home/repyt/workspace/a-program-workers/c-backend/src/prototype/coordination/outbox /home/repyt/workspace/a-program-workers/verification-audit/src/prototype/coordination/outbox /home/repyt/workspace/a-program-workers/sort-library/src/prototype/coordination/outbox\n",
+  "next_review_UTC": "2026-10-04T01:44:22.084Z",
+  "protected9_exact": true,
+  "C21_private_progress_report": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-private-progress-review.json",
+  "C21_private_progress_report_sha256": "91dab730776123df16b3d6872254759fd924f45db096928d5fccc8fd33597807",
+  "argument_pair_report": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/fresh-argument-pairs-audit.json",
+  "argument_pair_report_sha256": "ad2787958b528b31eac3c932b3fb34912c5b4d1dfa802ae4489184a6441b8327",
+  "no_worker_resumed_duplicated_or_mode_changed": true,
+  "Root_execution": "No new GDB, runtime or comparative cost run. Read-only audits and owned metadata only.",
+  "desk_reporting": "One durable outbox update for these material deltas; no duplicate direct desk message.",
+  "previous_review": "src/prototype/coordination/reviews/20261004T0030.json",
+  "published_before_metadata": {
+    "C20_task": "7b883a8eb123faab0e288661229196ffdebfe232",
+    "C20_Main": "f8134616dd29ff9dca11d307a302f27f4bc3a958",
+    "MEM9_task": "e71528fa286e263c568d4f78f3f1281f90b5e86d",
+    "MEM9_Main": "b9e68c278b94c151160ae0d49f483ea19eea3ab6"
+  },
+  "Performance": "Original owner active; MEM9 release queued/unacknowledged. MEM8 frozen7/5/8 attribution verified, MEM10 focused18/nested36 verified only as historical private progress; transport v2 ongoing, runtime freeze/current qualification/actual gain pending.",
+  "C": "Original owner active; C20 release queued/unacknowledged. C21 client-probe12/0 matches16 source observations each on historical E8. All8 known wrappers emit0 in retained private probe; full/current gates and freeze pending.",
+  "Job": "Original service-stalled pane unchanged, E18 release queued. E19 isolated broad0 historical audit retained; remaining C/census/strict/public/full freeze/current-E18 publication pending. No owner resumed or duplicated; no defect inference from service failure.",
+  "completed_Surface_AIze": "Historical delivered/stopped; no restart.",
+  "C21_private_progress": {
+    "path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-private-progress-review.json",
+    "sha256": "91dab730776123df16b3d6872254759fd924f45db096928d5fccc8fd33597807",
+    "pinned_files": 426,
+    "source_client_observations_each": 16,
+    "client_probe_records": 12,
+    "initial_backend_lowering_drift": [
+      {
+        "path": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/lower/scalar.c",
+        "initial_input_sha256": "daafc83add1ba527cc114d3803df98995bc35879c3bfb269ca02b6fe96b6e15f",
+        "current_private_sha256": "30acb4b3835b73caa6e45e8fb9055cc8e3b5a481e152a2c97c1dab3e921b39ee"
+      }
+    ],
+    "evidence_association_limit": "Initial backend source pins include the first scalar.c version; later private lowering differs. Progress is historical worker records, not a frozen current source-to-binary reproduction.",
+    "initial_fixture_import_export_failures_retained": true,
+    "shared_producer_defect_established": false,
+    "new_ABI_schema_or_policy": false
+  },
+  "argument_pair_review": {
+    "path": "src/prototype/performance_followup/mem8-fresh-argument-pairs-root-review.json",
+    "sha256": "78059976ce2c5d5c688c4156476091920a984e40219dbf10cde1414cc312ca75"
+  },
+  "Root_Goal": "Service still reports blocked; objective incomplete, not resumed or marked complete.",
+  "Assessment": "Record private progress and preserve existing holds. Neither C21 nor MEM10 is READY or published; no accepted implementation change, new comparative slot or design approval follows from worker notices."
+}

@@ -1,0 +1,243 @@
+{
+  "review_UTC": "2026-10-04T00:48:56.548183+00:00",
+  "Main_at_review": "a2456469be98a62e139cf7a65781257223a8528a",
+  "worker_notice_sha256": "2e763a8abdf8fa1655b40da40e17a7a9f91f2aeca96e82c40fb144def7ed7aaa",
+  "raw_Root_audit": {
+    "path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/fresh-argument-pairs-audit.json",
+    "sha256": "ad2787958b528b31eac3c932b3fb34912c5b4d1dfa802ae4489184a6441b8327",
+    "pinned_files": 511,
+    "method": "Fresh Root hash/source/raw-record/arithmetic and static-method audit of historical worker observations; no Root GDB or candidate runtime execution."
+  },
+  "frozen_manifests": [
+    {
+      "directory": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem8/private/environment_use_v2_20261004",
+      "sha256": "915c5e4d2264dda27ffe558cbbb5643763e1e0895d1d9c6ac688bea0536ac680",
+      "entries": 7
+    },
+    {
+      "directory": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem8/private/environment_use_bounded_v3_20261004",
+      "sha256": "4611ab4b1260f06c50b1e1433145173ff5b8ba18a4fe6d24e6e60f1839fc15ae",
+      "entries": 5
+    },
+    {
+      "directory": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem8/private/argument_pairs_model_v1_20261004",
+      "sha256": "8e7d8a06697d3f6ec95696938e66f3d194b86cb0ab1d74522805317aefa81a38",
+      "entries": 8
+    }
+  ],
+  "historical_source128": "81c3ad27dfd01aef14ad8e977d1b783cc3636368b6e5afcab0840d07d055e541",
+  "historical_binary_sha256": "fea41c2dd0b129b898732a7c6d40e62dcc9288fdaa4bba06d2330d2fb9b4299d",
+  "environment_v2": {
+    "counts_10K_equal_v1": true,
+    "full_100K_timeout_seconds": 180,
+    "full_100K_censored": true
+  },
+  "bounded_environment_v3": {
+    "checker_budget": 100000,
+    "observed_transitions": 20000,
+    "counts": {
+      "evaluator_transitions": 20000,
+      "beta_allocations": 2893,
+      "address_reused_for_new_beta_link": 0,
+      "semantic_reference_clears_environment": 2413,
+      "reference_link_transitions": 6345,
+      "selected": 5320,
+      "passed": 1025,
+      "created_links_consulted": 1819,
+      "created_links_selected": 1639,
+      "created_links_passed_only": 180,
+      "created_links_not_consulted_by_this_cut": 1074
+    },
+    "full_observer_timeouts_superseded": false
+  },
+  "argument_pair_model": [
+    {
+      "budget": 10000,
+      "counts": {
+        "pg_graph_init": 1,
+        "all_entry_requests": 16975,
+        "pg_graph_destroy": 1398,
+        "machine_arenas_tracked": 33,
+        "initial_head_used_bytes": 0,
+        "validated_head_observations": 2383,
+        "requests": 2350,
+        "argument_requests": 1602,
+        "argument_requested_bytes": 38448,
+        "paired_fresh_allocations": 807,
+        "paired_requests_avoided": 795,
+        "validated_whole_arena_observations": 33,
+        "unused_pair_slots_at_arena_release": 12,
+        "environment_requests": 624,
+        "environment_requested_bytes": 19968,
+        "ordinary_requests": 124,
+        "ordinary_requested_bytes": 29760
+      },
+      "baseline": {
+        "initial_observed_capacity": 0,
+        "cumulative_capacity": 540672,
+        "live_capacity": 0,
+        "live_blocks": 0,
+        "requested_bytes": 88176,
+        "rounded_bytes": 100992,
+        "alignment_gap_bytes": 0,
+        "used_bytes": 100992,
+        "peak_live_capacity": 196608,
+        "peak_live_blocks": 12
+      },
+      "paired_arguments": {
+        "initial_observed_capacity": 0,
+        "cumulative_capacity": 540672,
+        "live_capacity": 0,
+        "live_blocks": 0,
+        "requested_bytes": 88464,
+        "rounded_bytes": 88464,
+        "alignment_gap_bytes": 0,
+        "used_bytes": 88464,
+        "peak_live_capacity": 196608,
+        "peak_live_blocks": 12
+      },
+      "used_reduction": 12528,
+      "peak_capacity_reduction": 0,
+      "cumulative_capacity_reduction": 0
+    },
+    {
+      "budget": 100000,
+      "counts": {
+        "pg_graph_init": 1,
+        "all_entry_requests": 64913,
+        "pg_graph_destroy": 8078,
+        "machine_arenas_tracked": 33,
+        "initial_head_used_bytes": 0,
+        "validated_head_observations": 43122,
+        "requests": 43089,
+        "argument_requests": 29426,
+        "argument_requested_bytes": 706224,
+        "paired_fresh_allocations": 14719,
+        "paired_requests_avoided": 14707,
+        "validated_whole_arena_observations": 33,
+        "unused_pair_slots_at_arena_release": 12,
+        "environment_requests": 13539,
+        "environment_requested_bytes": 433248,
+        "ordinary_requests": 124,
+        "ordinary_requested_bytes": 29760
+      },
+      "baseline": {
+        "initial_observed_capacity": 0,
+        "cumulative_capacity": 1851392,
+        "live_capacity": 0,
+        "live_blocks": 0,
+        "requested_bytes": 1169232,
+        "rounded_bytes": 1404640,
+        "alignment_gap_bytes": 0,
+        "used_bytes": 1404640,
+        "peak_live_capacity": 1409024,
+        "peak_live_blocks": 86
+      },
+      "paired_arguments": {
+        "initial_observed_capacity": 0,
+        "cumulative_capacity": 1605632,
+        "live_capacity": 0,
+        "live_blocks": 0,
+        "requested_bytes": 1169520,
+        "rounded_bytes": 1169520,
+        "alignment_gap_bytes": 0,
+        "used_bytes": 1169520,
+        "peak_live_capacity": 1179648,
+        "peak_live_blocks": 72
+      },
+      "used_reduction": 235120,
+      "peak_capacity_reduction": 229376,
+      "cumulative_capacity_reduction": 245760
+    }
+  ],
+  "proposed_owner_overhead": {
+    "additional_machine_pointer_bytes": 8,
+    "baseline_WHNF_job_bytes": 392,
+    "projected_WHNF_job_bytes": 400,
+    "baseline_and_projected_aligned_WHNF_job_bytes": 400,
+    "other_embedded_machine_stack_persistent_owner_overhead": "Unverified and excluded from model arena totals."
+  },
+  "MEM10_private_progress": {
+    "directory": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/argument_pairs_v1_20261004",
+    "parent_source128": "2344ad41d6db32ceddb5dbc9419aa8da97fcaa00253e075f5ff96b8f72f93b13",
+    "candidate_source128": "962149cf349dc1ce9176b7d2a001438fbce8d5615d6eb817110023c10c43fb29",
+    "changed_source": [
+      "src/eval.c",
+      "src/eval.h"
+    ],
+    "patch_sha256": "fe72ed8c23ed982323fd4b77a3c5b7e8201ba7db5b98e6078d4834b945d9696b",
+    "focused_summary_sha256": "0119fc177efa23312047157fd6c8c8dde6d4baae66e39baaf8fc94517d1c98a4",
+    "focused_records": 18,
+    "failed": 0,
+    "nested_lifetime": {
+      "parent": {
+        "summary_sha256": "0c106c7d9aee61d4b89ee5274989470086bd6ac04cdae350b9db5a978d543436",
+        "records": 18,
+        "failed": 0,
+        "image_count": 6,
+        "image_sha256": "64250316fa5d49029e2121bd14cec2e21bfc237c67b07788e8b5aa58d3ccffe6",
+        "later_identity_applications": [
+          0,
+          8,
+          128,
+          1024
+        ],
+        "captured_splits": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "candidate": {
+        "summary_sha256": "c4b5879dd142d4f26413df226de5469c9f81f0bd0d34ff6d2196d2023618f809",
+        "records": 18,
+        "failed": 0,
+        "image_count": 6,
+        "image_sha256": "64250316fa5d49029e2121bd14cec2e21bfc237c67b07788e8b5aa58d3ccffe6",
+        "later_identity_applications": [
+          0,
+          8,
+          128,
+          1024
+        ],
+        "captured_splits": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ]
+      }
+    },
+    "runtime_READY_or_frozen": false,
+    "current_Main_qualified": false,
+    "MEM6_MEM7_MEM9_excluded": true
+  },
+  "patch_reconstruction": {
+    "path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/argument-pair-patch-reconstruction",
+    "exact_eval_c_h_against_candidate": true,
+    "fresh_runtime_execution": false
+  },
+  "static_method_review": [
+    "Model identifies machine temporary arenas through actual step/apply arguments or beta environments; prior unidentified usage is copied unchanged.",
+    "Every later observed baseline head and all 33 destroyed whole arenas validate against recorded capacity/usage. Prior padding counts/baseline scenarios match exactly.",
+    "Pairing models only step/pg_eval_apply requests: two fresh 24-byte argument records use one 48-byte pg_alloc allocation. Each remains 8-byte aligned; generic 16-byte allocation alignment remains unchanged.",
+    "One never-published spare is consumed once; all 12 unused spares, totaling 288 requested bytes, are charged. No published-node reuse, movement or mutation follows.",
+    "Candidate init/destroy zero the evaluator; WHNF arena completion explicitly clears the spare. Remaining owner resets, codec/ABI overhead, failure paths and all cuts still require runtime qualification.",
+    "Bounded environment observer disables its breakpoint after 20000 observed transitions without changing the 100000-step checker budget. No finish breakpoints remain at exit.",
+    "No full request event stream is retained for independent sequence replay. Root audited static model code, hashed worker records, baseline agreement and arithmetic; Root did not rerun GDB."
+  ],
+  "Assessment": [
+    "Adopt the model as historical attribution evidence only. The 100K modeled used-byte reduction is 235120 and peak-capacity reduction is 229376; 10K capacity is unchanged. These are not actual current-Main memory/RSS/time gains.",
+    "Keep both full environment-observer 100K timeouts censored. The bounded 20000-transition trace does not replace them or prove unconsulted links dead; passed links still consume charged work and opaque/public/later readback lifetimes remain unproved.",
+    "MEM10 is separate private implementation within the existing evaluator prototype lane, on published historical MEM5 and excluding MEM6/MEM7/MEM9. Verified focused18 and nested36 records establish limited progress; no frozen READY runtime, Main publication or current-E18 qualification is claimed.",
+    "Defer integration until the owner supplies exact frozen bytes, broader transport/all-cut/affected gates, actual candidate capacity and full owner/ABI overhead; then qualify against current Main independently. Do not infer a new allocator API, compact-root, beta-elision, lifetime policy or comparative slot.",
+    "MEM6/MEM7 holds, original strict3/observer2/SAN7 provenance, generic16 alignment and independent codec fields remain. Full #56/#51/#52 and Root Goal remain incomplete."
+  ],
+  "implementation_published_or_accepted": false,
+  "actual_time_RSS_gain": false,
+  "new_cost_or_design_grant": false,
+  "protected9_exact": true
+}
