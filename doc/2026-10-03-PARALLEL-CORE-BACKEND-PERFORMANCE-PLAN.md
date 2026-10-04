@@ -661,6 +661,13 @@ their owners. Add review items only for material changes; no duplicate task grap
 
 ### Subjective (User)
 
+2026-10-04, user paraphrase conveyed by the inquiry desk
+(thread `019ebfae-06be-7b71-974a-b97505daed4a`; original Japanese message
+not supplied here): the workflow/Goal appears to have been lost, and Merge
+notifications do not appear to reach the inquiry desk. The user asks why this
+happens and requests verification of the current workflow. This is a conveyed
+paraphrase, not a verbatim user quote or agent finding.
+
 2026-10-04, English translation of the human workflow clarification relayed by
 inquiry desk thread019ebfae-06be-7b71-974a-b97505daed4a: “I will speak directly
 with that session; tell me how to enter it.” The desk identifies Job/Evidence
@@ -881,6 +888,16 @@ typed owners; preserve Core/type separation and ordinary Solve semantics.
 
 ### Objective (Code)
 
+2026-10-04 09:03 UTC, workflow inspection confirms the Goal objective remains
+intact while its service status stays blocked (usage3262854/time25296 unchanged).
+Runtime thread is active; original C/Performance/Job pursue, four bounded owners
+remain stopped. C29-C31/E24 prototype tasks/Main182f75f8 are verified/pushed;
+new E25 READY is queued for independent review. Original timer/watchers alive,
+next13:44 UTC/22:44 JST. Durable report6bf7ccb3 is7845 bytes; notification API
+acks observed, and the desk independently confirms all three report summaries
+as completed turns, including08:57 report6bf7ccb3. These establish desk receipt
+and generated responses, not human UI display/read receipt. [Workflow evidence](../src/prototype/coordination/reviews/workflow-delivery-review-20261004.json).
+
 2026-10-04, late07:44 review result: C29/C30/E24 prototypes separately verified,
 published and pushed; all seven panes freshly inspected, original timer/watcher
 unchanged. Performance C24/allocation freezes independently recomputed; runtime
@@ -1029,6 +1046,15 @@ public resume failures are in the
 Accepted `src/evidence.*`, `src/iadt.*` and their tests retain unrelated edits.
 
 ### Assessment
+
+2026-10-04, Root workflow conclusion: the stored objective has not disappeared;
+service Goal metadata and actual event-driven execution differ. The cause of
+that state mismatch is unknown. Delivery is confirmed through desk response
+creation; user-facing visibility remains unverified. Do not equate a durable
+write/API ack with human consumption. Preserve the original schedule and human
+Job session; continue E25 independent review and existing issue criteria. This
+concern authorizes workflow verification, not promotion or Goal/owner restart.
+No additional workflow plan or owner/model/lifecycle change is needed.
 
 2026-10-04, Root scheduled assessment: recent response-wait overlays have
 cleared; no persistent current stall or established service cause, no restart/
