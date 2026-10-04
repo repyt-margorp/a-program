@@ -115,6 +115,24 @@ names, separate directories and reviewed integration epochs.
 
 ### Objective (Code)
 
+Fresh C39 [accessibility plan](2026-10-04-C-BACKEND-ACC-ACCESSIBILITY-PLAN.md):
+admitted accessibility/down LT clauses contain explicit right/left Identity
+transports; read-only source/view boundary reported to Merge without a producer
+bug/new-field claim. Actual natAccessible recurrence now emits Nat Fold/Acc zero
+construction/ordered recursive IH/supplied accessibleSucc call. Target241/
+interface14 lines emit22 lines; sealed C36 Acc/C37 partition/C38 append bytes
+unchanged. Complete selected Core alpha identity with supplied reference prevents
+an imported provenance Fold from being mistaken for a different executable.
+Changed callback retains refusal4; unsafe initial successful output retained.
+WorkerE8 terminal O2/full emitters-runtime-composed-client ASan/UBSan/leak29
+matching rows each; actual source sort/subjects0,1,3|,341 Core observations,
+resources/inert/depth/manual raw-down branches/source-association/refusal controls
+pass.160 input/runtime128 pins exact, phase C/images identical; initial header
+build2/premature missing-binary127/alias134/negative-control failures retained.
+Manual accessibility successor/zero-down transports, storage/Nat/LT primitives,
+comparison/measure/outer entry remain explicit. Exact13 ready; task/current-
+producer/Main review pending, no main-native/generalized/accepted/cost completion.
+
 Fresh C38 [actual-append plan](2026-10-04-C-BACKEND-ACC-APPEND-PLAN.md): actual
 source List Fold now emits its callable clauses, captured constructor fields and
 deferred recursive IH application to the same right. Target243/interface12 lines
@@ -671,7 +689,8 @@ Current issue status (2026-10-04 local; detailed pins stay in linked epoch plans
 | #61 actual Acc Fold callable-IH adapter, C35 | New private acc_fold/ [plan](2026-10-04-C-BACKEND-ACC-FOLD-PLAN.md): target202/interface13 lines derive af_fold/af_force_down/af_apply from actual admitted QuickSort clause/field/IH/capture associations. Original child Acc versus callable Fold remains explicit; no main backend/ABI change. | WorkerE8 O2/full helper-runtime-client SAN11 expected rows each match; empty/singleton actual source0,1,1, both IH calls/capture staging/depth/motive and wrong C IH refusal;151 inputs/runtime128 exact. Initial failures retained; no Root qualification inferred. | Separate exact13 handoff; task/current-producer/Main pending. C32/C33/C34 sealed bytes unchanged. | Automatic plumbing only; clause expressions supplied/manual, unit sizes0/1 only/larger refusal4. Borrowed/index/interpretation/closure lifetime preconditions; depth covers nested clause construction, no callback side-effect rollback. No generated full sorting/accepted/cost/full #61 completion. | Root review sealed adapter; separate C36 emits actual clause expressions using C33 manual helper/runtime composition. |
 | #61 actual Acc clause expression lowering, C36 | New private acc_clause/ [plan](2026-10-04-C-BACKEND-ACC-CLAUSE-PLAN.md): target339/interface15 lines inspect actual branch terms and emit63-line executable Match/SEQ/partition/both-IH/pivot/append body; manual support32 lines includes immutable C33 helpers. | WorkerE8 O2/full emitter-runtime/composed-client SAN25 expected rows each match;341 existing-Core observations, actual source and admitted pivot-omitting mutation, inert/deterministic/refusal4/no-partial/resource controls;152 inputs/runtime128 exact. Initial build2 retained. No Root qualification inferred. | Separate exact13 handoff ready; task/current-producer/Main pending after C32-C35; immutable earlier archives exact. | Historical C36 clause generated; its accessibility/partition/append/comparison/measure/outer entry and closed Nat32 representation remain manual. Audited helper mapping, depth256/node65536/Nat32/borrowed lifetime limits; unsupported effect/Identity/dynamic/motives/layouts explicit. No full generalized/accepted/cost/#61/Goal completion. | Root review sealed clause; separate C37 replaces its manual partition path with actual source-generated helper expressions. |
 | #61 actual Acc partition/helper expression lowering, C37 | New private acc_partition/ [plan](2026-10-04-C-BACKEND-ACC-PARTITION-PLAN.md): target379/interface13 lines emit86-line actual Fold/decision/lower/upper body with exact constructor-instance parameters; sealed C36 clause63 unchanged. | WorkerE8 O2/full emitters-runtime/composed-client SAN32 expected rows each match;341 Core/source/split/mutation/capture-order/early failure/malformed Bool/resource/inert/refusal4/prior-stream controls;156 inputs/runtime128 exact. Initial build2/macro composition build1 retained. No Root qualification inferred. | Separate exact13 handoff ready; task/current-producer/Main pending after sealed C32-C36. All previous immutable archives exact. | Historical C37 append remains manual; separate C38 advances it. Nat32/storage/LT primitives/accessibility/comparison/measure/outer entry remain manual. Static classifier-instance availability, depth256/node65536/Nat32/borrowed lifetime/provider interpretation limits; generic/dynamic/effect/Identity/motives and main native Acc refusal remain explicit. No full generalized/accepted/cost/#61/Goal completion. | Root review sealed partition; separate C38 actual callable append composition. |
-| #61 actual Acc callable append lowering, C38 | New private acc_append/ [plan](2026-10-04-C-BACKEND-ACC-APPEND-PLAN.md): target243/interface12 emits42-line actual callable Fold, copied original fields and deferred tail; existing gs_sort declaration in module.h, C36/C37 products unchanged. | WorkerE8 terminal O2/full emitters-runtime-composed-client SAN36 matching rows each;341 Core/source/resource/capture/deferred-tail/suffix-identity/inert/mutation/refusal4/prior-stream controls;157 inputs/runtime128 exact. Initial alias-probe abort6/build2 retained. No Root current qualification inferred. | Separate exact13 handoff ready; task/current-producer/Main pending after ordered sealed C32-C37. Earlier immutable archives exact. | Actual append now generated; Nat32/storage/Nat/LT primitives/accessibility/raw-down/comparison/measure/outer entry remain manual. Original-whole-left capture4, open/dynamic/effect/Identity/motives/main native Acc refusal; borrowed source-valid lifetime/depth256/node65536 and limited SAN. No full generalized/accepted/cost/#61/Goal completion. | Root review sealed composition; inspect actual accessibility/raw-down source next, route concrete missing shared views through Merge. |
+| #61 actual Acc callable append lowering, C38 | New private acc_append/ [plan](2026-10-04-C-BACKEND-ACC-APPEND-PLAN.md): target243/interface12 emits42-line actual callable Fold, copied original fields and deferred tail; existing gs_sort declaration in module.h, C36/C37 products unchanged. | WorkerE8 terminal O2/full emitters-runtime-composed-client SAN36 matching rows each;341 Core/source/resource/capture/deferred-tail/suffix-identity/inert/mutation/refusal4/prior-stream controls;157 inputs/runtime128 exact. Initial alias-probe abort6/build2 retained. No Root current qualification inferred. | Separate exact13 handoff ready; task/current-producer/Main pending after ordered sealed C32-C37. Earlier immutable archives exact. | Historical C38 accessibility remains manual; separate C39 emits Nat recurrence while successor/raw-down still manual. Nat32/storage/Nat/LT/comparison/measure/outer entry and original-whole-left/open/dynamic/effect/Identity/motive/main-native refusals persist; borrowed/depth256/node65536/limited SAN. No generalized/accepted/cost/#61/Goal completion. | Root review sealed append; actual accessibility transport boundary routed separately, source recurrence advances in C39. |
+| #61 actual Nat accessibility recurrence/transport boundary, C39 | New private acc_accessibility/ [plan](2026-10-04-C-BACKEND-ACC-ACCESSIBILITY-PLAN.md): target241/interface14 emits22-line actual Nat Fold/Acc construction/SEQ/IH/supplied helper call; complete Core/reference guard; sealed C36-C38 bytes unchanged. | WorkerE8 terminal O2/full emitters-runtime-composed-client SAN29 matching rows each;341 Core/source subjects/resources/inert/manual down branches/depth300/refusal controls;160 pins/runtime128 exact. Header2/premature127/alias134/unsafe provenance selection retained and corrected. Readonly typed transport/changed-Core probes O2 only; no Root current qualification. | Distinct exact13 ready; ordered task/current-producer/Main review pending. C32-C38 archives exact, only live owning Goal advances. | accessibleSucc/zero-down transport bodies remain manual: step right transport, weaken/lift left transport; routed readonly through Merge/Job, no producer bug/field claim. Exact supplied source root only; different wrappers/callbacks4. Nat32/storage/Nat/LT/comparison/measure/outer entry, borrowed/depth256/node65536/limited SAN/main-native refusal remain. No generalized/accepted/cost/full61/Goal completion. | Root review Nat recurrence; next emit actual source Nat Boolean comparison without changing transport/producer/erasure authority. |
 | #61 remaining public contracts (historical #49) | General/boxed callbacks, effects, higher Identity, recursive captures and shared nominal exchange remain explicit limits; C16 advances only fixed borrowed unary/binary scalar inputs. | Local/joint gates verify supported cases and refusals, not general completion. | Historical tasks/prototype Main published; no publication of general missing contracts. | Need bounded justified representation/demand contracts. | Preserve refusals; route shared needs through Merge. |
 
 Evidence: historical [C5](2026-10-03-C-BACKEND-EPOCH5-HANDOFF.md),
@@ -824,6 +843,19 @@ pinned/current producer images and emitted C/headers match byte-for-byte.
 Evidence and exact publication files are in the [epoch handoff](2026-10-03-C-BACKEND-EPOCH1-HANDOFF.md).
 
 ### Assessment
+
+C39 agent correction: provenance edges may retain imported Fold allocations next
+to a different selected executable. Context binder/type agreement alone was
+insufficient, so require complete selected Core alpha identity with the supplied
+admitted source reference before emitting its actual clauses. Keep the changed
+callback's original expected refusal and preserve unsafe initial output. This
+source-specific binding is not general Fold selection or a private checker.
+Actual accessibleSucc includes checked scoped transport operations; do not infer
+erasure/proof irrelevance from Nat32 endpoint equality. Read-only interpretation
+was routed through Merge/sole Job owner; the faithful manual C33 successor/zero-
+down bodies remain supplied. Nat recurrence generation advances the real Acc
+path without claiming those bodies/whole source algorithm automatically lowered.
+Next source comparison is another actual algorithm gap, not List convenience.
 
 C38 agent decision: actual source Fold captures tag/head/original-tail at callable
 construction, while recursive tail Fold remains deferred until the IH force.
@@ -1547,6 +1579,10 @@ this target work while Main continues SE1, superseding the earlier AP6 hold.
 - [x] C38: lower actual source callable append Fold with captured fields/deferred
   recursive IH; terminal O2/full emitters-runtime-composed-client SAN/source/Core/
   capture/suffix/resource/refusal/inert controls pass, exact13 handoff prepared.
+- [x] C39: pin and report actual accessibility transport boundary; emit Nat
+  accessibility recurrence with supplied/manual successor/zero-down explicit;
+  terminal O2/full emitters-runtime-composed-client SAN29/Core/source/resource/
+  inert/refusal controls pass, unsafe selector corrected, exact13 handoff ready.
 - [ ] Lower remaining actual accessibility/raw-down/comparison/measure/outer
   expressions; generated Acc/partition/append is not full native Acc completion.
 - [ ] Maintain the single issue table at material events and within six active
