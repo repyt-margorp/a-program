@@ -1,0 +1,133 @@
+{
+  "issue": 56,
+  "pull_request": 58,
+  "implemented": "Delete the second identity-prefix scan by detecting its prefix while validating every binding.",
+  "only_runtime_change": [
+    "src/eval.c"
+  ],
+  "parent_source128": "2344ad41d6db32ceddb5dbc9419aa8da97fcaa00253e075f5ff96b8f72f93b13",
+  "candidate_source128": "a1d03b837422bc5525cbbbd52b023533fa1efa3d3a5179fa898379d8643645bf",
+  "canonical_patch_sha256": "ec78e7fed853e49359223bf8aac96893ffee299d65818d83a1760e4ea61ac289",
+  "local": {
+    "focused_records": 454,
+    "failed": 0,
+    "totals": [
+      0,
+      1,
+      6,
+      9,
+      0,
+      0
+    ],
+    "all_cuts_per_variant_build": 22,
+    "fresh_reads": 352,
+    "initial_projection_reads": {
+      "parent-o2": [
+        6,
+        11,
+        9,
+        9,
+        2,
+        0
+      ],
+      "candidate-o2": [
+        3,
+        8,
+        7,
+        7,
+        2,
+        0
+      ],
+      "parent-san": [
+        6,
+        11,
+        9,
+        9,
+        2,
+        0
+      ],
+      "candidate-san": [
+        3,
+        8,
+        7,
+        7,
+        2,
+        0
+      ]
+    },
+    "affected_records": 10,
+    "new_failures": 0,
+    "original_strict_recipe_failures": 1,
+    "original_strict_reload_failures": 3,
+    "public_images_equal": 52,
+    "completed_charged_steps": {
+      "list": 1915,
+      "imported-local-sorted": 761848,
+      "trees4": 2318248
+    }
+  },
+  "joint_latest_Main": "Not freshly qualified; this exact historical common-producer epoch excludes MEM6/MEM7.",
+  "historical_attribution": {
+    "source128": "81c3ad27dfd01aef14ad8e977d1b783cc3636368b6e5afcab0840d07d055e541",
+    "trace_pins": {
+      "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem8/private/substitution_prefixes_v1_20261003/verification.sha256": "2a6c5aff04c750768a85cf29f1277f1d742ad99e6dbd143e12805dbff2c7f2ff",
+      "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem8/private/synchronous_calls_v1_20261003/verification.sha256": "d979bd6d3cdb622ee7f23c98ed2f23645c537d690cd379f257c9abb5e46d563b"
+    },
+    "redundant_reader_calls": {
+      "list": 313,
+      "imported-local-sorted": 844303,
+      "trees4": 8123
+    },
+    "synchronous_readback_and_unshared_substitution_calls": 0
+  },
+  "no_new_persistent_storage_owner_graph_index_layout_allocator_codec_or_authority": true,
+  "new_local_state": "One size_t identity-prefix counter during validation; no persistent owner/index overhead.",
+  "limits": [
+    "Stable synchronous binding-reader contract; every trailing input is still validated.",
+    "Later identities can shadow earlier nonidentities and remain in the captured environment.",
+    "Charged traversal, shared request construction, input snapshots, status and state codecs are unchanged.",
+    "The removed read counts do not establish net wall-time or actual RSS gains.",
+    "No comparative samples or new full-acceptance/other-six-checkpoint claim.",
+    "Actual peak-memory work and deferred allocator/compact-root/beta owner contracts remain open."
+  ],
+  "style": [
+    {
+      "path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem9/private/substitution_prefix_v1_20261003/src/eval.c",
+      "sha256": "bbc0e8cfa56deea75e3fce6429e1a42ddae4f287d40c8c8af1702ef752bc7ef1",
+      "leading_tabs": true
+    },
+    {
+      "path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem9/assemble.py",
+      "sha256": "5c97a6eb08f0e7a108e17c3a026f2b5503e8cf8efd570ffdb0dc885e2ad6e32c",
+      "leading_tabs": true
+    },
+    {
+      "path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem9/build.mk",
+      "sha256": "af4ba2f48e0f57c89c3eddd2a00cfca489fd36e2cd4836e5a81c49903f6eb8c6",
+      "leading_tabs": true
+    },
+    {
+      "path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem9/substitution_prefix_test.c",
+      "sha256": "5e1021a5f83efb12d03251c03b6ab2d3a218251383ec68df7b15b83f22ef0750",
+      "leading_tabs": true
+    },
+    {
+      "path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem9/qualify_focused.py",
+      "sha256": "b80049b4e0501a48eb82049806261613adf24dd03b21a5050fefd8539a8bdbb8",
+      "leading_tabs": true
+    },
+    {
+      "path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem9/qualify_affected.py",
+      "sha256": "92685b9f99d8e176c78e5cb7a0fd5c8c32223853435c608875efe6805d3d5027",
+      "leading_tabs": true
+    },
+    {
+      "path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem9/freeze.py",
+      "sha256": "0106e5f87ee3cdb452f0239502d60210d2290c85f8755b890c0d7673dc77e1ab",
+      "leading_tabs": true
+    }
+  ],
+  "comments_and_documentation_language": "English",
+  "full_goal_complete": false,
+  "accepted_promotion": false
+}

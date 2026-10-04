@@ -1,0 +1,27 @@
+--- a/src/eval.c
++++ b/src/eval.c
+@@ -466,18 +466,20 @@
+ 	struct pg_binding_inputs bindings = *images;
+ 	if (!term) return -1;
+ 	if (count > SIZE_MAX / sizeof(struct pg_environment)) return -1;
++	size_t prefix = 0;
+ 	for (size_t i = 0; i < count; ++i) {
+ 		struct pg_binding_value binding = pg_binding_input(bindings, i);
+ 		if (!binding.binder || !binding.value) return -1;
+ 		if (binding.binder->kind != PG_BINDER) return -1;
++		if (i == prefix && binding.value->kind == PG_REFERENCE && binding.value->as.reference == binding.binder)
++			++prefix;
+ 	}
+ 	if (term->kind == PG_REFERENCE && term->as.reference->kind == PG_SEMANTIC_OBJECT) count = 0;
+ 	/* An identity prefix is the empty substitution. Keep later identities:
+ 	 * they can shadow a preceding nonidentity image of the same binder. */
+-	while (count) {
+-		struct pg_binding_value binding = pg_binding_input(bindings, 0);
+-		if (binding.value->kind != PG_REFERENCE || binding.value->as.reference != binding.binder) break;
+-		if (--count) ++bindings.first;
++	else {
++		if (prefix) bindings.first += prefix - (prefix == count);
++		count -= prefix;
+ 	}
+ 	*length = count;
+ 	*images = bindings;
