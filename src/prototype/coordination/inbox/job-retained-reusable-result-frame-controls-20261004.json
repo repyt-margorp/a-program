@@ -43,7 +43,12 @@
     "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/frame-fixtures/fold_spine_test.c": "ebd1f8f179718d5b37e58f4ce5939502adb43a47a54851d8c5dd88adbd3551ae",
     "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/frame-fixtures/materialized_fields_test.c": "6af422d3568bd8ad26e1644ad04e313704bd54b3451ab03f13f35687fa381d3e",
     "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/frame-fixtures/machine_resave_probe.c": "9160f3e9b58d7d9213b8920cf156610c0344954ce5ae8c67a203eb30703dc028",
-    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/frame-fixtures/readback_transport_bounds_test.c": "c8201af489097a9da98cacbd0100f2366207fefba59a67368f3a321620dbe7df"
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/frame-fixtures/readback_transport_bounds_test.c": "c8201af489097a9da98cacbd0100f2366207fefba59a67368f3a321620dbe7df",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests/direct_test.c": "1185b68036477b1d979766a69b91a604c6d753be319511938210dcc01f14cbd7",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests/head_cleanup_test.c": "773cadab36e9a6e1ebff96a13e34c165064eb5845c1a8efac9c8e891e43750a4",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests/head_test.c": "1ac4e9079f15fcb0bd5fa531f1d1d14aacce85ed8c4cd1cd2a5d586488a2e9f8",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests/total_result_cuts.py": "2d76923fb1e964f2e6283f19fc59e3359a8f8494d4099ff341f9d886a459828e",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/tests/total_result_test.c": "adaa4b6556a0a3c5e3f39b3b241893dbfbe67d0da925a725ff4a3463af3e5d4a"
   },
   "owner_execution_scope": "88 serial focused build/run/fresh-TotalResult commands on parent930997b6 and candidatec206: all0 uncensored,18 same-flavor unit outputs equal. Existing accepted four-file candidate matches fc runtime; parent of this historical pair precedes frame promotion. These are historical execution results freshly rehashed, not current native qualification or Root replay.",
   "existing_source_foreign_cut_route": "src/prototype/coordination/inbox/job-retained-source-frame-controls-20261004.json",
@@ -57,5 +62,8 @@
   "Performance_resume": false,
   "new_runtime": false,
   "accepted_adoption": false,
-  "cost_grant_or_samples": 0
+  "cost_grant_or_samples": 0,
+  "build_driver": {
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/accepted_verify.mk": "04236eb2421cd18aba516e9c768c629f73eaf8c2218b3a5868d19147ef6e233a"
+  }
 }
