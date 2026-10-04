@@ -95,6 +95,21 @@ names, separate directories and reviewed integration epochs.
 
 ### Objective (Code)
 
+Fresh read-only C26 publication observation: all14 committed/live blobs, changed
+set, parent, message and independent remote match task
+`d8f8f27e5f028b109bf7d40204becfad375d423c`; retained report `c26-publication.json`
+SHA `f79abab6bdbbe6c4773512c095b8eb9cdbae2324e2c2261af854409a0820b569`.
+Historical freeze/tar unchanged; Root current-producer/Main remains unreported.
+Separate [signed-predicate plan](2026-10-04-C-BACKEND-SIGNED-PREDICATE-PLAN.md)
+now implements an opt-in signed callback profile using unchanged admitted source.
+At exact C26 + C27 local edits, strict O2 backend/two helpers rebuild0; signed74,
+affected Nat69 and signed-static61 expected rows each O2/client-source SAN pass.
+Four products/raw verify781 Lists per width and18744 foreign partition selections
+per product; admitted constant callbacks separately provide120 Core tags/1248
+lengths and eight source observations. Sixty-four affected C/H bytes match C26;
+linker/I-O19/five signed faults pass,262 inputs/runtime128 exact. Initial setup
+failures retained. No current-producer/native Acc/accepted/cost/full Goal claim.
+
 Fresh C26 at C25 task `728d04b1` + lane edits: representation.c +3/-3 permits
 complete already selected finite records by value in the existing branching node
 contract. New52/affected branching52/record-List41 expected rows each O2/client-
@@ -482,7 +497,8 @@ Current issue status (2026-10-04 local; detailed pins stay in linked epoch plans
 | #61 selected applied types/value-phase calls, C24 | Exact task `9af7f27a05cae856b5a1da010b1741883a6ba44e`, scalar +13/-9, [applied type plan](2026-10-04-C-BACKEND-APPLIED-TYPE-BINDING-PLAN.md): exact selected classifier identity and pending operand value phase; no Source evaluation/public generic ABI. | Worker E8 O2/SAN50 each, eight observations/445 Core comparisons,341 Lists/client/finite Pair/captured type/fold/resource controls. Affected source-sort46 each/637 Core, nested40 each/I-O19 pass. Root E18+MEM9: all10 records0, applied50/source-sort46/nested40 each O2/SAN and linker/I-O19,26 nested C/H exact; original failures retained. | All16 task/then-live blobs, changed-file set and remote independently verified; Root prototype Main `72f4ff47ffe14a574733483a5a33ec0031d2ce01` pushed/remote exact, receipt310b3ce9. Submitted snapshot unchanged. | Exact selected classifiers only; arbitrary open/dependent/indexed/callable contracts, native Acc/QuickSort/full #61 remain open; borrowed/depth/limited SAN. | Preserve C24; separate bounded recursive finite-record probe. |
 | #61 native Acc/QuickSort (historical #44/#49) | C4 `a3b6bce` pins native refusal; C7-C9 retain it. C23 separately advances existing-source insertion sort. C26 private probe corrects selection to `data_of empty List`. | Worker E8 final six rows: identity emits0 checked/trusted, actual source QuickSort body4 and indexed SizedList4 checked/trusted; image unchanged/no failed products. Existing views expose List indices0, SizedList/Acc indices1 and callable Acc field. Initial faulty object-index scan retained. Structural FFTT remains separate. | Earlier task/prototype Main published; no native Acc/QuickSort epoch publication or current-producer C26 qualification. | Actual indexed/callable applicability/erasure contract unresolved; no producer defect or missing field established. | Concrete source-semantic need routed through Merge; retain native4 and avoid checker/erasure invention. |
 | #61 two direct Self fields, C25 | Exact task `728d04b12c3901c2193cd3232347dfdb544e6fe5`: representation +17/-4, nodes +48 and status/receipt metadata; [multi-tail plan](2026-10-04-C-BACKEND-MULTI-TAIL-PLAN.md). Existing borrowed arena ABI, iterative active/completed graph validation; no producer field. | Worker E8 Tree46/applied50/List21/value-record41/numeric26 each O2/client-source SAN; enum arrays875/product/linker/I-O19 pass. Six observations,202 finite Trees/layout,1616 separate Core comparisons;18 C24 C/H exact. Initial setup failures retained. Root joint qualification pending. | All26 committed/live blobs, changed set/message/remote independently verified; task pushed. Main review separate; historical C25 snapshot unchanged. | Readable immutable borrowed nodes, O(V) temporary storage/quadratic validation, depth256; three-tail/callable/indexed/non-List record refusals. Native Acc/QuickSort/full #61 open. | Root current-producer review; C26 finite-record candidate and concrete indexed/callable routing remain separate. |
-| #61 finite records in branching nodes, C26 | C25 task `728d04b1` + representation.c +3/-3; existing finite-value validators/borrowed node ABI. [Record-tree plan](2026-10-04-C-BACKEND-RECURSIVE-RECORD-PLAN.md); former C25 RecordTree refusal explicitly positive. | Worker E8 new52/branching52/record-List41 each O2/client-source SAN, linker/I-O19 pass; four observations,222 finite cases/layout,888 separate Core comparisons,22 parent C/H exact. Original source/target/receipt failures retained. | Exact14 code/test/docs prepared for delegated publication; Root current-producer/Main review separate. Historical C25 archive unchanged. | Complete earlier selected finite records only; recursive aggregates, non-branching non-List records, missing/later/callable/indexed/effect contracts refused. Borrowed/depth/temporary storage/limited SAN; native Acc/QuickSort/full #61 open. | Root review; separate bounded target use or routed source-semantic dependency, with no new authority/cost/adoption. |
+| #61 finite records in branching nodes, C26 | Exact task `d8f8f27e5f028b109bf7d40204becfad375d423c`: representation.c +3/-3; existing finite-value validators/borrowed node ABI. [Record-tree plan](2026-10-04-C-BACKEND-RECURSIVE-RECORD-PLAN.md); former C25 RecordTree refusal explicitly positive. | Worker E8 new52/branching52/record-List41 each O2/client-source SAN, linker/I-O19 pass; four observations,222 finite cases/layout,888 separate Core comparisons,22 parent C/H exact. Original source/target/receipt failures retained. | All14 task/then-live blobs, changed set/parent/message/remote independently verified; task pushed. Root current-producer/Main review separate. Historical C26 archive unchanged. | Complete earlier selected finite records only; recursive aggregates, non-branching non-List records, missing/later/callable/indexed/effect contracts refused. Borrowed/depth/temporary storage/limited SAN; native Acc/QuickSort/full #61 open. | Root review; separate C27 signed predicate ABI probe under existing authority. |
+| #61 borrowed signed predicates/List partitioning, C27 | Exact C26 `d8f8f27` + C27 local target edits; [signed plan](2026-10-04-C-BACKEND-SIGNED-PREDICATE-PLAN.md). Opt-in same-width unary/binary Int32/Int64 to selected two-case enum, with no-arena private status propagation. | Worker E8 signed74/Nat69/signed-static61 each O2/client-source SAN, linker/I-O19/signed faults5 pass;64 parent C/H exact,262 inputs/runtime128 exact. Four products/raw:781 Lists/width,18744 foreign selections/product;120 admitted Core tags/1248 lengths, eight source observations. Initial setup failures retained. | Exact20 [handoff](2026-10-04-C-BACKEND-EPOCH27-HANDOFF.md) ready; task publication/current-producer/Main review pending. C26 submitted snapshot unchanged. | Borrowed pure-total provider interpretation/lifetime/nonoverlap, depth256/limited SAN;13 checked/trusted refusal pairs. Foreign signed comparisons are ABI controls, not admitted source comparator or native Acc/QuickSort/full #61 completion. | Root review from immutable snapshot; generated-provider composition remains a separate bounded candidate. |
 | #61 remaining public contracts (historical #49) | General/boxed callbacks, effects, higher Identity, recursive captures and shared nominal exchange remain explicit limits; C16 advances only fixed borrowed unary/binary scalar inputs. | Local/joint gates verify supported cases and refusals, not general completion. | Historical tasks/prototype Main published; no publication of general missing contracts. | Need bounded justified representation/demand contracts. | Preserve refusals; route shared needs through Merge. |
 
 Evidence: historical [C5](2026-10-03-C-BACKEND-EPOCH5-HANDOFF.md),
@@ -635,6 +651,15 @@ pinned/current producer images and emitted C/headers match byte-for-byte.
 Evidence and exact publication files are in the [epoch handoff](2026-10-03-C-BACKEND-EPOCH1-HANDOFF.md).
 
 ### Assessment
+
+C27 agent decision: reuse admitted parameter/representation views for a separate
+signed predicate profile rather than broaden old contracts. Fixed-width callback
+names avoid alias dereferences for builtin types. Carry target status privately
+without an arena so invalid enum tags cannot turn into successful Match/record
+results; public output remains unchanged on failure. Foreign signed comparisons
+exercise existing source recurrences only under caller interpretation/purity
+preconditions; admitted constant-source/Core evidence is separately labeled.
+No source signed-comparator/erasure/producer authority or native Acc completion.
 
 C26 agent decision: reuse existing active-field validators for complete selected
 value records under the existing all-child branching contract, with no owned graph
@@ -1189,6 +1214,13 @@ this target work while Main continues SE1, superseding the earlier AP6 hold.
   refusal plus affected O2/client-source SAN and linker/I-O gates.
 - [x] Prepare a separate exact14 C26 code/test/docs epoch for delegated review;
   native Acc/QuickSort/full #61 and accepted adoption remain unfinished.
+- [x] Independently verify exact14 C26 task/remote publication before distinct
+  live canonical edits; historical snapshot and current-producer review separate.
+- [x] C27: implement bounded signed predicate ABI and no-arena status propagation;
+  terminal74/affected69/61 each O2/client-source SAN,64 prior C/H exact and linker/
+  publication-I/O controls pass with runtime128/input pins and refusals retained.
+- [x] Freeze separate exact20 C27 source/test/docs and notify Merge; current-producer/
+  task/Main review and native Acc/QuickSort/full #61 remain separate.
 - [ ] Maintain the single issue table at material events and within six active
   hours; use brief pointer/hash notices and keep Core workflow in Assessment.
 - [ ] Coordinate further bounded target ABI/lowering increments under the latest

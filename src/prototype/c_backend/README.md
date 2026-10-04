@@ -500,6 +500,60 @@ bodies/backend/producer remain O2. Existing success, interpretation and borrowed
 lifetime preconditions remain. The
 [C19 handoff](../../../doc/2026-10-04-C-BACKEND-EPOCH19-HANDOFF.md) pins the scope.
 
+## Selected Signed Predicates
+
+The separate opt-in `predicate_signed_direct_v1` / `c_predicate_signed_v1`
+profile accepts borrowed synchronous unary/binary predicates over Int32 or Int64.
+Both binary domains must have the same represented width; the admitted pure TOTAL
+result must be a selected two-constructor nullary enum. Constructor order follows
+the selection. Existing profiles retain their callback refusals.
+
+```text
+abi c_predicate_signed_v1
+lowering predicate_signed_direct_v1
+fallback reject
+enum32 Bool Bool
+data Numbers32 Numbers32
+export filter32 filter32
+```
+
+The callback names encode arity, fixed input width and result alias length:
+
+```c
+struct ap_c_predicate_signed1_i32_r4_Bool {
+	void *context;
+	struct ap_enum_Bool (*call)(void *, int32_t);
+};
+struct ap_c_predicate_signed2_i64_r4_Bool {
+	void *context;
+	struct ap_enum_Bool (*call)(void *, int64_t, int64_t);
+};
+```
+
+`AP_C_PREDICATE_SIGNED_ABI` is 1. Code/context must implement the admitted
+pure-total source function and outlive the synchronous call; null context is
+permitted. Null code, including unused parameters, or invalid returned tags
+produce status2 and preserve output. Selected recursive/Nat carriers use the
+existing arena rollback path. Without those carriers, public functions take no
+arena; a private status pointer propagates failure through calls, Match and finite
+record results. Readable immutable borrowed inputs and output nonoverlap remain
+caller preconditions. This supplies no foreign failure protocol or source receipt.
+
+`check-c-signed-predicates` covers source/object/archive/shared/raw clients,
+781 Lists per width and18744 partition selections per product, signed extrema,
+stable filtering, reversed enum/Int64 field order and transactional failures.
+Foreign signed comparisons exercise the ABI and parameterized source recurrence;
+they do not establish an admitted source signed comparator or native QuickSort.
+Admitted constant source callbacks separately supply eight source/readback
+observations and120 Core tag/1248 Core length comparisons after inert emission.
+No-arena direct/nested/record results and a zero-argument executable are explicit
+controls. Thirteen checked/trusted refusal pairs retain old profiles and unsupported
+arity/result/effect/callable contracts. SAN instruments clients, generated source,
+raw and oracle bodies; other product bodies/backend/helpers/producer remain O2.
+Malloc injection covers source/object/archive, while shared products use capacity
+failures. Existing depth256, borrowed lifetime and native Acc/full #61 limits
+remain; no comparative cost, accepted adoption or source authority follows.
+
 `check-c-integer-predicate-boundary` probes ordinary Int32/Int64 Lists under the
 existing `c_native_v1` ABI. Known private predicates use source constant/captured
 Bool decisions and select all or none; they ignore pivot values. The same public

@@ -1,0 +1,13 @@
+aplink 1
+artifact scalar.a
+abi c_predicate_signed_v1
+target host-c11
+product source
+lowering predicate_signed_direct_v1
+fallback reject
+enum32 Bool Bool
+data Packet Packet
+export call64 call64
+export chain64 chain64
+export record64 record64
+export truth truth
