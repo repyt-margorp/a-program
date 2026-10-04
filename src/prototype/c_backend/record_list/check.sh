@@ -74,11 +74,19 @@ for name in ChainBox Aggregate DirectAggregate MultiPayload Tree Callback Depend
 	esac
 	[[ $name == Aggregate ]] && printf 'data ChainBox ChainBox\n' >> "$output/$name.aplink"
 	printf 'data %s Rejected\n' "$name" >> "$output/$name.aplink"
+	if [[ $name == Tree ]]; then printf 'export tree_identity tree\n' >> "$output/$name.aplink"; fi
 done
 for profile in missing-packet later-packet missing-envelope later-envelope ChainBox Aggregate DirectAggregate MultiPayload Tree Callback Dependent Indexed; do
 	for trust in checked trusted; do
 		options=()
 		[[ $trust == trusted ]] && options=(--trust-image --steps 0)
+		if [[ $profile == Tree ]]; then
+			expect_status "$profile-$trust" 0 "$backend" "${options[@]}" --link "$output/$profile.aplink" "$output/$profile-$trust"
+			expect_status "tree-compile-$trust" 0 "$cc" "${flags[@]}" -DTREE_DESTROY=ap_arena_Records_destroy -I"$output/$profile-$trust" \
+				"$here/../lower/tree_client.c" "$output/$profile-$trust/component.c" -o "$output/tree-client-$trust"
+			expect_status "tree-run-$trust" 0 "$output/tree-client-$trust"
+			continue
+		fi
 		expect_status "$profile-$trust" 4 "$backend" "${options[@]}" --link "$output/$profile.aplink" "$output/$profile-$trust"
 		no_product "$output/$profile-$trust"
 		test ! -s "$output/$profile-$trust.out"
@@ -86,4 +94,4 @@ for profile in missing-packet later-packet missing-envelope later-envelope Chain
 done
 sha256sum "$output/records.a" > "$output/after.sha256"
 cmp "$output/before.sha256" "$output/after.sha256"
-printf 'Finite value-record Lists: 259 cases/product, 13 source observations, nested active validation, reversed fields, transactional arrays and 24 checked/trusted refusals pass\n'
+printf 'Finite value-record Lists: 259 cases/product, 13 source observations, nested active validation, reversed fields, transactional arrays, former Tree refusal now positive and 22 checked/trusted refusals pass\n'

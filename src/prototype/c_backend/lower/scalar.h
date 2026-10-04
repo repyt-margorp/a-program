@@ -19,7 +19,7 @@ int pg_c_emit_callbacks(FILE *source, FILE *header, size_t count,
 int pg_c_emit_callbacks2(FILE *source, FILE *header, size_t count,
 	const struct pg_c_export *exports, size_t entry, const char **error);
 
-/* Explicit target-side representations, including single-tail recursive data.
+/* Explicit target-side representations, including bounded direct Self fields.
 	* The scalar profile has no selections. */
 int pg_c_emit_native(FILE *source, FILE *header, size_t count,
 	const struct pg_c_export *exports, size_t entry, size_t enum_count,
@@ -28,7 +28,7 @@ int pg_c_emit_native(FILE *source, FILE *header, size_t count,
 
 /* Copied emitter-selected metadata, valid after temporary lowering is destroyed. */
 struct pg_c_native_contract {
-	int recursive, natural, copy_out, value_fields;
+	int recursive, natural, copy_out, value_fields, branching;
 };
 int pg_c_emit_native_profile(FILE *source, FILE *header, size_t count,
 	const struct pg_c_export *exports, size_t entry, size_t enum_count,

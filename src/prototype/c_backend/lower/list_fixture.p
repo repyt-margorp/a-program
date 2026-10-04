@@ -18,3 +18,5 @@ constant := List.nil;
 block_callback := \xs : List => { f := \n : #Int32 => #int_add n #1; f (sum xs); };
 callback := \f : #Int32 -> #Int32 => \xs : List => f (sum xs);
 effect := \xs : List => { #print #"unsupported-effect"; sum xs; };
+tree_identity := \tree : Tree => tree;
+thunk_identity := \list : ThunkList => list;

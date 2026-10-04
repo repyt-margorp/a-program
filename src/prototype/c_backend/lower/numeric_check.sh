@@ -3,14 +3,25 @@ set -euo pipefail
 backend=${1:?a-to-c binary}
 compiler=${2:?pointer-check binary}
 here=$(cd "$(dirname "$0")" && pwd)
-temporary=$(mktemp -d)
-trap 'rm -rf "$temporary"' EXIT
+if [[ -n ${3:-} ]]; then
+	temporary=$3; test ! -e "$temporary"; mkdir -p "$temporary"; temporary=$(realpath "$temporary")
+else
+	temporary=$(mktemp -d); trap 'rm -rf "$temporary"' EXIT
+fi
+mkdir "$temporary/logs"
+command_count=0
 cc=${CC:-cc}
 read -r -a flags <<< "${C_BACKEND_CFLAGS:--std=c11 -Wall -Wextra -Werror -O2}"
 expect_status() {
 	local expected=$1 status=0
 	shift
+	command_count=$((command_count + 1))
+	printf '%q ' "$@" > "$temporary/logs/$command_count.command"
+	printf '\n' >> "$temporary/logs/$command_count.command"
 	"$@" > "$temporary/out" 2> "$temporary/err" || status=$?
+	cp "$temporary/out" "$temporary/logs/$command_count.out"
+	cp "$temporary/err" "$temporary/logs/$command_count.err"
+	printf '%s\t%s\t%s\n' "$command_count" "$expected" "$status" >> "$temporary/status.tsv"
 	if [[ $status != "$expected" ]]; then
 		cat "$temporary/out" "$temporary/err" >&2
 		printf 'expected %s, got %s: %s\n' "$expected" "$status" "$*" >&2

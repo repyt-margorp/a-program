@@ -3,7 +3,7 @@
 
 #include "representation.h"
 
-/* Emit target-only arena ownership and finite single-tail input validation. */
+/* Emit target-only arena ownership and finite recursive input validation. */
 void pg_c_nodes_declarations(FILE *, const struct pg_c_representations *);
 void pg_c_nodes_implementation(FILE *, const struct pg_c_representations *);
 

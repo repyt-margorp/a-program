@@ -33,3 +33,4 @@ sample := Records.cons (Envelope.pair (Packet.small #7 Bool.true) #3)
 sample_length := length sample;
 sample_sum := sum sample;
 sample_append := sum (append sample sample);
+tree_identity := \tree : Tree => tree;

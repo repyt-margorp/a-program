@@ -79,8 +79,13 @@ expect_status 0 "$backend" --link "$temporary/aggregates.aplink" "$temporary/agg
 expect_status 0 "$temporary/aggregates-client"
 cp "$fixtures/enum_list.aplink" "$temporary/bad.aplink"
 printf 'data Tree Rejected\n' >> "$temporary/bad.aplink"
-expect_status 4 "$backend" --link "$temporary/bad.aplink" "$temporary/bad"
-test ! -e "$temporary/bad"
+printf 'export tree_identity tree\n' >> "$temporary/bad.aplink"
+expect_status 0 "$backend" --link "$temporary/bad.aplink" "$temporary/tree"
+"$cc" "${flags[@]}" -DTREE_DESTROY=ap_arena_Flags_destroy -I"$temporary/tree" \
+	"$here/tree_client.c" "$temporary/tree/component.c" -o "$temporary/tree-client"
+expect_status 0 "$temporary/tree-client"
+expect_status 0 "$backend" --trust-image --steps 0 --link "$temporary/bad.aplink" "$temporary/tree-trusted"
+cmp "$temporary/tree/component.c" "$temporary/tree-trusted/component.c"
 sha256sum "$temporary/fixture.a" > "$temporary/after"
 cmp "$temporary/before" "$temporary/after"
 printf 'Native enum arrays: 875 cases per C product, 24 source observations, transactional input validation/rollback and 300-node conversion passed\n'

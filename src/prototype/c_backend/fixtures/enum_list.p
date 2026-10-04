@@ -28,3 +28,4 @@ signal_append := \xs : Signals => \ys : Signals => xs
 signal_identity := \xs : Signals => xs;
 callback := \f : #Int32 -> #Int32 => \xs : Flags => f (length xs);
 effect := \xs : Flags => { #print #"unsupported-effect"; length xs; };
+tree_identity := \tree : Tree => tree;
