@@ -1,0 +1,153 @@
+{
+  "date_UTC": "2026-10-04T07:49:35.270208+00:00",
+  "scope": "Independent read-only review of terminal private progress, not immutable epoch READY or Root runtime execution. No publication request.",
+  "source256_verified": {
+    "parent": "80b4610651207998d4789670ddef8f9ae4e497245aa00b3d9a9fce0777ab982d",
+    "candidate": "25967429ca326339107bb5851da27876b74186fe310b0b285a27c32058bd2efc"
+  },
+  "worker1460_and49_uncensored0_raw_records_pinned_verified": {
+    "current_spine_deletions_v1_paired_cuts_20261004": {
+      "before": 284,
+      "after": 284,
+      "raw_expected0_records": 1460
+    },
+    "current_spine_deletions_v1_inert_bytes_20261004": {
+      "before": 292,
+      "after": 293,
+      "raw_expected0_records": 49
+    }
+  },
+  "paired146_raw_bytes_hash_lengths_offsets_recomputed_failed3": [
+    {
+      "test": "materialized_fields_test",
+      "case": 0,
+      "cut": 13
+    },
+    {
+      "test": "materialized_fields_test",
+      "case": 1,
+      "cut": 13
+    },
+    {
+      "test": "materialized_fields_test",
+      "case": 6,
+      "cut": 7
+    }
+  ],
+  "inert24_raw_bytes_hash_lengths_offsets_recomputed_failed15": [
+    {
+      "test": "materialized_fields_test",
+      "case": 0,
+      "cut": 13,
+      "variant": "parent",
+      "writer_variants": [
+        "594504325b09c5b7cc7f25ffdae34cddaf3734fa652bd49dae03f738bf496c2e",
+        "d70e6eb374b732528f6f48b45ce1d68fac110d59e7d0f561c7e8002db8f8cd22"
+      ],
+      "resave_variants": [
+        "d70e6eb374b732528f6f48b45ce1d68fac110d59e7d0f561c7e8002db8f8cd22"
+      ],
+      "inert_byte_failures": 3,
+      "trials": 4
+    },
+    {
+      "test": "materialized_fields_test",
+      "case": 0,
+      "cut": 13,
+      "variant": "candidate",
+      "writer_variants": [
+        "1d7a3f8a55374e83d56a5892289d67f2800f3e5612d2f1b716850820c7195087",
+        "594504325b09c5b7cc7f25ffdae34cddaf3734fa652bd49dae03f738bf496c2e"
+      ],
+      "resave_variants": [
+        "d70e6eb374b732528f6f48b45ce1d68fac110d59e7d0f561c7e8002db8f8cd22"
+      ],
+      "inert_byte_failures": 4,
+      "trials": 4
+    },
+    {
+      "test": "materialized_fields_test",
+      "case": 1,
+      "cut": 13,
+      "variant": "parent",
+      "writer_variants": [
+        "1866ffe1e4b0b04132c58a61c2065e1c497185a969f23805199e2d2ac4606664",
+        "479911c461da91b836d0542591422ad21ee8682126fcacb0eea29ee45a635ef8",
+        "48465b1c76dc7282c9e1fcb21b954f9721dc4ff11c07edfc8f8417fd979f3d8f"
+      ],
+      "resave_variants": [
+        "1866ffe1e4b0b04132c58a61c2065e1c497185a969f23805199e2d2ac4606664",
+        "479911c461da91b836d0542591422ad21ee8682126fcacb0eea29ee45a635ef8"
+      ],
+      "inert_byte_failures": 4,
+      "trials": 4
+    },
+    {
+      "test": "materialized_fields_test",
+      "case": 1,
+      "cut": 13,
+      "variant": "candidate",
+      "writer_variants": [
+        "479911c461da91b836d0542591422ad21ee8682126fcacb0eea29ee45a635ef8",
+        "48465b1c76dc7282c9e1fcb21b954f9721dc4ff11c07edfc8f8417fd979f3d8f"
+      ],
+      "resave_variants": [
+        "479911c461da91b836d0542591422ad21ee8682126fcacb0eea29ee45a635ef8",
+        "48465b1c76dc7282c9e1fcb21b954f9721dc4ff11c07edfc8f8417fd979f3d8f"
+      ],
+      "inert_byte_failures": 1,
+      "trials": 4
+    },
+    {
+      "test": "materialized_fields_test",
+      "case": 6,
+      "cut": 7,
+      "variant": "parent",
+      "writer_variants": [
+        "84b8e53300a6041a217d896d6e44a9aed7598a49cbe01919a5addf51a0d48d45",
+        "99a1028f44341a675a2265f4d4db8223c491aae3d7263fed11a8fbe284c977a4"
+      ],
+      "resave_variants": [
+        "84b8e53300a6041a217d896d6e44a9aed7598a49cbe01919a5addf51a0d48d45",
+        "99a1028f44341a675a2265f4d4db8223c491aae3d7263fed11a8fbe284c977a4"
+      ],
+      "inert_byte_failures": 2,
+      "trials": 4
+    },
+    {
+      "test": "materialized_fields_test",
+      "case": 6,
+      "cut": 7,
+      "variant": "candidate",
+      "writer_variants": [
+        "84b8e53300a6041a217d896d6e44a9aed7598a49cbe01919a5addf51a0d48d45"
+      ],
+      "resave_variants": [
+        "84b8e53300a6041a217d896d6e44a9aed7598a49cbe01919a5addf51a0d48d45",
+        "99a1028f44341a675a2265f4d4db8223c491aae3d7263fed11a8fbe284c977a4"
+      ],
+      "inert_byte_failures": 1,
+      "trials": 4
+    }
+  ],
+  "Fold67_materialized79_all_four_O2_SAN_readers_results_verified": true,
+  "private_snapshot_pins": {
+    "current_spine_deletions_v1_paired_cuts_20261004": {
+      "summary.json": "37222979a001ba5b8662fc241742bd4e9718ba54e0571b6a9ece35cd1c645597",
+      "records.json": "d8c4470612c585c262bf699df3eed0462907d0e8697a832e2bdb892e0b901506",
+      "inputs-before.json": "b8a0b91a540d2648e7fcbc424415273f3a8c17b3fbb13ee39b02344840e564ee",
+      "inputs-after.json": "b8a0b91a540d2648e7fcbc424415273f3a8c17b3fbb13ee39b02344840e564ee",
+      "byte-pairs.json": "f4b70b7e0e276bf0fc4ac7350f61ad166376e19d3774f78ba0cbda916a222a18"
+    },
+    "current_spine_deletions_v1_inert_bytes_20261004": {
+      "summary.json": "37f5d78a0d4a46d813f929d46e3ad3771fa6806e84b4d4a4e7813b172320a040",
+      "records.json": "770738e4a547cc869d7423ec058a9b0db8299f1c37b87dde5a121bb8807bb216",
+      "inputs-before.json": "a075d1896aa3805d8e657587bc1837851b8639cdd979baf4a1468737234dffd6",
+      "inputs-after.json": "0f490aa596f266660cb4bbc9c5d530377045d4fb74ced4bfa59ff878bd3980ba",
+      "byte-rows.json": "469cf6e832e8111a55de0809aec98f00a030cd551d15231e483f55928bf54d17"
+    }
+  },
+  "cost36_configuration_source256_all297_exact_unchanged": true,
+  "decision": "Runtime remains HOLD. New spine pair80b->259 is distinct from historical frame pairc414->80b6/146 and29/48; fewer differences do not waive any failure or establish improvement. Both writer processes vary at some repeated boundaries. No codec/ordering/canonicalization/fixture/assertion adapter, original inert zero-fuel probe retained. Current consumers/namespace/borrowed output and immutable final freeze remain pending. Original codec-owner disposition/full acceptance/current E23 composition/actual cost/adoption remain open. No heavy Root work/new exclusive cost grant, no owner input/resume.",
+  "runtime_READY_task_publication_cost_grant_byte_waiver_accepted_promotion_or_Goal_completion": false
+}

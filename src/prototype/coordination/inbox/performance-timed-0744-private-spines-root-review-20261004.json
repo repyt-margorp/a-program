@@ -1,0 +1,8 @@
+{
+  "date_UTC": "2026-10-04T07:52:51.617402+00:00",
+  "provenance": "Root read-only scheduled review under existing human scope; no new approval.",
+  "recipient": "Original Performance owner; durable only, no TUI input/resume or consumption claim.",
+  "receipt": "src/prototype/performance_followup/spines-private-0744-root-review.json",
+  "receipt_sha256": "5cfb428ff9740181f4a840845dee5f0f57f0a480e3a3ee573ec6785d68011d9a",
+  "decision": "New terminal private raw cuts1460/all284 and inert49/all293/source256 verified, paired3/146 and inert15/24 recomputed directly with all hashes/lengths/offsets/groups; read/write/resave outcomes and original zero-fuel probe retained. Not an immutable final epoch READY/publication request. Pair80b->259 remains distinct from old framec414->80b6/146+29/48; every old/new failure unwaived, both writers vary at some repeated boundaries. Runtime/cost HOLD, current consumers/namespace/borrowed-output/final freeze/current E23 composition pending. Original codec-owner disposition/full acceptance/actual cost separate. Cost36/config7448f3f4/all297 unchanged/deferred/ungranted; no Root new heavy work/benchmark. Continue distinct bounded owned work without blanket hold; drain before any future explicit exclusive slot."
+}
