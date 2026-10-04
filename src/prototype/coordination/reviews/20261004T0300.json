@@ -1,0 +1,438 @@
+{
+  "review_UTC": "2026-10-04T03:02:38.512375+00:00",
+  "review_trigger": "Current cuts/capacity terminal HOLD c6ca3019; worker evidence, not human approval. Independent timed01:44 and C22/flags/cause/consumer02:22 reviews remain historical.",
+  "Main_at_review": "ab7924059dc7c0f7079b9ff091e9afda34d71e9d",
+  "preceding_review_path": "src/prototype/coordination/reviews/20261004T0222.json",
+  "preceding_review_sha256": "a06b4e9fe11ac42c32dd7128aa003a6569429e48813a5c7af5a02a1022150f1b",
+  "owners": {
+    "C": {
+      "pane": "%0",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-cuts-capacity-owner-status/C-final.txt",
+      "capture_sha256": "ea95a54ff6c1cdb2231856d4ca90997a4006622bc54149b8b535273bca449ffb",
+      "last_status_lines": [
+        "    8    0    src/prototype/c_backend/build.mk",
+        "    +90 lines (ctrl+t to view transcript)",
+        "",
+        "\u2022 Working (59m 54s \u2022 esc to interrupt)",
+        "",
+        "\u2022 Queued follow-up inputs",
+        "  \u21b3 Root C22 release: exact12 task8b6debfcf836451b9e972aba9f3f624f24b406e9 / prototype Maina0a9dc38dde82d8ef410251b1362bb2e7757091c pushed/remote exact.",
+        "    Preserved1839 recorded live files; other11 Main bytes exact, Goal provenance alone reconciled. Current E18+MEM9 source128c414202a: strict O2 backend/two",
+        "    helpers rebuilt; nested40, parent recursive114, integer61 each O2/client-source SAN pass,84 parent C/H bytes exact C21. Retained192/runtime128/raw1603",
+        "    \u2026",
+        "    shift+\u2190 edit last queued message",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/c-backend \u00b7 Verify Surface index.lock handoff            Pursuing goal (20h 9m)    \u26a0 1 warning \u00b7 f2 to view"
+      ],
+      "stopped_bounded": false
+    },
+    "Performance": {
+      "pane": "%1",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-cuts-capacity-owner-status/Performance-final.txt",
+      "capture_sha256": "3127518724afa8bb18a664a08ebc18f161173801290d1060e8d80af621da5d3b",
+      "last_status_lines": [
+        "    +104 lines (ctrl+t to view transcript)",
+        "",
+        "\u2022 Waiting for background terminal (10m 52s \u2022 esc to interrupt) \u00b7 1 background terminal running \u00b7 /ps to view \u00b7 /stop to close",
+        "  \u2514 python3 src/prototype/performance_mem10/qualify_current_transport.py",
+        "",
+        "\u2022 Queued follow-up inputs",
+        "  \u21b3 Root current cuts/capacity c6ca3019 review: frozen16/private1785+71+36/current256 sources/all296 distinct input pins and prior freezes exact. Independently",
+        "    checked all1476 semantic/fuel/SAN command records0,146 paired images,33 repeated semantic records and16 read-only capacity records. BYTE HOLD: materialized",
+        "    case1/cut13 and case5/cut9 differ2/146; repeated inert failures8/16, same-binary writers vary on both parent and flags. All67 Fold pairs exact. Main Root",
+        "    \u2026",
+        "    shift+\u2190 edit last queued message",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/performance \u00b7 Verify Surface index.lock issue         Pursuing goal (1d 0h 56m)    \u26a0 1 warning \u00b7 f2 to view"
+      ],
+      "stopped_bounded": false
+    },
+    "Job": {
+      "pane": "%4",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-cuts-capacity-owner-status/Job-final.txt",
+      "capture_sha256": "de70da2f96128733a19ebdf766e70cefeb7c9f0e3108186922ca74827bb72d45",
+      "last_status_lines": [
+        "  workers/merge-storage-20261003/mem6-byte-baseline-root-review.json. E17 remains separate. Owner coordination evidence, not new human approval.",
+        "",
+        "",
+        "\u2022 Queued follow-up inputs",
+        "  \u21b3 Root release: E18 exact26 task a8f52a015f73fe7cfa067c3d5b122bef7e4532b4 and prototype Main165789434f528e1c55cb446af831475652c54ca4 are pushed/remote exact.",
+        "    Current Root E18 source128efcdeaa4 full synthesis/source-checkpoint O2+SAN/CLI0; strict1 expected original three unwaived; public52/full TSV byte exact E17.",
+        "    Frozen26 unchanged; explicit existing-current named-field syntax bridges/canonical alignment are recorded. Root report merge-storage-20261003/e18-current-",
+        "    \u2026",
+        "    shift+\u2190 edit last queued message",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/job-evidence \u00b7 Implement remaining SE1-SE5 simpl    Goal stalled (/goal resume)    \u26a0 1 warning \u00b7 f2 to view",
+        "",
+        ""
+      ],
+      "stopped_bounded": false
+    },
+    "Static": {
+      "pane": "%10",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-cuts-capacity-owner-status/Static-final.txt",
+      "capture_sha256": "c171c1c2631ac54bd2dba21ce78b3e4037bf761d6d42c20cf14ead86e8f85fb0",
+      "last_status_lines": [
+        "  \u2502 import hashlib",
+        "  \u2502 \u2026 +5 lines",
+        "  \u2514 Review receipt: 1191 bytes; SHA-256 1e8b99182da029cc62daacc9ce2cb6bbb79e5b79ba173b9aeba6c7f79dc5569f",
+        "",
+        "\u2022 Review receipt recorded for Merge (src/prototype/coordination/outbox/verification-audit-11-review-receipt.txt). Config and key remain unchanged; no audit",
+        "  outputs or timing exist.",
+        "",
+        "  Bounded static delivery remains complete. Cost is deferred and unmeasured; full Issue 59 stays open pending later exclusive scheduling.",
+        "",
+        "  Worked for 1m 15s \u2022 17:54",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/verification-audit \u00b7 Hand off static inventory              Goal achieved (50m)    \u26a0 1 warning \u00b7 f2 to view"
+      ],
+      "stopped_bounded": true
+    },
+    "Sort": {
+      "pane": "%11",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-cuts-capacity-owner-status/Sort-final.txt",
+      "capture_sha256": "afa71c1e238de91661f224ebe655f6538fd4d8cbb92cd6037a2d890b73e5ea9a",
+      "last_status_lines": [
+        "    FINAL_MANIFEST_SHA256 e0adf408179cfde0a98ec11c448ef5967c3d945c2c198e7e79a93456208f21eb",
+        "    FINAL_NOTICE_SHA256 2f7c99e62b67d5a9eecc61ae7878d35023244d7bdeeb1f375b0073f558344259",
+        "    +1 line (ctrl+t to view transcript)",
+        "",
+        "\u2022 Corrected provenance in the SOAP snapshot and owning plan: Merge\u2019s follow-up is agent operational direction; human requirements explicitly cite F0.",
+        "",
+        "  Refrozen and wrote the final corrected ready notice (src/prototype/coordination/outbox/finite-functions-ready-provenance-final.txt). All +301 implementation/",
+        "  fixture/runner lines and test logs remain byte-identical. No rerun, accepted changes, new Goal, or duplicate worker.",
+        "",
+        "  Worked for 6m 44s \u2022 19:14",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/sort-library \u00b7 Start authorized sort worker                 Goal achieved (24m)    \u26a0 1 warning \u00b7 f2 to view"
+      ],
+      "stopped_bounded": true
+    },
+    "Tests": {
+      "pane": "%12",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-cuts-capacity-owner-status/Tests-final.txt",
+      "capture_sha256": "bb2a980cb52eefdfcafba6b9aa53e89c402c08e024bf01010d40d62417a7ee1b",
+      "last_status_lines": [
+        "",
+        "  Original/reduced outcomes match; ten injection checks pass. All 47 completed combined recipes pass. E9/E10 controls, strict3 and unsafe E11 failures remain",
+        "  preserved. The unchanged derived-LT run is recorded as incomplete after its 600-second cap. Wall/RSS savings are unmeasured.",
+        "",
+        "  Exact Merge handoff and full per-file counts (src/prototype/coordination/outbox/test-suite-20261003-final-handoff.txt) are frozen. Git staging is blocked by",
+        "  read-only shared metadata. Accepted files remain untouched; Issue59 stays open.",
+        "",
+        "  Goal complete; elapsed time approximately 38 minutes.",
+        "",
+        "  Worked for 38m 29s \u2022 22:34",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/test-suite \u00b7 Simplify and deduplicate tests                 Goal achieved (37m)    \u26a0 1 warning \u00b7 f2 to view"
+      ],
+      "stopped_bounded": true
+    },
+    "Issues": {
+      "pane": "%14",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-cuts-capacity-owner-status/Issues-final.txt",
+      "capture_sha256": "c19bf743ddab52e861d9f6c00b9c96bf3fa1a67946a70a5bb54dd6993c7f8829",
+      "last_status_lines": [
+        "  coordination. No new semantic/accepted policy.",
+        "",
+        "",
+        "\u2022 I\u2019ll confirm the completion accounting. The audit remains stopped, and Root has resumed coordination.",
+        "",
+        "\u2022 Goal confirmed complete. Recorded usage: 216,461 tokens, 23m 50s.",
+        "",
+        "  The audit remains stopped and available for follow-up. Root owns coordination; no further dispositions will run.",
+        "",
+        "  Worked for 26s \u2022 22:31",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/issue-audit \u00b7 Record audit ownership receipt                Goal achieved (23m)    \u26a0 1 warning \u00b7 f2 to view"
+      ],
+      "stopped_bounded": true
+    }
+  },
+  "issues": [
+    {
+      "number": 61,
+      "title": "C backend residuals: selected-export admission, Identity and native lowering",
+      "updatedAt": "2026-10-03T13:11:54Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/61",
+      "body_sha256": "41872697f2356c60e77c7f4d5c481705f03d5d3ae5d83618194b090a76e7451a"
+    },
+    {
+      "number": 59,
+      "title": "Audit verification debt: semantic test inventory, lifecycle and implementation progress accounting",
+      "updatedAt": "2026-10-03T13:08:50Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/59",
+      "body_sha256": "7c8c563717262b330d0bcb2fdb7ec3454b206d223e9461c7fcbe518b74e07657"
+    },
+    {
+      "number": 57,
+      "title": "Correct Function Graph named-binding polarity and define explicit syntax migration",
+      "updatedAt": "2026-10-03T13:08:54Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/57",
+      "body_sha256": "5cc775e0494e7fe6b2c53cb5da989ad857f0f16afa794d24827db6a997cb0279"
+    },
+    {
+      "number": 56,
+      "title": "Recover and revalidate checker head/readback optimizations with Effort and persistence gates",
+      "updatedAt": "2026-10-03T13:08:58Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/56",
+      "body_sha256": "52d4c5e60b5b499ff1d99b64d5ac4367bbd5119b2beb9a245f17ce9fbc3afd2f"
+    },
+    {
+      "number": 52,
+      "title": "Design: checked equality reuse before adaptive compilation and equality saturation",
+      "updatedAt": "2026-10-03T13:09:06Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/52",
+      "body_sha256": "a270ef5933cab792d4e511eed2561b3bcffde014f13ffbf757e08df9a254c806"
+    },
+    {
+      "number": 51,
+      "title": "Audit follow-up: reproducible size and semantic-owner anti-regression gates",
+      "updatedAt": "2026-10-03T13:09:01Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/51",
+      "body_sha256": "b52ce7f7e49279990ba5b8b53a739436d153b62f6af8c6feef75a829bd7e589e"
+    },
+    {
+      "number": 47,
+      "title": "Design runtime relevance and safe compilation admissibility for partial artifacts",
+      "updatedAt": "2026-10-03T13:09:14Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/47",
+      "body_sha256": "bb2b1b52fbdbdba494a4a5a5cb369bb4b10500a0a1ec577a271a3aa147af6dd8"
+    },
+    {
+      "number": 43,
+      "title": "Open question: computation-level general recursion, loop syntax and logical boundaries",
+      "updatedAt": "2026-10-03T13:09:10Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/43",
+      "body_sha256": "ecd1df90dd66e3b3f4df97abceb23eaf8047e03f74932c4a8982d3ace3fa9f9e"
+    },
+    {
+      "number": 41,
+      "title": "Design audit: finite-container sorting, lawful views and position permutations",
+      "updatedAt": "2026-10-03T13:09:17Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/41",
+      "body_sha256": "e539925b68f41a5e3b22f95f8b53f763aec5d86f10f1a190fbdd984cb092e72c"
+    }
+  ],
+  "issues_json_sha256": "fbae87f585dfc4611497d8cdb89edde9a5dac570de7844ba1a8a260287cf0d53",
+  "open_PRs": [],
+  "fresh_issue_bodies_dates_exact_prior": true,
+  "timer_PID": 1674731,
+  "timer_capture": "    PID                  STARTED COMMAND\n1674731 Sat Oct  3 18:31:03 2026 node /home/repyt/workspace/a-program/src/prototype/coordination/watch_core.cjs 01a100b3-1d83-7090-bbf6-62544c39ec4b --new-only --heartbeat-seconds=21600 --heartbeat-first-seconds=15197.714 /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/coordination/outbox /home/repyt/workspace/a-program-workers/performance/src/prototype/coordination/outbox /home/repyt/workspace/a-program-workers/c-backend/src/prototype/coordination/outbox /home/repyt/workspace/a-program-workers/verification-audit/src/prototype/coordination/outbox /home/repyt/workspace/a-program-workers/sort-library/src/prototype/coordination/outbox\n",
+  "next_review_UTC": "2026-10-04T07:44:22.084Z",
+  "no_worker_resumed_duplicated_or_mode_changed": true,
+  "C22": {
+    "task": "8b6debfcf836451b9e972aba9f3f624f24b406e9",
+    "prototype_Main_merge": "a0a9dc38dde82d8ef410251b1362bb2e7757091c",
+    "current_report_sha256": "ce041c859a5c39b3d131551c92c83b61bdf4b7f41aa6b7276e04462ddacb977b",
+    "receipt_path": "src/prototype/c_backend/verification/core-epoch22.json",
+    "receipt_sha256": "699afb1d3ebc679aeb0ebd5e7de2f46b11b45464bf42d52956d5d10f2338fe08",
+    "exact12_task_other11_Main": true,
+    "current_nested40_parent114_integer61_O2_SAN": true,
+    "parent_C21_generated84_bytes_exact": true,
+    "worker_live_files_preserved": 1839,
+    "C21_release_consumed": true
+  },
+  "C23": {
+    "status": "Original active owner reports private source-sort48 O2/client-source SAN and affected C22 nested40 each, plus link/publication-I/O19 controls0. This is pane-observed private progress; frozen READY/raw/current full/inert review pending, no task publication/native indexed Acc/QuickSort/full61 completion.",
+    "original_C22_release_still_queued_in_pane": true
+  },
+  "current_flags_prior_receipts": {
+    "Performance_flags_review": {
+      "notice_sha256": "542821decd4118a26f2730da3d927fec0c6cf1406c7ea6cd6c5e730edfd56bc2",
+      "Root_receipt_path": "src/prototype/performance_followup/mem10-current-flags-root-review.json",
+      "Root_receipt_sha256": "a8ad5e6c725053adeb42c6badc9e3d65d292be3808aabf1771fe5a519d777cd5",
+      "Root_raw_report_sha256": "0de2e48bf58a9ad11745d9e72c8e432d8bd7f74e2087c3ba3342c6f927941ff9",
+      "candidate_source128": "48c5f872e2dfb88e307f775f8b88d57abc65d552e3462b63cb1d06e9590bd75c",
+      "frozen15_private259_current384_pins23_exact": true,
+      "fresh_three_layouts_callback_controls_O2_SAN_original_lifetime18_pass": true,
+      "four_configuration_writer_images_exact": true,
+      "aligned_owners_equal_current_baseline": [
+        160,
+        384,
+        192
+      ],
+      "prepared_trial_aligned_reduction_each": 16,
+      "current_baseline_aligned_reduction_each": 0,
+      "known_root_and_current_byte_feedback_consumed_in_notice": true,
+      "runtime_or_task_or_cost_publication": false
+    },
+    "current_byte_cause": {
+      "notice_sha256": "92d9345c66868208cc3532d91a434b906fab9d462ca8d4b92566b7dc2a96d6be",
+      "Root_review_path": "src/prototype/performance_followup/mem10-current-byte-cause-root-review.json",
+      "Root_review_sha256": "f56cc30b00aa541423890d073c485e298f12c1d1a77c27cb90cf71f6c332bd61",
+      "frozen36_manifest_sha256": "de0af10f23b6328df151e1d39952d54da3e0634ae782f4c2261c70be157b778a",
+      "private27_manifest_sha256": "92a741a4da41f5398d9229d8bde15f429e7b3535cb23c8b03116d8de766c5d3e",
+      "source128_all143_pins_exact": true,
+      "four_debug_records_all_hash_buckets_heads_DAG_footer_recomputed": true,
+      "bounded_fixture_cause_verified": "Pointer-derived buckets enumerate two detached reusable results in opposite orders; their two four-root groups account for all eight differing bytes in the1249-byte unchanged-current fixture.",
+      "new_debug_inert2_of4_retained": true,
+      "initial_wrong_total_and_unsupported_GDB_setting_retained": true,
+      "original_O2_current5_of8_and_historical51_or_paired6_failures_unwaived": true,
+      "Job_owner_route_path": "src/prototype/coordination/inbox/job-evidence-mem10-current-byte-cause-20261004.json",
+      "Job_owner_route_sha256": "0a35bc05578b1f42b8eae296b2be054b39c4cfd03aa89312973503a2d7a83cfc",
+      "Main_original_Job_route_bytes_exact": true,
+      "no_original_Job_turn_or_Goal_resume_or_consumption_claim": true,
+      "runtime_fix_READY_cost_publication": false,
+      "Performance_feedback": {
+        "message_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-byte-cause-feedback.txt",
+        "message_sha256": "b1559a6195ffaae39e1fc8c79da8edf33f322135d4ae5737587402ec0d6a44a3",
+        "delivery": "Exact new composer verified, Tab submitted once to original active Performance at tool boundary; no consumption claimed."
+      }
+    },
+    "current_consumer_addendum": {
+      "notice_sha256": "fe2cde24809300704bea658c80c633e3d84e4321a3c55c728fd68d234aef31d3",
+      "Root_review_path": "src/prototype/performance_followup/mem10-current-consumers-root-review.json",
+      "Root_review_sha256": "c200906d8e53fd07558e6e5db171c4e095d5ec1efba8595e99882eecea9aa8e0",
+      "source128": "48c5f872e2dfb88e307f775f8b88d57abc65d552e3462b63cb1d06e9590bd75c",
+      "frozen10_private454_all_hashes_exact": true,
+      "worker14_terminal0_uncensored": true,
+      "nested70_cuts_each_flavor_recomputed": true,
+      "five_unit_outputs_O2_SAN_exact": true,
+      "current_machine_byte_HOLD_unchanged": true,
+      "no_Root_runtime_rerun_or_task_runtime_cost_publication": true
+    }
+  },
+  "current_cuts_capacity": {
+    "notice_sha256": "c6ca3019a70030525f7d8a7f90d383d422509ea8d331e40d7a5a07f30493fbfd",
+    "Root_review_path": "src/prototype/performance_followup/mem10-current-cuts-capacity-root-review.json",
+    "Root_review_sha256": "a0fcf592d835609bfbc80a0d30d4a693a161b35169b32af303ae960d5a98566f",
+    "frozen16_exact": true,
+    "private1785_71_36_source256_and_unique296_pins_exact": true,
+    "paired1476_semantic_fuel_SAN_records0": true,
+    "Fold67_materialized79_pairs_recomputed": true,
+    "paired_byte_gate": "FAIL2/146: materialized case1/cut13 and case5/cut9; all67 Fold equal.",
+    "repeated_byte_gate": "FAIL8/16: case1 parent2/4 flags1/4; case5 parent3/4 flags2/4. Both same-binary writers vary.",
+    "repeated33_semantic_records0": true,
+    "capacity16_records0": true,
+    "capacity_comparisons_recomputed": {
+      "list-done": {
+        "charged_steps": 1915,
+        "parent_capacity_bytes": 425984,
+        "flags_capacity_bytes": 425984,
+        "capacity_delta": 0,
+        "used_delta": 0,
+        "changed_groups": [],
+        "all_sampled_shared_indexes_and_jobs_equal": true
+      },
+      "trees4-cut10K": {
+        "charged_steps": 10000,
+        "parent_capacity_bytes": 1458176,
+        "flags_capacity_bytes": 1458176,
+        "capacity_delta": 0,
+        "used_delta": -13232,
+        "changed_groups": [
+          "whnf.PG_EVAL_PENDING.machine"
+        ],
+        "all_sampled_shared_indexes_and_jobs_equal": true
+      },
+      "trees4-cut100K": {
+        "charged_steps": 100000,
+        "parent_capacity_bytes": 4489216,
+        "flags_capacity_bytes": 4243456,
+        "capacity_delta": -245760,
+        "used_delta": -228736,
+        "changed_groups": [
+          "whnf.PG_EVAL_PENDING.machine"
+        ],
+        "all_sampled_shared_indexes_and_jobs_equal": true
+      },
+      "trees4-cut1M": {
+        "charged_steps": 1000000,
+        "parent_capacity_bytes": 22953984,
+        "flags_capacity_bytes": 21430272,
+        "capacity_delta": -1523712,
+        "used_delta": -1543360,
+        "changed_groups": [
+          "whnf.PG_EVAL_PENDING.machine"
+        ],
+        "all_sampled_shared_indexes_and_jobs_equal": true
+      },
+      "trees4-cut2M": {
+        "charged_steps": 2000000,
+        "parent_capacity_bytes": 23330816,
+        "flags_capacity_bytes": 21938176,
+        "capacity_delta": -1392640,
+        "used_delta": -1403664,
+        "changed_groups": [
+          "whnf.PG_EVAL_PENDING.machine"
+        ],
+        "all_sampled_shared_indexes_and_jobs_equal": true
+      },
+      "trees16-cut5M": {
+        "charged_steps": 5000000,
+        "parent_capacity_bytes": 61292544,
+        "flags_capacity_bytes": 57016320,
+        "capacity_delta": -4276224,
+        "used_delta": -4283184,
+        "changed_groups": [
+          "whnf.PG_EVAL_PENDING.machine"
+        ],
+        "all_sampled_shared_indexes_and_jobs_equal": true
+      }
+    },
+    "capacity_scope": "Selected retained allocated arenas, changed pending-machine group only. Equal nine current layouts/shared payload/index/WHNF/NF counts. Not whole-process RSS/time/peak/dead-memory/safe reclamation bounds; external malloc arrays/metadata/slack omitted.",
+    "Root_flags_review_consumed_in_notice": true,
+    "original_Fold_bounded_cause_not_every_materialized_cause": true,
+    "Job_route_path": "src/prototype/coordination/inbox/job-evidence-mem10-current-materialized-bytes-20261004.json",
+    "Job_route_sha256": "31107ad241bbcaf887b8dbefd855330e1fdf53eadb14b61d0b46a6ee1e2ce1b8",
+    "Main_original_Job_route_exact": true,
+    "no_original_Job_turn_resume_or_consumption_claim": true,
+    "Performance_feedback": {
+      "date_UTC": "2026-10-04T03:02:27.694111+00:00",
+      "message_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-cuts-capacity-feedback.txt",
+      "message_sha256": "029873a2e94df71c6d57ec4114d2b9a9e7ab73fd435f48951bcde7730f69bfbf",
+      "delivery": "Exact literal message submitted once, pasted-composer length verified, Tab queued once to original active Performance at tool boundary; queue redraw observed, no consumption claimed.",
+      "consumption_claimed": false,
+      "no_owner_resume_or_duplicate": true,
+      "queue_redraw_observed": true,
+      "queue_capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-cuts-capacity-owner-status/Performance-final.txt",
+      "queue_capture_sha256": "3127518724afa8bb18a664a08ebc18f161173801290d1060e8d80af621da5d3b"
+    },
+    "Root_runtime_GDB_cost_rerun": false,
+    "runtime_READY_task_runtime_publication_cost_grant_byte_waiver_adoption": false
+  },
+  "Performance_private_progress": "Original active owner separately qualifies current transport/semantic/IADT/SourceIO/IdentityIO/seven checkpoints. Pane reports O2/SAN SourceIO, IdentityIO, transport and normalization pass, while several committed IADT/semantic/checkpoint fixtures fail compilation on both parent and flags against current reader API. Initial matching setup failures are retained; exact API/fixture provenance under investigation. Terminal freeze/raw/cause/fix not independently reviewed; no runtime regression or success inferred.",
+  "MEM10": "Review-only/HOLD. New current paired2/146 and repeated8/16 byte failures remain unwaived alongside historical51/1168,paired6/146,current Fold5/8,debug2/4. Sampled current arena benefit verified, not RSS/time. Full current checkpoint/transport/acceptance/downstream C/.a and codec disposition pending; no runtime/task/cost publication or slot.",
+  "Job": "Original service-stalled; E19 full/current freeze qualification and E20 private remain pending. Exact current byte handoff in original-owner durable inbox; no resume/new turn/consumption claimed.",
+  "bounded_workers": "Static/Sort/Tests/Issues remain achieved/stopped with delivered bounded handoffs; Surface/AIze historical delivered/stopped. No repeated gates or owner restart.",
+  "issue_criteria_assessment": {
+    "61": "C22 extends bounded private IH captures with finite positive/negative/resource coverage. Selected-export partial-artifact contract, broader Identity/indexed/callable representations and native Acc/QuickSort remain incomplete. C23 private action is not completion.",
+    "56": "MEM9 qualified source/current timing/RSS unmeasured. MEM10 current cuts/SAN semantics and retained-arena reductions verified, but paired2/146 and inert8/16 byte failures held; codec disposition/current remaining/downstream/acceptance and actual RSS/time incomplete.",
+    "51": "E18/MEM9 delivered with strict3 unwaived; E19 full/current qualification remains with original stalled Job. New exact current materialized counterexamples routed durably, no owner resume/ack. Independent fields/reusable results retained, full semantic-owner/size criteria incomplete.",
+    "59": "Bounded static inventory and test-consolidation pilot delivered, unique controls preserved. Controlled actual cost and full suite lifecycle/adoption remain deferred; completed bounded owners stay stopped.",
+    "57": "Surface prototype delivered; accepted polarity migration and selector diagnostics/design remain separate unresolved criteria.",
+    "52": "Checked equality-reuse design remains separate; source storage/C capture changes do not implement it.",
+    "47": "General relevance/partial-artifact admissibility design remains open; private type/capture binding gives no pending-evidence or erasure authority.",
+    "43": "General recurrence/logical boundary remains a user design decision; no new syntax/rules implemented by these epochs.",
+    "41": "Finite-function/Sort bounded prototypes delivered; wider container/view/position laws and accepted interface choice remain separate."
+  },
+  "Root_Goal": {
+    "fresh_service_status": "blocked",
+    "tokensUsed": 3262854,
+    "timeUsedSeconds": 25296,
+    "incomplete_no_resume_or_complete": true
+  },
+  "protected9_exact": true,
+  "accepted_source_test_build_changes": false,
+  "comparative_cost_slot": "none held or granted",
+  "desk_reporting": "One durable material outbox update for this cuts/capacity delta, no duplicate direct desk message."
+}

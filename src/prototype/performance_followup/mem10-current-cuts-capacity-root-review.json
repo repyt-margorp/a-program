@@ -1,0 +1,1094 @@
+{
+  "review_UTC": "2026-10-04T02:54:45.322658+00:00",
+  "notice_sha256": "c6ca3019a70030525f7d8a7f90d383d422509ea8d331e40d7a5a07f30493fbfd",
+  "frozen_epoch_path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/epochs/fresh_argument_pairs_flags_v2_current_gates_held",
+  "frozen16": {
+    "Root-flags-review.json": "a8ad5e6c725053adeb42c6badc9e3d65d292be3808aabf1771fe5a519d777cd5",
+    "analysis.md": "b6fe7083e693a59488f8aa871742fa1b767174695abc0a705a536157ca481a0c",
+    "byte-repeat-summary.json": "aeaf1841225714221bf05a5230ec3f3976bf67eb7275c89b69f6da8fb93b86e4",
+    "capacity-summary.json": "1233784094b6eb2b1a40010740c4a42ea5928a782bf27e2644137fd03e2a996c",
+    "cuts-byte-pairs.json": "02499f713f75fad2877d44a13d8465803dc6b75df9ef0ceb43afad1b288e11dd",
+    "cuts-summary.json": "73713fc0fe9cb6160f4fa437c778b88ab02c764dfd9bc647b46c32daf3f0af7a",
+    "flags-runtime-manifest.sha256": "4c4f58a49a3687a59797f3d42677c4b3826435410c3421dc0dd82dc6905b0dca",
+    "handoff.json": "f49301f399845433ed77ae52b3bd27cec99a689c817a2e1283b855609e656c3f",
+    "parent-source.sha256": "c414202a4abb79301b04431b75008fa828dd60712b50518a1d4824e5d555b64b",
+    "private-evidence.json": "a3fc5a8a05dfeafb3566ab1646488cb4cdd4d894cb0539d23a9e6882e71d9ddd",
+    "qualify_current_capacity.py": "b5a8f2c12d1aca19f8818d376ac8abd30670e25a1cb9458bdd6dc216cf69da9a",
+    "qualify_current_cuts.py": "78b013a5df33b11ce3101cd4b77632817d3578ae03036e5dd5f1dcf0c3541084",
+    "repeat_current_materialized_bytes.py": "08e3ac3d4fcc93a8246d435bd3bccddda2917f81c7adad627be50098e0517a01",
+    "repeated-byte-rows.json": "27679cff8707df16d47f0a65d7b0a5d7d8969f2cf1612952b9946a06c778db83",
+    "source.sha256": "48c5f872e2dfb88e307f775f8b88d57abc65d552e3462b63cb1d06e9590bd75c",
+    "manifest.sha256": "e11c3f2a9ec1a3611d79d44924fc26896df3ba4411dc0c40436d54b5829c3c6c"
+  },
+  "sources": {
+    "parent": "c414202a4abb79301b04431b75008fa828dd60712b50518a1d4824e5d555b64b",
+    "flags": "48c5f872e2dfb88e307f775f8b88d57abc65d552e3462b63cb1d06e9590bd75c"
+  },
+  "private_packages": {
+    "cuts": {
+      "root": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_paired_cuts_v2_20261004",
+      "manifest": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_paired_cuts_v2_20261004/verification.sha256",
+      "sha256": "0246305c1c27ff399ba4c52ef3c12674ade90db00e712d798d95d2c7153d8861",
+      "files": 1785,
+      "summary_sha256": "73713fc0fe9cb6160f4fa437c778b88ab02c764dfd9bc647b46c32daf3f0af7a"
+    },
+    "capacity": {
+      "root": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_capacity_v2_20261004",
+      "manifest": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_capacity_v2_20261004/verification.sha256",
+      "sha256": "903c1c2aa74074f99673f105947543484fb9c2384469c7503009450f6ee5adba",
+      "files": 36,
+      "summary_sha256": "1233784094b6eb2b1a40010740c4a42ea5928a782bf27e2644137fd03e2a996c"
+    },
+    "repeats": {
+      "root": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_materialized_bytes_v2_20261004",
+      "manifest": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_materialized_bytes_v2_20261004/verification.sha256",
+      "sha256": "01d7a96e0715e814c42a7bd848e5dce6e52bbed3bb8d8657d8ab702b95ad9032",
+      "files": 71,
+      "summary_sha256": "aeaf1841225714221bf05a5230ec3f3976bf67eb7275c89b69f6da8fb93b86e4"
+    }
+  },
+  "all_private1785_71_36_and_source256_pins_actual_hashes_exact": true,
+  "unique_actual_input_pin_count": 296,
+  "all_pins_after_exact": true,
+  "Root_flags_review_consumed_exact_copy": true,
+  "prior27_held9_flags15_diagnosis36_consumer10_all_hashes_exact": true,
+  "paired_semantic_fuel_SAN_records": 1476,
+  "all_parent_records_terminal0_uncensored": true,
+  "local_parent_flags_O2_SAN_outputs_exact": true,
+  "Fold67_materialized79_cuts_recomputed": true,
+  "fresh_read_counts_recomputed": {
+    "o2": 584,
+    "san": 584
+  },
+  "direct_steps": [
+    17,
+    16,
+    10,
+    8
+  ],
+  "paired_byte_checks": {
+    "comparisons": 146,
+    "failures": [
+      {
+        "test": "materialized_fields_test",
+        "case": 1,
+        "cut": 13,
+        "parent_sha256": "48465b1c76dc7282c9e1fcb21b954f9721dc4ff11c07edfc8f8417fd979f3d8f",
+        "flags_sha256": "479911c461da91b836d0542591422ad21ee8682126fcacb0eea29ee45a635ef8",
+        "equal": false,
+        "parent_bytes": 1772,
+        "flags_bytes": 1772,
+        "different_offsets": [
+          238,
+          278,
+          310,
+          326,
+          334,
+          358,
+          606,
+          670,
+          686,
+          734,
+          750,
+          1604,
+          1612,
+          1620,
+          1628,
+          1636,
+          1644,
+          1652,
+          1668,
+          1676,
+          1684,
+          1692
+        ]
+      },
+      {
+        "test": "materialized_fields_test",
+        "case": 5,
+        "cut": 9,
+        "parent_sha256": "c4ba922427644b3c46d316b71f0676ad2b6d692a0f7c2d0f7ebae610c9329a19",
+        "flags_sha256": "19da8528c64d8e329cb9e4b77dbe2753e3d502478f7d936b37157fd8ffec74d6",
+        "equal": false,
+        "parent_bytes": 1522,
+        "flags_bytes": 1522,
+        "different_offsets": [
+          1386,
+          1394,
+          1402,
+          1410,
+          1418,
+          1426,
+          1434,
+          1442
+        ]
+      }
+    ],
+    "all67_Fold_pairs_exact": true,
+    "unwaived": true
+  },
+  "repeated_semantic_records": 33,
+  "repeated_byte16_rows_actual_hashes_offsets_checked": [
+    {
+      "case": 1,
+      "cut": 13,
+      "variant": "parent",
+      "repetition": 0,
+      "before_steps": 20,
+      "total_steps": 26,
+      "writer_sha256": "48465b1c76dc7282c9e1fcb21b954f9721dc4ff11c07edfc8f8417fd979f3d8f",
+      "resave_sha256": "48465b1c76dc7282c9e1fcb21b954f9721dc4ff11c07edfc8f8417fd979f3d8f",
+      "writer_bytes": 1772,
+      "resave_bytes": 1772,
+      "inert_byte_equal": true,
+      "different_offsets": []
+    },
+    {
+      "case": 1,
+      "cut": 13,
+      "variant": "parent",
+      "repetition": 1,
+      "before_steps": 20,
+      "total_steps": 26,
+      "writer_sha256": "48465b1c76dc7282c9e1fcb21b954f9721dc4ff11c07edfc8f8417fd979f3d8f",
+      "resave_sha256": "479911c461da91b836d0542591422ad21ee8682126fcacb0eea29ee45a635ef8",
+      "writer_bytes": 1772,
+      "resave_bytes": 1772,
+      "inert_byte_equal": false,
+      "different_offsets": [
+        238,
+        278,
+        310,
+        326,
+        334,
+        358,
+        606,
+        670,
+        686,
+        734,
+        750,
+        1604,
+        1612,
+        1620,
+        1628,
+        1636,
+        1644,
+        1652,
+        1668,
+        1676,
+        1684,
+        1692
+      ]
+    },
+    {
+      "case": 1,
+      "cut": 13,
+      "variant": "parent",
+      "repetition": 2,
+      "before_steps": 20,
+      "total_steps": 26,
+      "writer_sha256": "479911c461da91b836d0542591422ad21ee8682126fcacb0eea29ee45a635ef8",
+      "resave_sha256": "48465b1c76dc7282c9e1fcb21b954f9721dc4ff11c07edfc8f8417fd979f3d8f",
+      "writer_bytes": 1772,
+      "resave_bytes": 1772,
+      "inert_byte_equal": false,
+      "different_offsets": [
+        238,
+        278,
+        310,
+        326,
+        334,
+        358,
+        606,
+        670,
+        686,
+        734,
+        750,
+        1604,
+        1612,
+        1620,
+        1628,
+        1636,
+        1644,
+        1652,
+        1668,
+        1676,
+        1684,
+        1692
+      ]
+    },
+    {
+      "case": 1,
+      "cut": 13,
+      "variant": "parent",
+      "repetition": 3,
+      "before_steps": 20,
+      "total_steps": 26,
+      "writer_sha256": "48465b1c76dc7282c9e1fcb21b954f9721dc4ff11c07edfc8f8417fd979f3d8f",
+      "resave_sha256": "48465b1c76dc7282c9e1fcb21b954f9721dc4ff11c07edfc8f8417fd979f3d8f",
+      "writer_bytes": 1772,
+      "resave_bytes": 1772,
+      "inert_byte_equal": true,
+      "different_offsets": []
+    },
+    {
+      "case": 1,
+      "cut": 13,
+      "variant": "flags",
+      "repetition": 0,
+      "before_steps": 20,
+      "total_steps": 26,
+      "writer_sha256": "479911c461da91b836d0542591422ad21ee8682126fcacb0eea29ee45a635ef8",
+      "resave_sha256": "479911c461da91b836d0542591422ad21ee8682126fcacb0eea29ee45a635ef8",
+      "writer_bytes": 1772,
+      "resave_bytes": 1772,
+      "inert_byte_equal": true,
+      "different_offsets": []
+    },
+    {
+      "case": 1,
+      "cut": 13,
+      "variant": "flags",
+      "repetition": 1,
+      "before_steps": 20,
+      "total_steps": 26,
+      "writer_sha256": "1866ffe1e4b0b04132c58a61c2065e1c497185a969f23805199e2d2ac4606664",
+      "resave_sha256": "48465b1c76dc7282c9e1fcb21b954f9721dc4ff11c07edfc8f8417fd979f3d8f",
+      "writer_bytes": 1772,
+      "resave_bytes": 1772,
+      "inert_byte_equal": false,
+      "different_offsets": [
+        238,
+        278,
+        286,
+        326,
+        358,
+        606,
+        670,
+        1604,
+        1612,
+        1620,
+        1628,
+        1636,
+        1644,
+        1652,
+        1660
+      ]
+    },
+    {
+      "case": 1,
+      "cut": 13,
+      "variant": "flags",
+      "repetition": 2,
+      "before_steps": 20,
+      "total_steps": 26,
+      "writer_sha256": "1866ffe1e4b0b04132c58a61c2065e1c497185a969f23805199e2d2ac4606664",
+      "resave_sha256": "1866ffe1e4b0b04132c58a61c2065e1c497185a969f23805199e2d2ac4606664",
+      "writer_bytes": 1772,
+      "resave_bytes": 1772,
+      "inert_byte_equal": true,
+      "different_offsets": []
+    },
+    {
+      "case": 1,
+      "cut": 13,
+      "variant": "flags",
+      "repetition": 3,
+      "before_steps": 20,
+      "total_steps": 26,
+      "writer_sha256": "48465b1c76dc7282c9e1fcb21b954f9721dc4ff11c07edfc8f8417fd979f3d8f",
+      "resave_sha256": "48465b1c76dc7282c9e1fcb21b954f9721dc4ff11c07edfc8f8417fd979f3d8f",
+      "writer_bytes": 1772,
+      "resave_bytes": 1772,
+      "inert_byte_equal": true,
+      "different_offsets": []
+    },
+    {
+      "case": 5,
+      "cut": 9,
+      "variant": "parent",
+      "repetition": 0,
+      "before_steps": 13,
+      "total_steps": 14,
+      "writer_sha256": "c4ba922427644b3c46d316b71f0676ad2b6d692a0f7c2d0f7ebae610c9329a19",
+      "resave_sha256": "c4ba922427644b3c46d316b71f0676ad2b6d692a0f7c2d0f7ebae610c9329a19",
+      "writer_bytes": 1522,
+      "resave_bytes": 1522,
+      "inert_byte_equal": true,
+      "different_offsets": []
+    },
+    {
+      "case": 5,
+      "cut": 9,
+      "variant": "parent",
+      "repetition": 1,
+      "before_steps": 13,
+      "total_steps": 14,
+      "writer_sha256": "19da8528c64d8e329cb9e4b77dbe2753e3d502478f7d936b37157fd8ffec74d6",
+      "resave_sha256": "c4ba922427644b3c46d316b71f0676ad2b6d692a0f7c2d0f7ebae610c9329a19",
+      "writer_bytes": 1522,
+      "resave_bytes": 1522,
+      "inert_byte_equal": false,
+      "different_offsets": [
+        1386,
+        1394,
+        1402,
+        1410,
+        1418,
+        1426,
+        1434,
+        1442
+      ]
+    },
+    {
+      "case": 5,
+      "cut": 9,
+      "variant": "parent",
+      "repetition": 2,
+      "before_steps": 13,
+      "total_steps": 14,
+      "writer_sha256": "19da8528c64d8e329cb9e4b77dbe2753e3d502478f7d936b37157fd8ffec74d6",
+      "resave_sha256": "c4ba922427644b3c46d316b71f0676ad2b6d692a0f7c2d0f7ebae610c9329a19",
+      "writer_bytes": 1522,
+      "resave_bytes": 1522,
+      "inert_byte_equal": false,
+      "different_offsets": [
+        1386,
+        1394,
+        1402,
+        1410,
+        1418,
+        1426,
+        1434,
+        1442
+      ]
+    },
+    {
+      "case": 5,
+      "cut": 9,
+      "variant": "parent",
+      "repetition": 3,
+      "before_steps": 13,
+      "total_steps": 14,
+      "writer_sha256": "19da8528c64d8e329cb9e4b77dbe2753e3d502478f7d936b37157fd8ffec74d6",
+      "resave_sha256": "c4ba922427644b3c46d316b71f0676ad2b6d692a0f7c2d0f7ebae610c9329a19",
+      "writer_bytes": 1522,
+      "resave_bytes": 1522,
+      "inert_byte_equal": false,
+      "different_offsets": [
+        1386,
+        1394,
+        1402,
+        1410,
+        1418,
+        1426,
+        1434,
+        1442
+      ]
+    },
+    {
+      "case": 5,
+      "cut": 9,
+      "variant": "flags",
+      "repetition": 0,
+      "before_steps": 13,
+      "total_steps": 14,
+      "writer_sha256": "19da8528c64d8e329cb9e4b77dbe2753e3d502478f7d936b37157fd8ffec74d6",
+      "resave_sha256": "19da8528c64d8e329cb9e4b77dbe2753e3d502478f7d936b37157fd8ffec74d6",
+      "writer_bytes": 1522,
+      "resave_bytes": 1522,
+      "inert_byte_equal": true,
+      "different_offsets": []
+    },
+    {
+      "case": 5,
+      "cut": 9,
+      "variant": "flags",
+      "repetition": 1,
+      "before_steps": 13,
+      "total_steps": 14,
+      "writer_sha256": "c4ba922427644b3c46d316b71f0676ad2b6d692a0f7c2d0f7ebae610c9329a19",
+      "resave_sha256": "19da8528c64d8e329cb9e4b77dbe2753e3d502478f7d936b37157fd8ffec74d6",
+      "writer_bytes": 1522,
+      "resave_bytes": 1522,
+      "inert_byte_equal": false,
+      "different_offsets": [
+        1386,
+        1394,
+        1402,
+        1410,
+        1418,
+        1426,
+        1434,
+        1442
+      ]
+    },
+    {
+      "case": 5,
+      "cut": 9,
+      "variant": "flags",
+      "repetition": 2,
+      "before_steps": 13,
+      "total_steps": 14,
+      "writer_sha256": "19da8528c64d8e329cb9e4b77dbe2753e3d502478f7d936b37157fd8ffec74d6",
+      "resave_sha256": "19da8528c64d8e329cb9e4b77dbe2753e3d502478f7d936b37157fd8ffec74d6",
+      "writer_bytes": 1522,
+      "resave_bytes": 1522,
+      "inert_byte_equal": true,
+      "different_offsets": []
+    },
+    {
+      "case": 5,
+      "cut": 9,
+      "variant": "flags",
+      "repetition": 3,
+      "before_steps": 13,
+      "total_steps": 14,
+      "writer_sha256": "19da8528c64d8e329cb9e4b77dbe2753e3d502478f7d936b37157fd8ffec74d6",
+      "resave_sha256": "c4ba922427644b3c46d316b71f0676ad2b6d692a0f7c2d0f7ebae610c9329a19",
+      "writer_bytes": 1522,
+      "resave_bytes": 1522,
+      "inert_byte_equal": false,
+      "different_offsets": [
+        1386,
+        1394,
+        1402,
+        1410,
+        1418,
+        1426,
+        1434,
+        1442
+      ]
+    }
+  ],
+  "repeated_groups_independently_recomputed": [
+    {
+      "case": 1,
+      "cut": 13,
+      "variant": "parent",
+      "same_binary_writer_variants": [
+        "479911c461da91b836d0542591422ad21ee8682126fcacb0eea29ee45a635ef8",
+        "48465b1c76dc7282c9e1fcb21b954f9721dc4ff11c07edfc8f8417fd979f3d8f"
+      ],
+      "same_binary_resave_variants": [
+        "479911c461da91b836d0542591422ad21ee8682126fcacb0eea29ee45a635ef8",
+        "48465b1c76dc7282c9e1fcb21b954f9721dc4ff11c07edfc8f8417fd979f3d8f"
+      ],
+      "inert_byte_failures": 2,
+      "trials": 4
+    },
+    {
+      "case": 1,
+      "cut": 13,
+      "variant": "flags",
+      "same_binary_writer_variants": [
+        "1866ffe1e4b0b04132c58a61c2065e1c497185a969f23805199e2d2ac4606664",
+        "479911c461da91b836d0542591422ad21ee8682126fcacb0eea29ee45a635ef8",
+        "48465b1c76dc7282c9e1fcb21b954f9721dc4ff11c07edfc8f8417fd979f3d8f"
+      ],
+      "same_binary_resave_variants": [
+        "1866ffe1e4b0b04132c58a61c2065e1c497185a969f23805199e2d2ac4606664",
+        "479911c461da91b836d0542591422ad21ee8682126fcacb0eea29ee45a635ef8",
+        "48465b1c76dc7282c9e1fcb21b954f9721dc4ff11c07edfc8f8417fd979f3d8f"
+      ],
+      "inert_byte_failures": 1,
+      "trials": 4
+    },
+    {
+      "case": 5,
+      "cut": 9,
+      "variant": "parent",
+      "same_binary_writer_variants": [
+        "19da8528c64d8e329cb9e4b77dbe2753e3d502478f7d936b37157fd8ffec74d6",
+        "c4ba922427644b3c46d316b71f0676ad2b6d692a0f7c2d0f7ebae610c9329a19"
+      ],
+      "same_binary_resave_variants": [
+        "c4ba922427644b3c46d316b71f0676ad2b6d692a0f7c2d0f7ebae610c9329a19"
+      ],
+      "inert_byte_failures": 3,
+      "trials": 4
+    },
+    {
+      "case": 5,
+      "cut": 9,
+      "variant": "flags",
+      "same_binary_writer_variants": [
+        "19da8528c64d8e329cb9e4b77dbe2753e3d502478f7d936b37157fd8ffec74d6",
+        "c4ba922427644b3c46d316b71f0676ad2b6d692a0f7c2d0f7ebae610c9329a19"
+      ],
+      "same_binary_resave_variants": [
+        "19da8528c64d8e329cb9e4b77dbe2753e3d502478f7d936b37157fd8ffec74d6",
+        "c4ba922427644b3c46d316b71f0676ad2b6d692a0f7c2d0f7ebae610c9329a19"
+      ],
+      "inert_byte_failures": 2,
+      "trials": 4
+    }
+  ],
+  "inert_byte8_of16_unwaived": true,
+  "capacity16_records_all_actual_hashes_checked": [
+    {
+      "label": "build-parent",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent",
+        "ROOT=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_capacity_v2_20261004/build-parent",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2 -g",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_capacity_v2_20261004/build-parent/pointer-check"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "eea5809ce2c554868dd6f6817e9e859f501075796c98fd80622d2de64e69f3f6"
+    },
+    {
+      "label": "layout-parent",
+      "argv": [
+        "/usr/bin/gdb",
+        "--batch",
+        "-q",
+        "-nx",
+        "-iex",
+        "set auto-load off",
+        "-ex",
+        "set pagination off",
+        "-ex",
+        "set may-call-functions off",
+        "-ex",
+        "source /home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/layout.gdb.py",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_capacity_v2_20261004/build-parent/pointer-check"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "list-done-parent",
+      "argv": [
+        "/usr/bin/gdb",
+        "--batch",
+        "-q",
+        "-nx",
+        "-iex",
+        "set auto-load off",
+        "-ex",
+        "set pagination off",
+        "-ex",
+        "set disable-randomization off",
+        "-ex",
+        "set may-call-functions off",
+        "-ex",
+        "source /tmp/ap-performance-mem1-73fa86c9-20261003/capacity.gdb.py",
+        "-ex",
+        "run",
+        "--args",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_capacity_v2_20261004/build-parent/pointer-check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/list.p"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "157daf522f3cb2de5ba7677f850f433931a49236822b9c7f035e6ad1655afc17",
+      "data_sha256": "b8bf52617aebe79256c892478fe955f99e32dd8bb0cdde001fa3ad1da0cac623"
+    },
+    {
+      "label": "trees4-cut10K-parent",
+      "argv": [
+        "/usr/bin/gdb",
+        "--batch",
+        "-q",
+        "-nx",
+        "-iex",
+        "set auto-load off",
+        "-ex",
+        "set pagination off",
+        "-ex",
+        "set disable-randomization off",
+        "-ex",
+        "set may-call-functions off",
+        "-ex",
+        "source /tmp/ap-performance-mem1-73fa86c9-20261003/capacity.gdb.py",
+        "-ex",
+        "run",
+        "--args",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_capacity_v2_20261004/build-parent/pointer-check",
+        "--steps",
+        "10000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees4.p"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "ec2042291e23b7ac0653e3950d6362aa3ad9453a88bea13892c490a54b56837c",
+      "data_sha256": "1444579585653c5682ae2b0463c0023d9386843921659f1e01e7303a0e1679e9"
+    },
+    {
+      "label": "trees4-cut100K-parent",
+      "argv": [
+        "/usr/bin/gdb",
+        "--batch",
+        "-q",
+        "-nx",
+        "-iex",
+        "set auto-load off",
+        "-ex",
+        "set pagination off",
+        "-ex",
+        "set disable-randomization off",
+        "-ex",
+        "set may-call-functions off",
+        "-ex",
+        "source /tmp/ap-performance-mem1-73fa86c9-20261003/capacity.gdb.py",
+        "-ex",
+        "run",
+        "--args",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_capacity_v2_20261004/build-parent/pointer-check",
+        "--steps",
+        "100000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees4.p"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "de0a47eb04c4ed958e8261940fbea646ca298d94eba8daed17d3e16773fcfcec",
+      "data_sha256": "3b1d5af7f5487171fc0802d26188d7d7849fdd5c366b480a597a11939d89ea31"
+    },
+    {
+      "label": "trees4-cut1M-parent",
+      "argv": [
+        "/usr/bin/gdb",
+        "--batch",
+        "-q",
+        "-nx",
+        "-iex",
+        "set auto-load off",
+        "-ex",
+        "set pagination off",
+        "-ex",
+        "set disable-randomization off",
+        "-ex",
+        "set may-call-functions off",
+        "-ex",
+        "source /tmp/ap-performance-mem1-73fa86c9-20261003/capacity.gdb.py",
+        "-ex",
+        "run",
+        "--args",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_capacity_v2_20261004/build-parent/pointer-check",
+        "--steps",
+        "1000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees4.p"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "be31a07d7786f355eff829517bcfb787ba9ca968a4b058b6bb26c68d27c3bf64",
+      "data_sha256": "85f0adf5e0c027c7453ddc2863016dff46616d7f53960592fce9e1c647929d8a"
+    },
+    {
+      "label": "trees4-cut2M-parent",
+      "argv": [
+        "/usr/bin/gdb",
+        "--batch",
+        "-q",
+        "-nx",
+        "-iex",
+        "set auto-load off",
+        "-ex",
+        "set pagination off",
+        "-ex",
+        "set disable-randomization off",
+        "-ex",
+        "set may-call-functions off",
+        "-ex",
+        "source /tmp/ap-performance-mem1-73fa86c9-20261003/capacity.gdb.py",
+        "-ex",
+        "run",
+        "--args",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_capacity_v2_20261004/build-parent/pointer-check",
+        "--steps",
+        "2000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees4.p"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "eb898cc4a1e650df1348c7545115e13afc9c9daf5c3b52ef0fdaa894c221f663",
+      "data_sha256": "5f1b491414e6815f2957db9b9e15869258bf0484e21b76497eb057fc63ece8f4"
+    },
+    {
+      "label": "trees16-cut5M-parent",
+      "argv": [
+        "/usr/bin/gdb",
+        "--batch",
+        "-q",
+        "-nx",
+        "-iex",
+        "set auto-load off",
+        "-ex",
+        "set pagination off",
+        "-ex",
+        "set disable-randomization off",
+        "-ex",
+        "set may-call-functions off",
+        "-ex",
+        "source /tmp/ap-performance-mem1-73fa86c9-20261003/capacity.gdb.py",
+        "-ex",
+        "run",
+        "--args",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_capacity_v2_20261004/build-parent/pointer-check",
+        "--steps",
+        "5000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees16.p"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "719093ca7732adc6ab4475834c8e5e62cb64024042d318233cdc29441f723064",
+      "data_sha256": "4635ed167010892e70396269272a03978de3d07e0a0693eac1e1a9e8cf6febc0"
+    },
+    {
+      "label": "build-flags",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/fresh_pairs_flags_v2_current_e18_20261004",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/fresh_pairs_flags_v2_current_e18_20261004/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_capacity_v2_20261004/build-flags",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2 -g",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_capacity_v2_20261004/build-flags/pointer-check"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "bc00d6963f299a1df2b120e8d7dc15f3b60f9b81e095d8acf740014848ae690c"
+    },
+    {
+      "label": "layout-flags",
+      "argv": [
+        "/usr/bin/gdb",
+        "--batch",
+        "-q",
+        "-nx",
+        "-iex",
+        "set auto-load off",
+        "-ex",
+        "set pagination off",
+        "-ex",
+        "set may-call-functions off",
+        "-ex",
+        "source /home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/layout.gdb.py",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_capacity_v2_20261004/build-flags/pointer-check"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "list-done-flags",
+      "argv": [
+        "/usr/bin/gdb",
+        "--batch",
+        "-q",
+        "-nx",
+        "-iex",
+        "set auto-load off",
+        "-ex",
+        "set pagination off",
+        "-ex",
+        "set disable-randomization off",
+        "-ex",
+        "set may-call-functions off",
+        "-ex",
+        "source /tmp/ap-performance-mem1-73fa86c9-20261003/capacity.gdb.py",
+        "-ex",
+        "run",
+        "--args",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_capacity_v2_20261004/build-flags/pointer-check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/list.p"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "aef4e1cc9ca171bb78325920f46ef2d73bee6cfa7d6db992af666a36f3a2c62a",
+      "data_sha256": "29cf73b3e8a4ec43de6f8b326f494ad56923c827892d62966dcf0ee3087950a0"
+    },
+    {
+      "label": "trees4-cut10K-flags",
+      "argv": [
+        "/usr/bin/gdb",
+        "--batch",
+        "-q",
+        "-nx",
+        "-iex",
+        "set auto-load off",
+        "-ex",
+        "set pagination off",
+        "-ex",
+        "set disable-randomization off",
+        "-ex",
+        "set may-call-functions off",
+        "-ex",
+        "source /tmp/ap-performance-mem1-73fa86c9-20261003/capacity.gdb.py",
+        "-ex",
+        "run",
+        "--args",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_capacity_v2_20261004/build-flags/pointer-check",
+        "--steps",
+        "10000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees4.p"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "7aa9153f7ef4484a76ac4efc0d3fcb45db7b4fbc93fe1f165f1bc029e0b5e318",
+      "data_sha256": "59ad4cc00e13e522483e54a495216b2f512a0de8fad0a6f216708ab17663df38"
+    },
+    {
+      "label": "trees4-cut100K-flags",
+      "argv": [
+        "/usr/bin/gdb",
+        "--batch",
+        "-q",
+        "-nx",
+        "-iex",
+        "set auto-load off",
+        "-ex",
+        "set pagination off",
+        "-ex",
+        "set disable-randomization off",
+        "-ex",
+        "set may-call-functions off",
+        "-ex",
+        "source /tmp/ap-performance-mem1-73fa86c9-20261003/capacity.gdb.py",
+        "-ex",
+        "run",
+        "--args",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_capacity_v2_20261004/build-flags/pointer-check",
+        "--steps",
+        "100000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees4.p"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "a2fce410be9c020aed55b22320f7d707ea522adacdc5796fd69101c5ee71fca7",
+      "data_sha256": "1a75988e432a9a5a33a59773e99d898d3c2720da58532099fa7299c795c4bffb"
+    },
+    {
+      "label": "trees4-cut1M-flags",
+      "argv": [
+        "/usr/bin/gdb",
+        "--batch",
+        "-q",
+        "-nx",
+        "-iex",
+        "set auto-load off",
+        "-ex",
+        "set pagination off",
+        "-ex",
+        "set disable-randomization off",
+        "-ex",
+        "set may-call-functions off",
+        "-ex",
+        "source /tmp/ap-performance-mem1-73fa86c9-20261003/capacity.gdb.py",
+        "-ex",
+        "run",
+        "--args",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_capacity_v2_20261004/build-flags/pointer-check",
+        "--steps",
+        "1000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees4.p"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "bf2c5607c206d354fdbe56e17ab1d5826f8badffae805ef405e7619efc0ace49",
+      "data_sha256": "3543ace8ab5e4e853510ca2626a016a413c4d1ace6943a1153a174b9018458f4"
+    },
+    {
+      "label": "trees4-cut2M-flags",
+      "argv": [
+        "/usr/bin/gdb",
+        "--batch",
+        "-q",
+        "-nx",
+        "-iex",
+        "set auto-load off",
+        "-ex",
+        "set pagination off",
+        "-ex",
+        "set disable-randomization off",
+        "-ex",
+        "set may-call-functions off",
+        "-ex",
+        "source /tmp/ap-performance-mem1-73fa86c9-20261003/capacity.gdb.py",
+        "-ex",
+        "run",
+        "--args",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_capacity_v2_20261004/build-flags/pointer-check",
+        "--steps",
+        "2000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees4.p"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "56e5ff58520911eded4b2aad4206dec4f8cb65e79dc199d17cc2ac5380568ecb",
+      "data_sha256": "93c028d34a9ccd4086777402bb4244b21d3e93fcebe06c0148738362e9c5ac55"
+    },
+    {
+      "label": "trees16-cut5M-flags",
+      "argv": [
+        "/usr/bin/gdb",
+        "--batch",
+        "-q",
+        "-nx",
+        "-iex",
+        "set auto-load off",
+        "-ex",
+        "set pagination off",
+        "-ex",
+        "set disable-randomization off",
+        "-ex",
+        "set may-call-functions off",
+        "-ex",
+        "source /tmp/ap-performance-mem1-73fa86c9-20261003/capacity.gdb.py",
+        "-ex",
+        "run",
+        "--args",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_capacity_v2_20261004/build-flags/pointer-check",
+        "--steps",
+        "5000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees16.p"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "07204d2e3d9613827eef106d63824c4e890fb84b42ab5160384fa0272c02a9af",
+      "data_sha256": "c188dff5ec8ebf5486ad2f33f429a69fb5d8b8227095a64d2a6cfd3a7b000896"
+    }
+  ],
+  "actual_nine_layouts_equal": {
+    "pg_eval": {
+      "size": 160,
+      "alignment": 8,
+      "existing_16_byte_allocation_extent": 160
+    },
+    "pg_whnf_job": {
+      "size": 384,
+      "alignment": 8,
+      "existing_16_byte_allocation_extent": 384
+    },
+    "pg_execution": {
+      "size": 192,
+      "alignment": 8,
+      "existing_16_byte_allocation_extent": 192
+    },
+    "pg_argument": {
+      "size": 24,
+      "alignment": 8,
+      "existing_16_byte_allocation_extent": 32
+    },
+    "pg_environment": {
+      "size": 32,
+      "alignment": 8,
+      "existing_16_byte_allocation_extent": 32
+    },
+    "pg_eval_frame": {
+      "size": 240,
+      "alignment": 8,
+      "existing_16_byte_allocation_extent": 240
+    },
+    "pg_nf_job": {
+      "size": 136,
+      "alignment": 8,
+      "existing_16_byte_allocation_extent": 144
+    },
+    "pg_program": {
+      "size": 1352,
+      "alignment": 8,
+      "existing_16_byte_allocation_extent": 1360
+    },
+    "pg_substitution_state": {
+      "size": 152,
+      "alignment": 8,
+      "existing_16_byte_allocation_extent": 160
+    }
+  },
+  "capacity_arena_index_group_totals_independently_recomputed": {
+    "list-done": {
+      "charged_steps": 1915,
+      "parent_capacity_bytes": 425984,
+      "flags_capacity_bytes": 425984,
+      "capacity_delta": 0,
+      "used_delta": 0,
+      "changed_groups": [],
+      "all_sampled_shared_indexes_and_jobs_equal": true
+    },
+    "trees4-cut10K": {
+      "charged_steps": 10000,
+      "parent_capacity_bytes": 1458176,
+      "flags_capacity_bytes": 1458176,
+      "capacity_delta": 0,
+      "used_delta": -13232,
+      "changed_groups": [
+        "whnf.PG_EVAL_PENDING.machine"
+      ],
+      "all_sampled_shared_indexes_and_jobs_equal": true
+    },
+    "trees4-cut100K": {
+      "charged_steps": 100000,
+      "parent_capacity_bytes": 4489216,
+      "flags_capacity_bytes": 4243456,
+      "capacity_delta": -245760,
+      "used_delta": -228736,
+      "changed_groups": [
+        "whnf.PG_EVAL_PENDING.machine"
+      ],
+      "all_sampled_shared_indexes_and_jobs_equal": true
+    },
+    "trees4-cut1M": {
+      "charged_steps": 1000000,
+      "parent_capacity_bytes": 22953984,
+      "flags_capacity_bytes": 21430272,
+      "capacity_delta": -1523712,
+      "used_delta": -1543360,
+      "changed_groups": [
+        "whnf.PG_EVAL_PENDING.machine"
+      ],
+      "all_sampled_shared_indexes_and_jobs_equal": true
+    },
+    "trees4-cut2M": {
+      "charged_steps": 2000000,
+      "parent_capacity_bytes": 23330816,
+      "flags_capacity_bytes": 21938176,
+      "capacity_delta": -1392640,
+      "used_delta": -1403664,
+      "changed_groups": [
+        "whnf.PG_EVAL_PENDING.machine"
+      ],
+      "all_sampled_shared_indexes_and_jobs_equal": true
+    },
+    "trees16-cut5M": {
+      "charged_steps": 5000000,
+      "parent_capacity_bytes": 61292544,
+      "flags_capacity_bytes": 57016320,
+      "capacity_delta": -4276224,
+      "used_delta": -4283184,
+      "changed_groups": [
+        "whnf.PG_EVAL_PENDING.machine"
+      ],
+      "all_sampled_shared_indexes_and_jobs_equal": true
+    }
+  },
+  "capacity_limits": [
+    "Actual retained arena state at selected cuts; not process RSS, time, exact peak or safe dead-byte bound.",
+    "Existing helper omits nested query malloc state/other external arrays and allocator metadata/slack.",
+    "Pure read-only DWARF; inferior calls disabled, no profiling wrapper, allocator API or new owner contract.",
+    "Current c414202a/flags48c5f872 pair; no historical free-frame pool imported.",
+    "Original byte failures remain unwaived and block runtime publication/full qualification; no cost slot or accepted adoption."
+  ],
+  "Root_runtime_or_GDB_or_cost_rerun": false,
+  "assessment": "Current flags pair has verified finite semantic/fuel/sanitizer coverage and sampled pending-machine arena reductions with equal baseline owner extents. Byte gate fails2/146, repeated inert failures8/16 and same-binary writer variation on both parent and flags. Retain review-only/HOLD; do not classify byte failures as successful expectations or extend the bounded Fold cache-order cause to every materialized difference.",
+  "owner_disposition": "Exact materialized pairs/repeats go to original Job codec owner with prior verified Fold cause, without turn/Goal resume. Keep independent fields/reusable results and all raw failures. Other current transport/checkpoints/acceptance and downstream C/.a remain pending.",
+  "runtime_task_publication_or_cost_grant_or_byte_waiver_or_adoption_or_Goal_completion": false,
+  "passed_evidence_review": true,
+  "runtime_READY": false
+}
