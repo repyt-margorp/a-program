@@ -123,6 +123,26 @@ names, separate directories and reviewed integration epochs.
 
 ### Objective (Code)
 
+Fresh C51 [actual action recipe](2026-10-04-C-BACKEND-ACC-ACTION-PLAN.md) reads
+existing admitted Acc constructor/down classifier and Identity field directions.
+Actual LT(argument0,captured0) callback domain and pure TOTAL Self(argument0)
+result drive inverse domain remapping and result-index checks; source directions
+select quoted Acc left-to-right/two LT right-to-left actions.955-line ordinary
+module1da176b5 retains all seven source bodies, full C49 map/endpoint/frame prefix
+888dbff1 and unchanged header/ABI. Currentfc52755b/runtime120c206 strict O2/full
+helper-generated-source-client SAN55 expected rows each pass, terminal23:19:33Z:
+source/reused Core341/resources/rollback/inertness/parent28 and seven new runtime
+recipe refusals, parameter/source/family refusals, products/single symbol qualify.
+Initial test-only nested-main compiler1 is retained; no positive module/table
+change. Manual role/storage/closure/full checked Scope/general native stay open.
+
+Consumed Merge operational C50 publication/current qualification23:08/23:14UTC:
+exact task768213aba5d683128a0ccb2cb4e38905f73a46bb/prototype Main
+834488016c5570aa3142e82c868a501f420bfd2d pushed/remote exact; independent O2/full
+affected SAN44 each/raw446/input379/all18 archives and29 dependencies verified.
+Submitted C50 history is immutable; only this live owning Goal advances among its
+nine paths. This is publication evidence, not new human design approval.
+
 Fresh C50 [saved-image product command](2026-10-04-C-BACKEND-ACC-COMMAND-PLAN.md)
 loads/admit-selects the qualified actual image once and regenerates all seven
 bodies plus map/endpoint/frame table, without source advancement during emission.
@@ -918,7 +938,8 @@ Current issue status (2026-10-04 local; detailed pins stay in linked epoch plans
 | #61 actual Acc ordered transport maps/captures, C47 | New acc_transport/ [plan](2026-10-04-C-BACKEND-ACC-TRANSPORT-PLAN.md): source-derived step6/weaken10/lift10 descriptors5646ca54 retain every image, six descriptive context tokens and both path binders; target full frame/left-right vectors keep original down/IH separate. Standalone823-line C SHAca73caaa preserves seven actual source bodies/signature. | Currentfc52755b/runtime120c206 O2/full emitter-candidate-client source/object/archive SAN50 matching rows each, source/reused Core341/resources/depth/rollback/inert/three branches/12 target refusals pass; six C/H/three provenance/descriptor exact. Initial missing stdio.h compiler1/37 rows preserved, include-only correction. Pointer/Core inputs O2. | Root exact task3526b9a3c46abe0fa92ed93bf0c691a73a372605/prototype Main099104ccf3568c3532a59e6215dd730ca665edb9 pushed/remote exact; independent current five commands/O2-full-source SAN50 each/code-table-receipts exact. Delivered before deadline; immutable16 history retained. | Descriptive tokens are not checked Scope certificates; complete context-declaration/action/source equivalence and general native indexed/callable Acc remain open. Bigger action/stack records/cost unmeasured; Nat32/depth256/node65536/borrowed/nonoverlap/overflow/finite SAN persist. No accepted/full61/Goal completion. | Preserve C47 history; C48 derives actual endpoint-type projections, still bounded/manual. |
 | #61 actual Acc endpoint projections, C48 | New acc_endpoints/ [plan](2026-10-04-C-BACKEND-ACC-ENDPOINTS-PLAN.md): exact admitted nominal endpoint indices drive LT/quoted Acc/down-domain actions;860-line ordinary module0faa1758/seven actual source bodies/signature unchanged. | Currentfc52755b/runtime120c206 O2/full affected SAN53 matching rows each; source/reused Core341/resources/inert/six endpoints/16 private structural refusals/inherited12/new8 action refusals pass; code/headers/receipts/table exact. Initial wrong test index/abort134 retained. | Merge exact task8a81cefa0899bf89b58963e7d2e88e3701d2807b/prototype Main784c9bfea5d49cd9161ae51d8b7444f2abf59ef3 pushed/remote exact; independent current O2/full affected SAN53 each/code/table qualify. Exact18 history remains immutable. | Manual frame/action/complete checked Scope/source-equivalence/general native Acc remain open; native4/input3 inherited C46. Nat32/depth256/node65536/borrowed/nonoverlap/finite SAN/overflow/cost limits persist; no accepted/full61/Goal completion. | Source field-to-frame binding delivered separately in C49; preserve actual algorithm without List/producer/checker/erasure expansion. |
 | #61 actual Acc binder-derived frames, C49 | New acc_frame/ [plan](2026-10-04-C-BACKEND-ACC-FRAME-PLAN.md): admitted parameter/Fold/callback/constructor binders locate all10/12/12 slots; table888dbff1 replaces manually numbered frame assignments. Fixed898-line module53f01aa8/source bodies/public ABI unchanged. | Currentfc52755b/runtime120c206 O2/full affected SAN53 expected rows each; source/reused Core341/resources/inertness/inherited endpoint16-action20/new frame8 refusals pass; products/table exact. No unexpected C49 failure. | Merge exact taske076bc32da59585966a58c0d57075c8178875742/prototype Mainb563796e6a6f6058df5c4c5593e4f407229b5389 pushed/remote exact; independent current O2/full affected SAN53 each/code/table/input pins qualify. Exact15 submitted history immutable; shared Git read-only. | Target role values/action/complete checked Scope/source equivalence/general native Acc remain open. Native4/input3 inherited C46, not new execution. Nat32/depth256/node65536/lifetime/nonoverlap/finite SAN/overflow/cost limits persist; no accepted/full61/Goal claim. | Saved-image ordinary product command delivered separately in C50, preserving fixed/manual extent and ordinary native refusal. |
-| #61 actual Acc saved-image C products, C50 | New acc_command/ [plan](2026-10-04-C-BACKEND-ACC-COMMAND-PLAN.md): one admitted-image driver regenerates seven bodies/table and packages ordinary source/object/archive; code/header/ABI exact C49. Owned disk streams/staging and no-replace directory publication. | Currentfc52755b/runtime120c206 O2/full driver-emitter-generated-source/client SAN44 expected rows each/source/reused Core341/resources/inertness/parent refusals/four I-O2/pending3/unsupported4/compiler/prior-output/cleanup/late publication pass. Original dependency build2/linker1 and target-name source4/diagnostic4 retained. | Exact9 handoff prepared after published C49; delegated task/current Merge review/Main integration pending separately. C32-C49 archives and C49 other14 live paths preserved; no shared Git mutation. | Fixed actual mockup with manual role/action/storage/complete checked Scope/source equivalence; main-native4/input3 inherited C46, general native/full61 open. Nat32/depth256/node65536/borrowed/nonoverlap/overflow/finite SAN/cost/accepted limits persist. | Use the readable executable candidate and reproducible ordinary products; identify one concrete remaining manual action/capture boundary with existing source views or route the dependency before upstream edits. |
+| #61 actual Acc saved-image C products, C50 | New acc_command/ [plan](2026-10-04-C-BACKEND-ACC-COMMAND-PLAN.md): one admitted-image driver regenerates seven bodies/table and packages ordinary source/object/archive; code/header/ABI exact C49. Owned disk streams/staging and no-replace directory publication. | Currentfc52755b/runtime120c206 O2/full driver-emitter-generated-source/client SAN44 expected rows each/source/reused Core341/resources/inertness/parent refusals/four I-O2/pending3/unsupported4/compiler/prior-output/cleanup/late publication pass. Original dependency build2/linker1 and target-name source4/diagnostic4 retained. | Merge exact task768213aba5d683128a0ccb2cb4e38905f73a46bb/prototype Main834488016c5570aa3142e82c868a501f420bfd2d pushed/remote exact; independent current O2/full affected SAN44 each/raw/input/archive/dependency pins verified. Exact9 submitted history immutable. | Fixed actual mockup with manual role/action/storage/complete checked Scope/source equivalence; main-native4/input3 inherited C46, general native/full61 open. Nat32/depth256/node65536/borrowed/nonoverlap/overflow/finite SAN/cost/accepted limits persist. | Concrete down-domain/result/direction recipe delivered separately in C51; preserve actual algorithm and source authority. |
+| #61 actual Acc source-derived down actions, C51 | New acc_recipe/ [plan](2026-10-04-C-BACKEND-ACC-ACTION-PLAN.md): actual constructor/Pi domain/TOTAL result/field directions drive executable callback remapping/result check.955-line module1da176b5/seven source bodies/public ABI unchanged; complete map/endpoint/frame prefix exact C49. | Currentfc52755b/runtime120c206 O2/full helper-generated-source-client SAN55 expected rows each/source/reused Core341/resources/inertness/parent28/new7 runtime refusals/parameter-source-family refusals/products pass; six C/H/three provenance/recipe exact. Initial nested-main test compiler1 retained/corrected only test assembly. | Exact15 handoff prepared after published C50; delegated task/current review/Main pending separately. C32-C50 archives and C50 other8 live paths exact; shared Git read-only. | Fixed Nat/LT/Acc recipe with manual roles/storage/closure/complete checked Scope/source equivalence; native4/input3/private16 structural controls inherited, no new native completion. Nat32/depth256/node65536/borrowed/nonoverlap/finite SAN/overflow/cost/adoption/full61 limits persist. | Connect the bounded recipe to the reproducible saved-image product command; broader source action/capture/native obligations remain separate, route a demonstrated shared need first. |
 | #61 remaining public contracts (historical #49) | General/boxed callbacks, effects, higher Identity, recursive captures and shared nominal exchange remain explicit limits; C16 advances only fixed borrowed unary/binary scalar inputs. | Local/joint gates verify supported cases and refusals, not general completion. | Historical tasks/prototype Main published; no publication of general missing contracts. | Need bounded justified representation/demand contracts. | Preserve refusals; route shared needs through Merge. |
 
 Evidence: historical [C5](2026-10-03-C-BACKEND-EPOCH5-HANDOFF.md),
@@ -1071,6 +1092,15 @@ pinned/current producer images and emitted C/headers match byte-for-byte.
 Evidence and exact publication files are in the [epoch handoff](2026-10-03-C-BACKEND-EPOCH1-HANDOFF.md).
 
 ### Assessment
+
+C51 agent result: a concrete manual down-domain/result/direction choice now
+comes from actual admitted classifier/field syntax and drives executable C.
+This is finite Nat/LT/Acc target interpretation with explicit unsupported shapes,
+not a complete source action/Scope proof or new erasure policy. Keep the source
+algorithm/public signature and source authority intact. Next connect this recipe
+to the saved-image product command, preserving refusals and source provenance;
+general native/indexed/callable/full61 obligations remain open. No shared view
+dependency or producer defect was demonstrated in this epoch.
 
 C50 agent result: actual-source body regeneration and ordinary C products now
 share one reproducible command rather than historical body-file stitching. The
@@ -1974,7 +2004,12 @@ this target work while Main continues SE1, superseding the earlier AP6 hold.
 - [x] C50: consolidate existing actual-source emitters into one bounded saved-image
   product command with ordinary source/object/archive; current O2/full-source SAN
   focused44 expected rows each, original failures and manual/native limits retained.
-- [ ] C50 exact task publication, independent current review and Main integration
+- [x] Consume C50 exact task/current review/prototype Main publication;
+  preserve submitted nine-file history, no new accepted/native authority.
+- [x] C51: source-derived down-domain/result/field-direction recipe executes
+  actual Acc C; current O2/full-source SAN55 rows each/source/Core/resources/
+  inherited+new refusal/product controls pass; initial test compiler1 retained.
+- [ ] C51 exact15 task publication, independent current review and Main integration
   remain Merge operations; original Goal/model stay active.
 - [ ] Review broader actual-source action/capture correspondence and general
   indexed/callable native Acc; accepted adoption/actual costs/full Goal separate.
