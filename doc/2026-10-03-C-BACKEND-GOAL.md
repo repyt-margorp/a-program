@@ -16,6 +16,15 @@ Related: [coordination](2026-10-03-PARALLEL-CORE-BACKEND-PERFORMANCE-PLAN.md),
 
 ### Subjective (User)
 
+2026-10-04T09:16:56Z, English paraphrase of the human priority conveyed through
+inquiry desk019ebfae/Merge: deliver readable realistic C code for the actual
+admitted Acc QuickSort within12 hours, due21:16:56Z/Oct5 06:16:56 JST. Stop further
+List conveniences at the sealed C32 boundary and keep the same Goal/model.
+The later human clarification permits a clearly labeled hand-authored faithful
+executable candidate. Preserve Acc/down recursion, indices, partition and captures;
+identify executable scope/gaps. An alternate sorting algorithm or false automatic
+lowering claim is not acceptable. This supersedes the earlier convenience priority.
+
 2026-10-03, English paraphrase of the explicit human workflow change relayed
 by inquiry desk `019ebfae-06be-7b71-974a-b97505daed4a`: implementation lanes may
 continue separate prototype epochs without waiting for Merge publication or
@@ -103,6 +112,18 @@ refinement now, while the coordinator continues Job/Evidence removal. Use task
 names, separate directories and reviewed integration epochs.
 
 ### Objective (Code)
+
+2026-10-04, C33 task588b2cb publishes exact11 frozen files/archivea8bd408c and
+raw549 verified by Root. Actual344-line `acc_quicksort_mockup/mockup.c` retains
+LT proof constructors/both indices, SizedList/Partition bounds, original Acc down,
+distinct folded-down callable and captures. Three source observations and341
+existing-Core finite comparisons plus rollback/depth/allocation controls pass.
+Root independently builds/tests O2 and candidate/full-helper ASan/UBSan on the
+reviewed accepted Job, then repeats both9-row gates with final compact-default CLI:
+all0. First worker READY10:02:27Z is before the21:16:56Z deadline.
+C32 implementation remains parked and is not a dependency of this mockup.
+See [C33 handoff](2026-10-04-C-BACKEND-EPOCH33-HANDOFF.md) and
+[Root review](../src/prototype/c_backend/verification/core-epoch33.json).
 
 2026-10-04, Root C31 current E24+MEM9 source12819e6a2e7 independently qualified:
 exact18 taskcc3cba3495b81628e0a68ec8b45aee4f5447d188 pushed/remote exact. Serial strict O2
@@ -756,6 +777,14 @@ Evidence and exact publication files are in the [epoch handoff](2026-10-03-C-BAC
 
 ### Assessment
 
+2026-10-04, Root integrates C33 as a reviewed prototype separate from the
+intentional accepted Job promotion94a20003. It realizes one closed Nat/LT instance
+manually; it does not implement general automatic indexed/Fold/motive/capture
+lowering, arbitrary comparator closures, effects/ownership or full #61.
+Original source algorithm and admitted proof data remain the correspondence.
+Reconcile this Goal against current Main review records; other10 frozen files
+remain exact. Current C34 declaration-only evidence is separate and unqualified.
+
 2026-10-04, Root C31 prototype integration: explicit native_buffer_query_v1
 under existing native ABI1 reports a validated finite single-tail/one-payload List
 extent before caller buffer allocation. Existing validators check full active
@@ -1340,6 +1369,11 @@ shared IR, checker or image fields. The later 2026-10-03 lane assignment permits
 this target work while Main continues SE1, superseding the earlier AP6 hold.
 
 ### Plan
+
+- [x] Deliver and independently qualify the faithful executable C33 mockup;
+  publish exact task files and integrate prototype Main separately from Job adoption.
+- [ ] Continue actual automatic indexed/Fold/motive/capture realization and
+  current qualification under #61; retain representation/refusal/cost boundaries.
 
 - [x] C31: verify/publish exact18 finite buffer-query prototype on current E24; full61/native Acc/cost/adoption separate.
 
