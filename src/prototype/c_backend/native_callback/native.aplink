@@ -1,0 +1,25 @@
+aplink 1
+artifact callbacks.a
+abi c_callback_native_v1
+target host-c11
+product source
+lowering callback_native_direct_v1
+fallback reject
+enum32 Bool Bool
+data Numbers32 Numbers32
+data Numbers64 Numbers64
+data Tree32 Tree32
+data Packet Packet
+export map32 map32
+export map64 map64
+export combine32 combine32
+export combine64 combine64
+export reduce32 reduce32
+export reduce64 reduce64
+export tree32 tree32
+export packet32 packet32
+export length32 length32
+export length64 length64
+export apply32 apply32
+export apply64 apply64
+export unused32 unused32

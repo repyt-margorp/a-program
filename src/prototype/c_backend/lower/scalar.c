@@ -77,6 +77,7 @@ struct module {
 	const char *error;
 	int callbacks;
 	int native_predicates; /* Zero: none; 1: Nat32; 2: signed integers. */
+	int native_callbacks;
 	struct predicate *predicates;
 };
 
@@ -822,7 +823,8 @@ static const struct pg_c_representation *parameter_type(struct module *m, const 
 
 static struct function *prepare(struct module *m, const struct pg_occurrence *subject)
 {
-	m->error = m->native_predicates == 2 ? "expected pure total native functions with borrowed same-width unary/binary Int32/Int64 predicates" :
+	m->error = m->native_callbacks ? "expected pure total native functions with borrowed same-width unary/binary scalar callbacks" :
+		m->native_predicates == 2 ? "expected pure total native functions with borrowed same-width unary/binary Int32/Int64 predicates" :
 		m->native_predicates ? "expected pure total native functions with borrowed unary/binary Nat32 predicates" :
 		m->callbacks == 2 ? "expected pure total scalar functions with borrowed unary/binary scalar callbacks" :
 		m->callbacks ? "expected pure total scalar functions with borrowed unary scalar callbacks" :
@@ -1089,7 +1091,9 @@ static int emit(FILE *source, FILE *header, size_t count,
 	if (!source || !header || !error) return -1;
 	*error = "invalid scalar exports or entry";
 	if (!pg_c_export_names(count, exports) || (entry != SIZE_MAX && entry >= count)) return -1;
-	struct module m = {.callbacks = callbacks, .native_predicates = callbacks ? native : 0};
+	/* Native mode 3 combines represented values with scalar-return callbacks. */
+	struct module m = {.callbacks = callbacks, .native_predicates = callbacks && native != 3 ? native : 0,
+		.native_callbacks = native == 3};
 	struct pg_dag roots;
 	if (pg_dag_init(&roots, NULL, NULL)) return -1;
 	struct function **functions = NULL;
@@ -1114,9 +1118,10 @@ static int emit(FILE *source, FILE *header, size_t count,
 	fputs("/* A Program native realization of admitted pure total computations. */\n#include <stdint.h>\n#include <limits.h>\n"
 		"_Static_assert(sizeof(int) <= sizeof(uint32_t), \"unsupported integer promotion model\");\n\n", source);
 	if (enum_count || natural_count || data_count) fputs("#include <stdlib.h>\n", source);
-	const char *abi = m.native_predicates == 2 ? "PREDICATE_SIGNED" : m.native_predicates ? "PREDICATE_NATIVE" : callbacks == 2 ? "CALLBACK2" : callbacks ? "CALLBACK" : native ? "NATIVE" : "SCALAR";
-	const char *name = m.native_predicates == 2 ? "predicate_signed" : m.native_predicates ? "predicate_native" : callbacks == 2 ? "callback2" : callbacks ? "callback" : native ? "native" : "scalar";
-	fputs(m.native_predicates ? "#pragma once\n/* ABI 1: 0 success; 1 null output/arena; 2 invalid input/code/result tag. */\n#include <stdint.h>\n" :
+	const char *abi = m.native_callbacks ? "CALLBACK_NATIVE" : m.native_predicates == 2 ? "PREDICATE_SIGNED" : m.native_predicates ? "PREDICATE_NATIVE" : callbacks == 2 ? "CALLBACK2" : callbacks ? "CALLBACK" : native ? "NATIVE" : "SCALAR";
+	const char *name = m.native_callbacks ? "callback_native" : m.native_predicates == 2 ? "predicate_signed" : m.native_predicates ? "predicate_native" : callbacks == 2 ? "callback2" : callbacks ? "callback" : native ? "native" : "scalar";
+	fputs(m.native_callbacks ? "#pragma once\n/* ABI 1: 0 success; 1 null output/arena; 2 invalid input/null code. */\n#include <stdint.h>\n" :
+		m.native_predicates ? "#pragma once\n/* ABI 1: 0 success; 1 null output/arena; 2 invalid input/code/result tag. */\n#include <stdint.h>\n" :
 		callbacks ? "#pragma once\n/* ABI 1: 0 success; 1 null output; 2 null callback code. Output must be writable. */\n#include <stdint.h>\n" :
 		"#pragma once\n/* ABI 1: 0 success; 1 null output; 2 invalid tag input. Output must be writable. */\n#include <stdint.h>\n", header);
 	if (m.representations.arena_alias)
@@ -1124,7 +1129,7 @@ static int emit(FILE *source, FILE *header, size_t count,
 			"\t* 4 depth limit. Failures preserve output and roll back new allocations. */\n", header);
 	if (natural_count) fputs("/* nat32: uint32 magnitude; status 5 on successor overflow. */\n", header);
 	fprintf(header, "#ifndef AP_C_%s_ABI\n#define AP_C_%s_ABI 1\n#elif AP_C_%s_ABI != 1\n#error incompatible_A_Program_%s_ABI\n#endif\n", abi, abi, abi, name);
-	if (callbacks && !native) {
+	if (callbacks && (!native || m.native_callbacks)) {
 		const char *declarations = "#ifndef AP_C_CALLBACK_TYPES\n#define AP_C_CALLBACK_TYPES 1\n"
 			"/* Borrowed code/context must outlive the call and implement the declared\n"
 			"\t* pure-total function. Context may be null. Null code returns status 2. */\n"
@@ -1249,6 +1254,16 @@ int pg_c_emit_callbacks2(FILE *source, FILE *header, size_t count,
 	const struct pg_c_export *exports, size_t entry, const char **error)
 {
 	return emit(source, header, count, exports, entry, 0, NULL, 0, NULL, 0, NULL, 0, 2, NULL, error);
+}
+
+int pg_c_emit_callbacks_native(FILE *source, FILE *header, size_t count,
+	const struct pg_c_export *exports, size_t entry, size_t enum_count,
+	const struct pg_c_export *enums, size_t natural_count,
+	const struct pg_c_export *naturals, size_t data_count,
+	const struct pg_c_export *data, struct pg_c_native_contract *contract, const char **error)
+{
+	return emit(source, header, count, exports, entry, enum_count, enums, natural_count, naturals,
+		data_count, data, 3, 2, contract, error);
 }
 
 int pg_c_emit_predicate_native(FILE *source, FILE *header, size_t count,
