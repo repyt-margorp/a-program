@@ -1,0 +1,12 @@
+{
+  "date_UTC": "2026-10-04T15:34:48.682904+00:00",
+  "type": "Exact95 task and Main publication complete",
+  "task_commit": "22b15cb2b90811c086a94121b06dcb33c3b8b695",
+  "Main_commit": "bbd0921a84e74239e80585f80aae3edbb38cc285",
+  "Main_remote_exact": true,
+  "all95_live_and_committed_blobs_exact": true,
+  "original_worker_HEAD_branch_index_unchanged": true,
+  "no_accepted_runtime_edits": true,
+  "cost_outcome": "Proposed15:20-15:30 expired without actual C acknowledgment; no grant or sample. Explicit release delivered. Source-checking36 and separate codec cost remain unmeasured.",
+  "review": "src/prototype/coordination/reviews/20261004-performance-publication95-review.json"
+}

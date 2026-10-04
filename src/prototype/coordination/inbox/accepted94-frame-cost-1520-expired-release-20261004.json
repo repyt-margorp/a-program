@@ -1,0 +1,15 @@
+{
+  "date_UTC": "2026-10-04T15:31:21.399101+00:00",
+  "proposal": "accepted94-frame-cost-window-feasibility-1520-20261004",
+  "type": "Proposed window expired and released; no measurement grant",
+  "hard_end_UTC": "2026-10-04T15:30:00Z",
+  "configuration_SHA": "262c46ac3f50313a164dab72ff88a40d684c1fe3c75954ce1362c9a1c0bffce9",
+  "actual_acknowledgments": {
+    "Job": "Fresh8367ed3f2a82e0f567ed3b5f417a9dbdd19d1ec3621fa2edeb0c30b63a502c86: own heavy children terminal; voluntary light through15:30 or release.",
+    "Performance": "Freshfc2c91fef90a78c772bb8174f85dc6415c0bfa88c1407a10cc6ebe08903eaa33: actual owned handles terminal; all295pins checked; zero collector/sample.",
+    "C": "No actual feasibility or fresh safe-boundary acknowledgment for this proposed window. Old hold notices and completed gates do not establish it."
+  },
+  "outcome": "No grant, collector or sample. All proposed-window light-work agreements ended at15:30UTC and are explicitly released now. Continue original authorized work. No owner, session, Goal or timer reset/resume/pause; this coordination is not new user approval.",
+  "next_step": "Do not reuse expired acknowledgments or wait under this proposal. Later scheduling must start from actual availability at ordinary checkpoints; no blind drain request.",
+  "scope": "Exact36 source-checking jobs do not exercise codec save/load scratch; separate codec cost remains unmeasured."
+}

@@ -57,5 +57,17 @@
     "measurement_limits": "Original36 jobs include source parsing/synthesis/conversion/imported proof helpers, no save/load flags. Extra8*n loader/writer scratch overhead remains independently described and unmeasured by these completed-source jobs. Historical frame extent240 does not transfer: actual accepted frame216/224 is pinned in existing nine-type layouts; sampled capacity is not RSS/time or per-site allocation attribution."
   },
   "Job_latest_progress_owner_report": "Trial13 input125 bee1d547 build0/Synthesis134 at legacy normalization identity assertion; requested/retained WHNF kind0 and endpoint alpha1 diagnostic. Source context-scopes134 after two inert resaves is a genuine frontier/consumer failure. Native graph remains NOT READY; Root has not independently reviewed these newer trial gates. Earlier pinned trial1-5 failures stay historical.",
-  "slot_state": "Job/Performance fresh15:18 safe boundaries and light-work agreement until15:30 or release; C actual feasibility/safe acknowledgment absent. No collector/grant/sample."
+  "slot_state": "Proposed15:20-15:30 expired without C actual acknowledgment; no grant/collector/sample. Job/Performance light agreements ended at15:30 and explicit release delivered all3 original owners.",
+  "Main_publication": {
+    "commit": "bbd0921a84e74239e80585f80aae3edbb38cc285",
+    "remote_commit": "bbd0921a84e74239e80585f80aae3edbb38cc285",
+    "all95_live_and_git_blobs_exact": true,
+    "protected9_exact": true,
+    "main_index_empty": true,
+    "original_worker_HEAD_branch_index_unchanged": true,
+    "accepted_runtime_edits": false
+  },
+  "publication_verified_UTC": "2026-10-04T15:34:48.682904+00:00",
+  "worker_remote_verified_notice_SHA": "41a81ad8a525240b8e0322aabfd5fe153f7b084ae80392cce166d02c7b6ea968",
+  "latest_release": "src/prototype/coordination/inbox/accepted94-frame-cost-1520-expired-release-20261004.json"
 }

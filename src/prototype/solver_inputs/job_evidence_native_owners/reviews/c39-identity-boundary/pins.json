@@ -1,0 +1,36 @@
+{
+  "/home/repyt/workspace/a-program-workers/c-backend/doc/2026-10-04-C-BACKEND-ACC-ACCESSIBILITY-PLAN.md": {
+    "actual": "7b623b8349e09eb2c36795dc0d963cfd13f54c36405135ee0a41a9c474c860d1",
+    "expected": "e212e78b15bfca0da2585337fcfe9f8eaca0157bf2fa381ed1415d01401ba8b7",
+    "match": false
+  },
+  "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch39-acc-accessibility-20261004/access.a": {
+    "actual": "61af0d2cb9a09f0eddc702932a536cfa16ddeb19b2798cf5fb8155600965a48e",
+    "expected": "61af0d2cb9a09f0eddc702932a536cfa16ddeb19b2798cf5fb8155600965a48e",
+    "match": true
+  },
+  "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch39-acc-accessibility-20261004/initial-inputs.json": {
+    "actual": "9c5955cd00b781879ed7ed848bab53523b92d886b7d4195b9223a499df0c833e",
+    "expected": "9c5955cd00b781879ed7ed848bab53523b92d886b7d4195b9223a499df0c833e",
+    "match": true
+  },
+  "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch39-acc-accessibility-20261004/nat_access.out": {
+    "actual": "d15c15479822e588b60473d6c05523b801109e92ba3d5f65317d860aa14c3e62",
+    "expected": "d15c15479822e588b60473d6c05523b801109e92ba3d5f65317d860aa14c3e62",
+    "match": true
+  },
+  "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch39-acc-accessibility-20261004/succ_access.out": {
+    "actual": "fd308b6810fd11198581488c4faf4af306d1f460cf61f43822dee6b504b0b536",
+    "expected": "fd308b6810fd11198581488c4faf4af306d1f460cf61f43822dee6b504b0b536",
+    "match": true
+  },
+  "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch39-acc-accessibility-20261004/typed-probes.json": {
+    "actual": "57732c72b00d5a8963742d1807104f40fce6c7384a65c006bd75cf2c0d59313e",
+    "expected": "57732c72b00d5a8963742d1807104f40fce6c7384a65c006bd75cf2c0d59313e",
+    "match": true
+  },
+  "fc52755b:src/action.c": "bf0018eca9b7d66d52e263adde431dedd4bd5d7542d30f0a4c45cd24bb3b1362",
+  "fc52755b:src/evidence.c": "e78bedccd1c7e96cd98ab544d1f39ff3048a661b48db114aac7d74b1bd67c184",
+  "fc52755b:src/evidence_identity.c": "8fe2ea181233cc2e287d541bfff342b4e0f74a0dadbb360d9cde779421d253d1",
+  "fc52755b:src/identity.c": "e0052d3e87231a33d314e5ea09bf6b0c51afa1bd9e5bb72cea64ee8a612987d9"
+}

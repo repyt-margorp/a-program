@@ -1,7 +1,7 @@
 # Parallel Development: Inquiry Desk, Merge and Workers
 
 Date: 2026-10-03
-Status: approved Performance promotion fc52755b complete; original acceptance 363 and adopted four tests verified separately on c206. Human Evidence/Occurrence static audit delivered; coherent prototype migration continues. C39 actual Nat recurrence reviewed on oldE8; Identity transport bodies/current qualification remain. Cost request2 expired/released; no grant/sample/hold. Original Goals and review timer unchanged.
+Status: approved Performance promotion fc52755b complete; original acceptance 363 and adopted four tests verified separately on c206. Human Evidence/Occurrence static audit delivered; coherent prototype migration continues. C39 actual Nat recurrence reviewed on oldE8; Identity transport bodies/current qualification remain. Cost request2 and proposed15:20-15:30 window expired/released; no grant/sample/hold. Original Goals and review timer unchanged.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `fd45c42`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -29,11 +29,13 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 
 2026-10-04, [Performance exact95 publication review](../src/prototype/coordination/reviews/20261004-performance-publication95-review.json):
 isolated task commit22b15cb2 is pushed/remote exact; original owner local HEAD,
-branch and index remain unchanged. Source55/cost6/evidence30/scope2 plus metadata2
+branch and index remain unchanged. Main packet commitbbd0921a is also pushed and
+remote exact; all95 live/committed blobs match. Source55/cost6/evidence30/scope2 plus metadata2
 are immutable; Main adds93 packet paths, with scope2 already identical. No runtime
-change or new adoption. Job/Performance actual15:18 safe acknowledgments agree
-light work until15:30/release; C actual feasibility/ACK remains absent, so no grant
-or collector. Scope correction: exact36 source-checking argv have no save/load;
+change or new adoption. Job/Performance actual15:18 safe acknowledgments agreed
+light work through15:30/release; C acknowledgment did not arrive before expiry.
+The window expired with zero grant/collector/sample;
+[explicit release](../src/prototype/coordination/inbox/accepted94-frame-cost-1520-expired-release-20261004.json) reached all three owners. Scope correction: exact36 source-checking argv have no save/load;
 codec loader/writer8*n scratch is not exercised or cost-qualified by these jobs.
 Newer Job trial13/Source failures remain owner reports and unwaived, NOT READY;
 earlier Root-pinned five-trial history is not silently relabeled current.
@@ -46,10 +48,22 @@ frames equal. Candidate17,861,736 bytes remain unclassified; no dead/reclaimable
 completed-task RSS/peak/time or borrowing claim follows. Initial failed observer
 is retained; retry removes obsolete payload estimates, keeping actual counts.
 [Actual availability](../src/prototype/coordination/reviews/20261004-accepted94-cost-availability-review.json):
-Job proposes15:20-15:30UTC after current work becomes terminal; Performance reports
-terminal children/available. C feasibility and fresh all-three safe acknowledgments
-are still needed. Exact36/all295 pins freshly verify. The proposed window is
-information only; no hold, grant, old-ACK reuse or sample launch.
+Job/Performance actually acknowledged safe boundaries for15:20-15:30UTC. C did
+not acknowledge before expiry, so the proposed window ended without a grant or
+sample; no hold remains. Exact36/all295 pins verified. Later scheduling requires
+actual availability at ordinary checkpoints; expired acknowledgments are not reused.
+
+2026-10-04, [C39 owner interpretation](../src/prototype/coordination/reviews/20261004-c39-owner-interpretation-review.json):
+Root verifies the exact two-file note/manifest, five frozen evidence pins and four
+committed fc52755b source pins. The live C plan mismatch is recorded, with frozen
+evidence unchanged. Existing checked views retain family/value/direction and
+formation/maps/path inputs; right transports L to R, left R to L. Downstream
+representation/action/refinement remains C-owned; no producer field defect,
+generic erasure or current execution pass is established. Job reports trial13
+Synthesis134 and genuine Source two-resave134 retained, with trial14 diagnosis
+next after its light-work agreement expired. These newer gates remain owner
+reports and NOT READY. Focused audit Progress was updated in013c0fec with the
+native-owner review link; the implementation work list remains in SE1-SE5.
 
 2026-10-04, [native-owner deletion progress](../src/prototype/coordination/reviews/20261004-native-owner-graph-progress-review.json):
 Root verifies the committed fc52755b parent and all five retained trial histories,

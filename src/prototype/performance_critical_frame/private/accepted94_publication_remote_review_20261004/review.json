@@ -1,0 +1,15 @@
+{
+  "command": [
+    "git",
+    "ls-remote",
+    "origin",
+    "refs/heads/parallel/performance-20261003"
+  ],
+  "exit": 0,
+  "expected_commit": "22b15cb2b90811c086a94121b06dcb33c3b8b695",
+  "remote_exact": true,
+  "local_HEAD": "e71528fa286e263c568d4f78f3f1281f90b5e86d",
+  "no_fetch_ref_index_or_Git_mutation": true,
+  "stdout_sha256": "489cff75900c4934aad71fbb1fe7feb8b7efa07cdd0883128383d61f7f46d5d9",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

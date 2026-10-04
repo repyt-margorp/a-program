@@ -1,0 +1,24 @@
+{
+  "date_UTC": "2026-10-04T15:34:48.682904+00:00",
+  "notice_SHA": "9725ccc224cb8adf9d6b1b484ddf22cefd0e9de988b48901ff42c55e9d4aa74e",
+  "manifest_SHA": "f55abc79226f128b669c3cf7b16eaf42f7aa7669bde46f4cd48795b5845a69f6",
+  "exact_two_files_and_manifest": true,
+  "committed_source": "fc52755b345a555e49a79df40549e9cb23d54088",
+  "source_pins_verified": 4,
+  "frozen_C39_evidence_pins_verified": 5,
+  "live_C_plan_pin": "Recorded expected mismatch reproduced exactly; live plan advanced. It is not an executable/source input and does not invalidate the separately matching frozen C39 evidence. Original mismatch record retained.",
+  "code_observations": [
+    "identity.c:68 field view reads family/value/direction/lift syntax; admission must already be established by the typed owner.",
+    "action.c:12 boundary view rejects origin-bearing subjects; applicable formation operands/maps/paths remain. Mapped/normalized inputs must be exposed through ordinary typed origin/body owners.",
+    "evidence.c:3884/3939 checked endpoint selection: right requires L and forms R, left requires R and forms L in the family Context; retained typed subject operands are family and value.",
+    "evidence.c lift retains associated Identity formation and selected transport; numeric equality alone does not erase nominal/path/witness/callback distinctions."
+  ],
+  "assessment": "Existing checked owner/view inputs support a downstream representation/action investigation. No missing producer field or current runtime bug established; no generic erasure, source policy, oracle union, implementation or promotion authorized by this notice. C39 historical oldE8 execution remains separate from accepted-source static observations.",
+  "remaining_owner": "Original C owner: qualify concrete transport representation/action/refinement or retain refusal. Job continues original native-owner deletion and genuine Source frontier diagnosis.",
+  "Root_runtime_replay": false,
+  "new_implementation_or_accepted_edits": false,
+  "failures_waived": false,
+  "evidence": "src/prototype/solver_inputs/job_evidence_native_owners/reviews/c39-identity-boundary",
+  "Job_expiry_notice_SHA": "0bc95807456d4c5a3bc53688f2cb1888c2bb8bef5d1590693596810ece9d8aa5",
+  "Job_latest_next_trial_owner_report": "trial14 runtime120 fe7e1eae/input125 112f7e27 debug Source saved-dependency diagnosis. Trial13 Synthesis134 and genuine Source two-resave134 remain unwaived. This is owner-reported progress, no independent Root gate replay or READY."
+}
