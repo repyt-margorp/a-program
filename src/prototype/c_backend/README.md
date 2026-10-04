@@ -500,6 +500,20 @@ bodies/backend/producer remain O2. Existing success, interpretation and borrowed
 lifetime preconditions remain. The
 [C19 handoff](../../../doc/2026-10-04-C-BACKEND-EPOCH19-HANDOFF.md) pins the scope.
 
+`check-c-integer-predicate-boundary` probes ordinary Int32/Int64 Lists under the
+existing `c_native_v1` ABI. Direct recursive forms use source constant/captured
+Bool decisions and select all or none; their declared predicates ignore pivot
+values. Source/object/archive clients verify 341 Lists per width/product,
+signed extrema, reversed Int64 constructor/field order and transactional resource
+controls. Six source observations also match loaded-image execution. Equivalent
+admitted forms passing known function-valued arguments still refuse, alongside
+dynamic integer callbacks, effects and callable fields: 25 cases each checked
+and trusted, status4 without products. No emitter or ABI change occurs. This is
+bounded representation evidence, not a data-dependent signed comparator, generic
+partition or native sorter. SAN covers clients and source-product bodies; other
+product bodies/backend/producer remain O2. See the
+[C20 handoff](../../../doc/2026-10-04-C-BACKEND-EPOCH20-HANDOFF.md).
+
 ## Native Nullary ADTs
 
 `native_direct_v1` / `c_native_v1` extends the same scalar lowering, not another
