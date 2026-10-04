@@ -1,0 +1,125 @@
+{
+  "date_UTC": "2026-10-04T23:05:37.967103+00:00",
+  "classification": "Fresh bounded original Job progress records while reviewing C50; not frozen handoff or Root native replay",
+  "external_inputs664_SHA": "b9bea23dbb6bc45382d1b24356901978bc7666dd768260a8597adc8c19ed94d2",
+  "all664_inputs_exact": true,
+  "code126_SHA": "441cbd699ca87b505564938c81e68cf17fc3de03581af903bfc02636544c2244",
+  "actual_full_serial_unskipped_broad": {
+    "argv": [
+      "make",
+      "-k",
+      "-f",
+      "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/history/trial9-inputs/src/Makefile",
+      "BUILD=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-trial9-o2",
+      "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+      "-j1",
+      "check-acceptance"
+    ],
+    "returncode": 0,
+    "log_sha256": "c049387bbd2b8c40ea60a4d8921ded495b08f25542874c0ee89a978db3e71a81",
+    "all664_inputs_exact_after": true,
+    "all_launched_children_reaped": true
+  },
+  "broad_log_SHA_fresh_exact": true,
+  "public_sorted_owner_four_records": [
+    {
+      "name": "parent-sorted",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-parent-materialized-o2/pointer-check",
+        "--steps",
+        "8000000",
+        "--imports",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/sorted-result-controls/inputs/quick-local-provider.p",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/trial9-public-sorted-qualification/parent-sorted.a",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/sorted-result-controls/inputs/quick-local-result.p"
+      ],
+      "returncode": 0,
+      "log_sha256": "10247a06d37f38c7f2055b5e8865908569dccf746edf6ae4fad263a01d829518",
+      "binary_sha256": "761a0ac0b5dbdd17f169df8c345b73334608b7ceeca6bbf5f3e352aecca3a91d"
+    },
+    {
+      "name": "parent-strict-public",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/image_audit/partition_fuel.sh",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-parent-materialized-o2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/history/trial9-inputs/examples/09_list_induction.p",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/trial9-public-sorted-qualification/parent-public",
+        "ordinary"
+      ],
+      "returncode": 1,
+      "log_sha256": "2b4153e71557a5fa3aca742567a49e81391907c5d469844f53a36fc1e8469826",
+      "binary_sha256": "761a0ac0b5dbdd17f169df8c345b73334608b7ceeca6bbf5f3e352aecca3a91d"
+    },
+    {
+      "name": "native-sorted",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-trial8-o2/pointer-check",
+        "--steps",
+        "8000000",
+        "--imports",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/sorted-result-controls/inputs/quick-local-provider.p",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/trial9-public-sorted-qualification/native-sorted.a",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/sorted-result-controls/inputs/quick-local-result.p"
+      ],
+      "returncode": 0,
+      "log_sha256": "dbbc179032b47362852fbf327830ca11360229c96d10d0b2f0304cab212fb4ed",
+      "binary_sha256": "067469856b839e8055125f147e14586736b22218c141e05f04243c6e0e80deba"
+    },
+    {
+      "name": "native-strict-public",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/image_audit/partition_fuel.sh",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-trial8-o2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/history/trial9-inputs/examples/09_list_induction.p",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/trial9-public-sorted-qualification/native-public",
+        "ordinary"
+      ],
+      "returncode": 1,
+      "log_sha256": "33e2226e68b1eb47dd060aeea752185373a08c1cab3a6b6723f4e394f693c42d",
+      "binary_sha256": "067469856b839e8055125f147e14586736b22218c141e05f04243c6e0e80deba"
+    }
+  ],
+  "all_four_logs_binaries_fresh_exact": true,
+  "public_observation": "Original modern imported ordinary LocalSorted runs0; original strict public parent/native runs1 retained. Detailed52 cross-version wire/40 fuel rows not newly audited here. No strict-public pass or equality waiver.",
+  "retained_frame_owner_summary": {
+    "terminal": true,
+    "commands": 3040,
+    "cut_pairs": 164,
+    "semantic_fuel_zero_budget_SAN_failures": 0,
+    "paired_byte_failures": 0,
+    "inert_byte_failures": 0,
+    "inert_images": 1312,
+    "all_launched_children_reaped": true,
+    "all_pins_exact_after": true,
+    "runtime_READY": false,
+    "cost_comparison": false,
+    "Performance_resumed": false
+  },
+  "owner_report_limits": "3040-command summary freshly read/pinned; all detailed raw6276/foreign cuts/fuel/inert bytes not independently reaudited in this bounded checkpoint. Await original lean matching handoff for joint current review.",
+  "raw_pins": {
+    "trial9-inputs.sha256": "b9bea23dbb6bc45382d1b24356901978bc7666dd768260a8597adc8c19ed94d2",
+    "trial9-code126.sha256": "441cbd699ca87b505564938c81e68cf17fc3de03581af903bfc02636544c2244",
+    "trial9-broad/terminal.json": "9d453bce4ccbd540f52cf2744307554461c6e23cea949eaf2949bc8c5ca39b4b",
+    "trial9-broad/full-acceptance.log": "c049387bbd2b8c40ea60a4d8921ded495b08f25542874c0ee89a978db3e71a81",
+    "trial9-broad/request.json": "7fc3a53715c8be7d082edcfe7d10cd8cf32999473819827f17a1e08e0e14fe3a",
+    "trial9-retained-frame-qualification-corrected/summary.json": "2dc35eaf8a27aac3758d7964799d733df13ab91983cf39448f81085bb1db9dff",
+    "trial9-public-sorted-qualification/terminal.json": "6c0394aa2f0e76db2db164c10bb618dd4b401ccfc12586355383634a15695f50",
+    "trial9-public-sorted-qualification/parent-sorted.log": "10247a06d37f38c7f2055b5e8865908569dccf746edf6ae4fad263a01d829518",
+    "trial9-public-sorted-qualification/native-sorted.log": "dbbc179032b47362852fbf327830ca11360229c96d10d0b2f0304cab212fb4ed",
+    "trial9-public-sorted-qualification/parent-strict-public.log": "2b4153e71557a5fa3aca742567a49e81391907c5d469844f53a36fc1e8469826",
+    "trial9-public-sorted-qualification/native-strict-public.log": "33e2226e68b1eb47dd060aeea752185373a08c1cab3a6b6723f4e394f693c42d",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-parent-materialized-o2/pointer-check": "761a0ac0b5dbdd17f169df8c345b73334608b7ceeca6bbf5f3e352aecca3a91d",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-trial8-o2/pointer-check": "067469856b839e8055125f147e14586736b22218c141e05f04243c6e0e80deba"
+  },
+  "retained_raw_external": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/job-trial9-broad-progress-raw",
+  "remaining": "Original distinct exact handoff, Root independent current/native joint review, strict3/genuine frontier/full SE/net cost/wire policy remain open. No READY/adoption/net claim.",
+  "Root_native_replay": false,
+  "READY": false,
+  "accepted_adoption": false,
+  "Goal_or_owner_actions": false,
+  "cost_samples": 0
+}

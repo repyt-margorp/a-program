@@ -1,0 +1,49 @@
+import collections,ctypes,datetime,hashlib,json,os,pathlib,signal,subprocess,time
+s=pathlib.Path(__file__).resolve().parent;q=s/'c50-current-accepted-fc';tree=q/'tree';sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest();assert ctypes.CDLL(None).prctl(36,1,0,0,0)==0
+before={str(p.relative_to(q)):sha(p) for p in q.rglob('*') if p.is_file()};pointer=s/'c40-current-accepted-fc/build-O2/pointer-check';pointer_sha=sha(pointer);commands=[];cc='/usr/bin/x86_64-linux-gnu-gcc-14'
+for phase,flags in [('O2','-std=c11 -Wall -Wextra -Werror -O2'),('SAN','-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie')]:
+ build=q/('build-'+phase);env={'TMPDIR':str(q/'tmp'),'CC':cc,'AR':'/usr/bin/ar','CLIENT_CFLAGS':flags}
+ if phase=='SAN':env.update(ASAN_OPTIONS='detect_leaks=1:halt_on_error=1',UBSAN_OPTIONS='halt_on_error=1:print_stacktrace=1')
+ argv=['make','-j1','-f',str(tree/'src/prototype/c_backend/acc_command/build.mk'),'OVERLAY='+str(tree),'BUILD='+str(build),'CC='+cc,'CFLAGS='+flags,str(build/'c-acc-image')]
+ argv.append(str(build/'c-acc-image-fault'))
+ commands.append({'label':phase+'-build','argv':argv,'environment':env,'expected_exit':0})
+ commands.append({'label':phase+'-gate','argv':['python3',str(tree/'src/prototype/c_backend/acc_command/check.py'),str(build/'c-acc-image'),str(build/'c-acc-image-fault'),str(q/'actual-materialized.a'),str(pointer),str(q/'reused-Core-cases.c'),str(q/(phase+'-gate'))],'environment':env,'expected_exit':0})
+(q/'Root-commands-proposed.json').write_text(json.dumps(commands,indent=2)+'\n');results=[];record={'started_UTC':datetime.datetime.now(datetime.timezone.utc).isoformat(),'classification':'Ordinary independent C50 frozen/current correctness; no comparative costs','complete':False,'commands':results,'runtime120_manifest_SHA':sha(q/'runtime-source.sha256'),'qualified_pointer_SHA':pointer_sha,'all_before_input_pins':before};destination=q/'Root-results.json'
+for command in commands:
+ row=dict(command,started_UTC=datetime.datetime.now(datetime.timezone.utc).isoformat(),censored=False)
+ with (q/(row['label']+'.out')).open('wb') as out,(q/(row['label']+'.err')).open('wb') as err:
+  child=subprocess.Popen(row['argv'],cwd=tree,env=dict(os.environ,**row['environment']),stdout=out,stderr=err,start_new_session=True)
+  try:row['exit']=child.wait(timeout=240)
+  except subprocess.TimeoutExpired:
+   row['censored']=True;os.killpg(child.pid,signal.SIGTERM);time.sleep(.15)
+   try:os.killpg(child.pid,signal.SIGKILL)
+   except ProcessLookupError:pass
+   row['exit']=child.wait()
+ row.update(finished_UTC=datetime.datetime.now(datetime.timezone.utc).isoformat(),stdout_SHA=sha(q/(row['label']+'.out')),stderr_SHA=sha(q/(row['label']+'.err')));results.append(row);destination.write_text(json.dumps(record,indent=2)+'\n');print(json.dumps({'label':row['label'],'exit':row['exit'],'censored':row['censored']}),flush=True)
+ if row['exit']!=row['expected_exit'] or row['censored']:raise SystemExit('Retained actual qualification failure: '+row['label'])
+phases={};allraw={};example=tree/'src/prototype/c_backend/acc_frame/example'
+for phase in ['O2','SAN']:
+ gate=q/(phase+'-gate');rows=json.loads((gate/'commands.json').read_text());assert len(rows)==44 and all(r['exit']==r['expected'] for r in rows)
+ assert dict(collections.Counter(str(r['exit']) for r in rows))=={'0':26,'1':2,'2':12,'3':1,'4':3}
+ for row in rows:
+  assert sha(gate/(row['label']+'.out'))==row['stdout_sha256'];assert sha(gate/(row['label']+'.err'))==row['stderr_sha256']
+  if phase=='SAN' and row['label'].endswith('_build'):assert '-fsanitize=address,undefined' in row['argv']
+ for mode in ['source','object','archive','alias']:
+  for n in ['component.c','component.h','provenance.json']:assert (gate/mode/n).read_bytes()==(example/n).read_bytes()
+  receipt=json.loads((gate/mode/'product.json').read_text());assert receipt['artifact_sha256']==sha(q/'actual-materialized.a');assert receipt['driver_sha256']==sha(q/('build-'+phase)/'c-acc-image');assert len(receipt['generated_inputs'])==8 and all(c['exit']==0 for c in receipt['commands'])
+  for n,d in receipt['generated_inputs'].items():
+   if n=='transport.inc':assert d=='888dbff17e481d65fb071612fce4f05b24853843623a804db76c6f918e3ec0de'
+   else:assert sha(q/'reused-products'/n)==d
+  for n,d in receipt['outputs'].items():assert sha(gate/mode/n)==d
+  if phase=='SAN' and mode in ['object','archive']:assert '-fsanitize=address,undefined' in receipt['commands'][1]['argv']
+ verification=json.loads((gate/'verification.json').read_text());assert verification['all_expected'] and verification['late_no_replace'] and verification['input_bytes_unchanged'];assert verification['commands']==44
+ phases[phase]={'expected_rows':44,'outcomes':dict(collections.Counter(str(r['exit']) for r in rows)),'commands_SHA':sha(gate/'commands.json'),'component_SHA':sha(gate/'source/component.c'),'source_lines':898,'all_products_source_header_section_receipts_C49_exact':True,'fresh_seven_body_and_frame_hashes_C49_exact':True,'all_supplemental_receipt_artifact_driver_generated_output_pins_exact':True,'late_no_replace_and_failure_cleanup_verified':True}
+ for path in gate.rglob('*'):
+  if path.is_file() and not path.is_symlink():allraw[str(path.relative_to(q))]=sha(path)
+for n,d in before.items():assert sha(q/n)==d,n
+assert sha(pointer)==pointer_sha
+while True:
+ try:
+  pid,status=os.waitpid(-1,os.WNOHANG);assert pid!=0,'unexpected live adopted child'
+ except ChildProcessError:break
+record.update(external_all_raw_gate_pins=allraw,external_raw_gate_files=len(allraw),complete=True,finished_UTC=datetime.datetime.now(datetime.timezone.utc).isoformat(),all_before_inputs_unchanged=True,qualified_pointer_unchanged=True,all_commands_terminal_reaped=True,phases=phases,accepted_code_changes=False,comparative_cost_samples=0,native_Acc='C46 checked/trusted4/input3 inherited, not new C50 execution',SAN_scope='Whole emitter/candidate/client source/object/archive; reused pointer/Core O2');destination.write_text(json.dumps(record,indent=2)+'\n');print(json.dumps({'complete':True,'commands':len(results),'phases':phases}),flush=True)

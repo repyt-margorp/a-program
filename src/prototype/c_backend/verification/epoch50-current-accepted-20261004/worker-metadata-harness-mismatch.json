@@ -1,0 +1,9 @@
+{
+  "metadata_audit_exit": 1,
+  "original_O2_harness_sha256": "e06822ff414365fcbd2e90e4b75fbb270a9058897fbf010c386873ab6e3a05b2",
+  "final_harness_sha256": "0be0da0be4f8504881c8cf7698e9364d1706542742295e8eeed3dc8c51c4ec5a",
+  "change": "removed unused import shutil, no assertion/command/driver/generated-code change",
+  "original_run": "client-O2",
+  "original_source_reconstructed_exact_sha256": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/initial-harness/check.py",
+  "correction": "fresh final focused O2 run, original O2 outputs preserved"
+}

@@ -1,7 +1,7 @@
 # Parallel Development: Inquiry Desk, Merge and Workers
 
 Date: 2026-10-03
-Status: C49 exact15/taske076bc32/Mainb563796e O2/full affected SAN53 each delivered; C50 private fresh-body single-command source reproduces C49, full product/affected/failure qualifications pending. Native corrected broad/foreign/joint/strict/net/READY open. Original Goals/timer unchanged.
+Status: C50 exact9/task768213ab/current Root O2/full affected SAN44 each qualified; prototype Main delivery recorded. Job owner full corrected unskipped broad0 now verified; strict3/new handoff/detailed foreign/joint/net/READY open. Original Goals/timer unchanged.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `fd45c42`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -17,15 +17,41 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | ID | Problem / owner | Related | Status |
 | --- | --- | --- | --- |
 | 1 | Inquiry desk -> `merge`: reporting vs coordination/integration | All lanes | Desk answers the user; only Merge integrates after verified handoff |
-| 2 | `c-backend`: downstream C design | #61 (supersedes #44/#49); shared policy #47 | C49 exact15/current O2/full SAN53 each integrated; C50 private fresh single-image-load/source command reproduces C49, full product/control freeze pending; manual roles/action/Scope/general native/cost open |
+| 2 | `c-backend`: downstream C design | #61 (supersedes #44/#49); shared policy #47 | C50 exact9/task768213ab afterC49; Root O2/full SAN44 each, one-image fresh source/object/archive/alias products and failure controls qualified/prototype integrated; manual role/action/Scope/general native/cost open |
 | 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Approved current frame deletion accepted; original363 plus adopted4 verified separately. Actual matched peakRSS/time pending safe all-owner window; peripheral MEM10/spine/empty arrays parked |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
-| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | Trial8 broad2 only inventory5 omissions; exact restored inputs/corrected syntax1580/affected owner SAN0/Source O2 inert byte26 controls verified; full corrected broad/foreign/joint/strict/net/READY open in sole SE list |
+| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | Owner full corrected unskipped broad0/all664 inputs exact; Sorted parent/native0/strict-public1 preserved. Detailed foreign/new lean handoff/Root joint/strict3/frontier/net/READY open in sole SE list |
 | 6 | `verification-audit`: independent read-mostly suite/debt inventory | #59 / PR #60, #51 | Bounded static inventory/pilot complete; measured cost deferred, full #59 remains open |
 | 7 | `test-suite`: implement coverage-preserving test reductions | #59 / PR #60 | Bounded Goal complete; exact7 taskbc16df9 pushed/remote verified, Root raw/assembly review complete, prototype Main36a27be integrated |
 | 8 | `issue-audit`: evidence-backed GitHub disposition | All open Issues/PRs | Bounded Goal complete; verified dispositions, task8bb5018/Mainb461ace; #61 retains C residuals |
 
 ### Current Delivery Status
+
+2026-10-04, [C50 current command review](../src/prototype/coordination/reviews/20261004-c50-current-command-review.json)
+supersedes private-source-only progress. Exact9 task `768213ab` follows C49
+`e076bc32`; all446 raw/379 inputs/18 old archives+members/29 published dependencies
+match. Root four serial commands are terminal/reaped/uncensored; O2/full affected
+driver/emitter/generated-source/client SAN44 expected outcomes each. One saved
+image load regenerates seven actual Acc bodies and map/endpoint/frame table;
+source/object/archive/alias C49 code/header/section receipts reproduce exactly.
+Supplemental product receipts vary by path/tool/mode. Original algorithm, source
+maps/indices/captures and gs_sort remain. Ordinary public admission precedes
+readonly emission. I-O faults/prior outputs/pending/unsupported/compiler errors/
+late no-replace/cleanup and resources/Core/parent refusals pass. Historical Fold
+TU linker/caller-name/metadata/parent-Git query failures remain. All29 dependencies
+are existing published bytes; failed local Git queries never establish absence.
+Core341/pointerO2, private16 inspector/native4-input3 are reused/inherited, not
+fresh native success. Fixed manual roles/action/storage/full Scope/general61,
+lifetime/bounds/finite SAN/unexercised overflow/net costs stay open. Linux atomic
+visibility does not claim crash durability. Delegated prototype integration only.
+
+[Job broad progress](../src/prototype/coordination/reviews/20261004-job-trial9-broad-progress-review.json)
+freshly verifies all664 external inputs and actual full unskipped serial
+make-k acceptance0/log `c049387b`; this supersedes corrected-broad-pending for
+that owner run. Modern imported Sorted parent/native0 and strict-public1 logs/
+binaries match; no strict3 waiver. Owner3040-command/164cut/1312inert summary
+is pinned, with detailed raw6276/foreign/fuel/wire awaiting original lean handoff
+and Root current joint audit. No Root native replay/adoption/net/READY claim.
 
 2026-10-04, [C50 private command review](../src/prototype/coordination/reviews/20261004-c50-private-command-progress-review.json):
 seven owner records/eight retained failure inputs, driver `b810bd8b`, image and

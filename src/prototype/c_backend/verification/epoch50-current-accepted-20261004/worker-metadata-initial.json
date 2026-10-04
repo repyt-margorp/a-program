@@ -1,0 +1,8 @@
+{
+  "exit": 1,
+  "operation": "evidence metadata audit, no runtime/build execution",
+  "observed": "AssertionError: {48, 49, 46, 47}",
+  "cause": "epoch*-freeze.json discovery did not include legacy C32-C45 naming",
+  "correction": "use exact existing C49 old-snapshot records plus C49 archive, independently verify each manifest and tar member",
+  "code_or_gate_changes": false
+}

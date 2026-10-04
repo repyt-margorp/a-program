@@ -1,0 +1,9 @@
+f56e41ef7620007a8e74b24ba927db95718a2a6c82afdf91771d677d29c8e7e2  doc/2026-10-03-C-BACKEND-GOAL.md
+8e63e76d8403cbc115a7f1247f9baf23f555fa4a659bf0ef180ef6ad9c073c98  doc/2026-10-04-C-BACKEND-ACC-COMMAND-PLAN.md
+c9f4c9248325acffb3e6bc21060a89a0a7676ddcd370542cea001e22c50f7449  doc/2026-10-04-C-BACKEND-EPOCH50-HANDOFF.md
+ca04fe429f63d5d92dc922ed42f6e3314bdf2afdbe3588607ff2570a97b57004  src/prototype/c_backend/acc_command/README.md
+4bb03da4b5bd05e806bd70ae93f02eb54d6a1c89e861579fb9f3e1470461f855  src/prototype/c_backend/acc_command/build.mk
+0be0da0be4f8504881c8cf7698e9364d1706542742295e8eeed3dc8c51c4ec5a  src/prototype/c_backend/acc_command/check.py
+24afecc67e781dc7a052cc8874be680b1a5358baae4a7df0d90adf660e757442  src/prototype/c_backend/acc_command/compose.py
+0df0596f57c77dd004a38cc2f0cc36f85e59ac40503504f9d77d0f2f8efbd3a1  src/prototype/c_backend/acc_command/fault.c
+8d55e5b02e973a4b1f15ca1dfe877a552b894c2dec235c7dce053d24a26d643c  src/prototype/c_backend/acc_command/main.c

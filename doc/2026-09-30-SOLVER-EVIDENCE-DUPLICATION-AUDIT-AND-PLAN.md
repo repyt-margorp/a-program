@@ -1,7 +1,7 @@
 # Solver and Evidence Duplication Audit
 
 Date: 2026-09-30
-Status: Native trial8 full acceptance2 only recorded inventory5 omissions; corrected syntax and affected owner SAN/Source inert bytes pass on unchanged code441cbd69. Full corrected broad/foreign fuel/joint/strict/net/READY remain open in this sole native implementation list.
+Status: Owner corrected full unskipped acceptance0/all664 inputs exact on code441cbd69. Sorted parent/native0 and strict-public1 verified; distinct lean handoff/detailed foreign/current joint/strict3/frontier/net/READY remain open in this sole implementation list.
 Parent: [artifact plan, AP0](2026-09-28-ARTIFACT-SEMANTIC-PERSISTENCE-REFACTOR-PLAN.md#ap0-simplify-before-extending-persistence).
 This is the active prerequisite work list, not another artifact format proposal.
 
@@ -319,6 +319,20 @@ identical TSVs in O2 and ASan/UBSan builds, including repeated samples without
 additional fuel. No full acceptance suite was rerun for this audit-only change.
 
 ## Assessment
+
+2026-10-04, Root bounded [corrected trial9 broad progress](../src/prototype/coordination/reviews/20261004-job-trial9-broad-progress-review.json)
+supersedes full-corrected-broad-pending for the actual owner run only: all664
+external inputs match; full unskipped serial make-k check-acceptance exits0,
+log `c049387b` matches. Historical trial8 inventory omission2 remains preserved.
+Modern imported ordinary Sorted parent/native0 and original strict-public1
+records/logs/binaries are fresh-pinned; strict3 remains, not a strict-public pass.
+Owner3040-command/164cut/1312inert zero-failure summary is freshly pinned, but
+its detailed raw6276/foreign/fuel/wire is not independently reaudited here.
+Original owner prepares a distinct lean matching handoff. Full Root independent
+current joint qualification, strict3/genuine frontier/full SE/net costs/READY
+remain open. Preserve cross-version wire differences and failed equality claims
+for explicit disposition; no waiver follows from the summary or broad0. No Root
+native replay/adoption/second implementation list or Goal claim.
 
 2026-10-04, Root static [trial8/9 terminal review](../src/prototype/coordination/reviews/20261004-native-trial8-9-terminal-review.json)
 supersedes trial8-running/SAN-pending status only for pinned owner records:

@@ -1,0 +1,8 @@
+{
+  "exit": 1,
+  "operation": "additional unchanged-source metadata audit",
+  "observed": "acc_accessibility/emit.c missing from C49 retained input inventory",
+  "cause": "C49 packaging used prior generated body files; C50 newly links existing body emitters directly",
+  "correction": "verify newly referenced old prototype sources against exact published parent Git blobs, record readonly argv/exits/hashes",
+  "implementation_or_test_changes": false
+}

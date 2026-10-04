@@ -1,0 +1,28 @@
+{
+  "new_prototype_subtree": "src/prototype/c_backend/acc_command/",
+  "new_source_files": [
+    "src/prototype/c_backend/acc_command/README.md",
+    "src/prototype/c_backend/acc_command/build.mk",
+    "src/prototype/c_backend/acc_command/check.py",
+    "src/prototype/c_backend/acc_command/compose.py",
+    "src/prototype/c_backend/acc_command/fault.c",
+    "src/prototype/c_backend/acc_command/main.c"
+  ],
+  "old_body_emitters_pack_runtime_public_ABI": "unchanged; exact C32-C49 archive/retained input hashes",
+  "accepted_producer_schema_checker_erasure_Main_Git_changes": false,
+  "new_caller_corrections": [
+    "link existing acc_fold/emit.c",
+    "supply existing required target entry names"
+  ],
+  "original_failure_files": [
+    "initial-build.json",
+    "first-source.json",
+    "diagnostic-emit.json"
+  ],
+  "metadata_audit_failures_retained": [
+    "metadata-initial.json",
+    "metadata-harness-mismatch.json"
+  ],
+  "shared_index_sha256": "848aae6bed8ddf19f70473244f94f8ca144b4bbe3ca7a427b2f44e2a5e842325",
+  "dependency_audit": "dependency-audit-verified.json, all29 existing source/header bytes match submitted archives"
+}

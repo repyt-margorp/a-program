@@ -1,0 +1,64 @@
+{
+  "C_H_provenance_and_eight_generated_inputs_exact": true,
+  "Core_cases_reused_not_multiplied": 341,
+  "Goal_complete": false,
+  "Main_integration": "pending Merge only",
+  "O2_expected_rows": 44,
+  "O2_final_directory": "src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/client-O2-final",
+  "SAN_directory": "src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/client-SAN",
+  "SAN_expected_rows": 44,
+  "SAN_scope": "entire driver/emitter/generated C source/object/archive/client; qualified pointer/Core inputs remain O2",
+  "accepted_commit": "fc52755b345a555e49a79df40549e9cb23d54088",
+  "accepted_promotion": false,
+  "all_owned_commands_terminal_reaped": true,
+  "branch": "parallel/c-backend-20261003",
+  "commit_message": "prototype: compose actual Acc C products from saved image",
+  "cost_samples": 0,
+  "current_phases_unexpected_failures": [],
+  "date_UTC": "2026-10-04T22:50:25.144847+00:00",
+  "delegated_parent": "e076bc32da59585966a58c0d57075c8178875742",
+  "epoch": 50,
+  "exact_retained_inputs": 379,
+  "existing_29_target_dependencies_exact_archives": true,
+  "final_inputs_sha256": "2a2f563a2f4d0c3b0805d2795f1b95d93485c0637c1e5ef4898272222bff348e",
+  "image_sha256": "7c1a4f35108dea9a91c4ffac90062b0c1d6bb1c145e116ff269942775e704aa4",
+  "independent_current_review": "pending Merge",
+  "limits": [
+    "Nat32/depth256/node65536/borrowed immutable/private token lifetime/nonoverlap/transactional output/status1-6",
+    "overflow unexercised; finite SAN only; arbitrary pointer safety unproved",
+    "Linux atomic visibility, not crash durability",
+    "fixed body/table guards reject other artifacts, ordinary native Acc remains unsupported",
+    "no producer/schema/checker/erasure/public ABI expansion"
+  ],
+  "main_native_Acc": "C46 materialized checked/trusted4 and inputs-only3 inherited, not fresh execution",
+  "manual_extent": [
+    "role/action/closure representation",
+    "storage/Nat/LT/array staging",
+    "complete checked Scope/context-declaration/source equivalence"
+  ],
+  "metadata_audit_failures": [
+    "legacy archive filename discovery1",
+    "original O2 harness predated unused import removal; final O2 repeated on exact final source",
+    "missing parent inventory/Git lookup initially misclassified dependencies; verified archives supersede, nine-file manifest unchanged"
+  ],
+  "original_failures": [
+    "initial build2/linker1 missing existing Fold TU",
+    "first source4/diagnostic4 caller omitted required target entry names"
+  ],
+  "phase_outcomes": {
+    "0": 26,
+    "1": 2,
+    "2": 12,
+    "3": 1,
+    "4": 3
+  },
+  "public_admission_may_advance_before_emission": true,
+  "published_parent_commit_unavailable_in_local_Git": true,
+  "runtime_manifest_sha256": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907",
+  "scope": "fixed actual Acc saved-image composition; not general Native LinkerScript lowering",
+  "shared_index_sha256": "848aae6bed8ddf19f70473244f94f8ca144b4bbe3ca7a427b2f44e2a5e842325",
+  "source_advance_disabled_during_emission": true,
+  "source_owner_counts_unchanged_during_emission": true,
+  "task_publication": "pending delegated Merge",
+  "worker_HEAD": "cc3cba3495b81628e0a68ec8b45aee4f5447d188"
+}
