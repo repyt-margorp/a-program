@@ -1,6 +1,6 @@
 # Verified Performance Promotion
 
-Date: 2026-10-03. Status: accepted epoch `7631e5a` verified, committed and pushed; complete.
+Date: 2026-10-03. Status: historical epoch `7631e5a` complete; new approved stateless-frame deletion promotion in progress on 2026-10-04.
 Related: [central schedule](2026-10-03-PARALLEL-CORE-BACKEND-PERFORMANCE-PLAN.md),
 Issues #56/#51. This is a separate promotion epoch and its sole work list.
 
@@ -8,6 +8,8 @@ Issues #56/#51. This is a separate promotion epoch and its sole work list.
 
 1. Promote the verified speed improvements and necessary dependencies into the
    accepted implementation while preserving unrelated local work.
+2. Promote the newly approved redundant Reduction/frame deletion against accepted
+   Job94a20003, with required dependency and save-byte behavior qualification.
 
 ## 1. Accepted Performance Change
 
@@ -107,3 +109,83 @@ performance is unmeasured until a separate agreed slot.
   separate accepted epoch and report issue-linked scope and verification.
 - Completion: the approved performance scope is accepted and verified, with
   necessary dependencies explicit and unrelated local work preserved.
+
+
+## 2. Stateless Frame Deletion Promotion
+
+### Subjective (User)
+
+2026-10-04 12:20 UTC, English translation of explicit human approval relayed by
+inquiry desk thread `019ebfae-06be-7b71-974a-b97505daed4a`: the performance work
+appears to remove unnecessary Reduction and improve speed; move those verified
+improvements into Accepted. The original Japanese is retained in the
+[approval receipt](../src/prototype/coordination/inbox/performance-accepted-promotion-approval-20261004.json).
+This supersedes the former no-promotion boundary for selected verified
+performance deletions and necessary dependencies. Reported speed improvement is
+the user's observation; current matched RSS/time remains evidence to verify.
+
+### Objective (Code)
+
+Approval received at Main c205d507 after accepted Job94a20003. Main's protected
+nine files and empty index are preserved. Inquiry desk's two documentation
+edits are separately backed up and copied into the isolated promotion checkout.
+Candidate c2063542 changes eval.c/h, eval_internal.h and eval_io.c only; all 116
+other accepted runtime files/two Makefiles are exact 94a. Latest source55/cost6
+freeze is a review/request, not runtime READY. Prior Root raw review records
+candidate own inert0/328, parent36/328 and paired20/164 byte failures unwaived.
+Six completion fuels and current consumer/public evidence are newly supplied
+worker reports awaiting this Root review. No matched cost sample is available.
+
+2026-10-04 12:58 UTC, fresh Root exact c206 runtime120 qualification: accepted
+check/head/host/execution0; affected head/frame/evalIO/IdentityIO SAN0; SAN Core,
+IADT, Synthesis, full SourceIO, normalization and image CLI0. Four new independent
+normative tests preserve old assertions and cover reentry/inline-state lifetimes,
+stateless cleanup/fallback/failure and invalid readback ordinal/count/wire bounds.
+Fresh six O2 completion fuels equal accepted parent, including local-sorted956507.
+Public12 paired images/24 inert/24 resume byte/verdict/fuel match; all52 partition
+images/full40 TSV equal parent with original strict3/exit1 retained. Fresh raw1152
+semantic/fuel/zero-step/SAN commands0, candidate328 inert0; paired20/164 remain
+failed. No full check-acceptance or current matched time/RSS claim. See the
+[Root promotion review](../src/prototype/performance_promotion/verification/accepted-20261004/review.json).
+
+### Assessment
+
+Root implementation decision within explicit approval: select the four-file
+frame-reuse/order candidate because the isolated two-file trial70ad5682 retains
+raw15 paired/29 inert byte failures. Root independently recomputed all100 existing
+failed artifact observations: identical DAG bodies/counts/steps/flags, differing
+entry/configuration/footer permutations. This bounded explanation does not waive
+any byte failure or establish every historical cause.
+
+2026-10-04 13:03 UTC correction: WITHDRAW the earlier public-materialized957
+counterexample rationale. Fresh two-file O2 build and three explicit argv controls
+show same-profile materialized resave is exact; switching to compact reproduces
+the earlier31696->27014 artifact pair. The earlier original argv was not retained,
+so its exact invocation is unknown. Keep the failed-helper setup and original
+artifacts/claim with the [correction](../src/prototype/performance_promotion/verification/accepted-20261004/two-file-profile-correction/correction.json).
+Use the valid raw-byte dependency evidence, not the withdrawn public rationale.
+
+Use exact frozen c2063542 eval.c/h, eval_internal.h and eval_io.c: recycle only
+stateless returned head frames, preserve opaque/materialized/fallback lifetimes,
+and enumerate reusable readback entries in creation/received-wire order. No
+new wire record or required cache deletion. Private entry metadata adds8*n bytes
+to loader arrays/writer scratch; actual cost must include it. Root will freshly
+qualify all four files and independent lifetime/malformed-ordinal controls.
+Original parent36/paired20 raw byte failures and strict3 remain unwaived; full
+raw-byte READY/full51/56 and measured RSS/time are separate criteria. No unrelated
+optimization/checkpoint/Surface/C trial or Main dirty implementation is selected.
+
+### Plan
+
+- [x] Record explicit human approval before further implementation investigation
+  and deliver it to the original Performance owner's existing inbox.
+- [x] Verify source55/cost6/all5868 private records/current correctness evidence;
+  exclude the isolated two-file trial on confirmed raw-byte failures and
+  select the demonstrated four-file deletion/order dependency.
+- [x] Resolve or isolate failing pieces within the authorized scope and prepare
+  the minimal accepted diff with necessary tests.
+- [x] Run accepted regressions, fresh affected sanitizer/fuel/resume/profile
+  checks and verify protected local edits are unchanged.
+- [ ] Commit/push intentional accepted promotion; report exact scope, verification
+  and limitations to the inquiry desk. Actual RSS/time remains a distinct
+  matched exclusive experiment, with retained censored rows and no universal gain.

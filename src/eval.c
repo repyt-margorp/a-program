@@ -75,7 +75,9 @@ static int demand(struct pg_eval *machine, struct pg_closure value, const struct
 	const struct pg_eval_continuation *continuation, const void *state)
 {
 	if (!machine->output || !continuation || !continuation->resume || !value.term) return -1;
-	struct pg_eval_frame *frame = pg_alloc(&machine->temporary, sizeof(*frame));
+	struct pg_eval_frame *frame = machine->free_frames;
+	if (frame) machine->free_frames = frame->parent;
+	else frame = pg_alloc(&machine->temporary, sizeof(*frame));
 	if (!frame) return -1;
 	*frame = (struct pg_eval_frame){.caller = machine->current, .arguments = machine->arguments,
 		.target = target, .continuation = continuation, .state = state, .parent = machine->frames, .cursor = machine->arguments};
@@ -119,6 +121,16 @@ int pg_eval_head_marker(struct pg_eval *machine, const struct pg_term *answer, c
 	return -1; /* The descriptor is interpreted by resume_frame, never called. */
 }
 
+static void retire_frame(struct pg_eval *machine, struct pg_eval_frame *frame)
+{
+	/* Opaque callback state can borrow inline fields beyond this invocation. */
+	if (frame->state) return;
+	/* The callback has returned; its state and captured delivery are no longer
+	 * borrowed from this frame. Retained closures keep their own arena links. */
+	*frame = (struct pg_eval_frame){.parent = machine->free_frames};
+	machine->free_frames = frame;
+}
+
 static int resume_frame(struct pg_eval *machine)
 {
 	struct pg_eval_frame *frame = machine->frames;
@@ -135,6 +147,7 @@ static int resume_frame(struct pg_eval *machine)
 		if (result != 2) {
 			/* Restored empty frames can still own decoded readback scratch. */
 			pg_materialize_destroy(&frame->answer);
+			retire_frame(machine, frame);
 			return result > 1 ? -1 : result;
 		}
 		/* A declined head leaves its caller unchanged. Resume charged readback
@@ -165,6 +178,7 @@ static int resume_frame(struct pg_eval *machine)
 	machine->frames = frame->parent;
 	machine->head_ready = 0;
 	pg_materialize_destroy(&frame->answer);
+	/* Materialized callbacks keep their original arena-lifetime contract. */
 	return (head ? head->fallback : frame->continuation)->resume(machine, answer, frame->state);
 }
 
@@ -273,6 +287,7 @@ static struct readback_entry *reify_find(struct readback_context *context, struc
 int pg_readback_index(struct readback_context *context, struct readback_entry *entry)
 {
 	if (reify_find(context, entry->input)) return -1;
+	entry->order = context->results.count;
 	return pg_index_insert(&context->results, &entry->index, reify_hash(entry->input));
 }
 
@@ -290,6 +305,7 @@ static struct readback_entry *reify_request(struct readback_context *context, st
 	memset(entry, 0, sizeof(*entry));
 	entry->input = closure;
 	entry->cursor = closure.environment;
+	entry->order = context->results.count;
 	if (pg_index_insert(&context->results, &entry->index, reify_hash(closure)) != 0) return NULL;
 	if (!closure.environment) entry->result = closure.term;
 	else {
@@ -831,6 +847,7 @@ static enum pg_eval_status whnf_step(struct pg_whnf_job *job)
 	job->certificate = certificate;
 	pg_materialize_destroy(&job->output);
 	pg_graph_destroy(&job->machine.temporary);
+	job->machine.free_frames = NULL;
 	job->machine.current = (struct pg_closure){certificate->target, NULL};
 	job->machine.arguments = NULL;
 	return PG_EVAL_WHNF;

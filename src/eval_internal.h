@@ -12,6 +12,8 @@ struct readback_entry {
 	const struct pg_object *binder;
 	unsigned stage;
 	const struct pg_environment *cursor;
+	/* Creation order; restored entries use their existing wire record order. */
+	size_t order;
 };
 struct readback_context {
 	struct pg_graph *output;

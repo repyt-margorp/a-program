@@ -1,0 +1,9 @@
+{
+  "date_UTC": "2026-10-04T13:04:33.792318+00:00",
+  "source_notice_sha256": "65c91e327ef2b89c4f1db54501a66425ab7deb939c0c4684c499252bd6d3cfcb",
+  "action": "Consumed profile question. Fresh O2 two-file build and three explicit argv controls show original writer==materialized31696 and original resave==compact27014; same-profile materialized resave exact. Original public counterexample rationale WITHDRAWN, artifacts retained with explicit correction. Original argv unretained, do not claim reconstructed argv original.",
+  "correction": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/performance-approved-promotion/src/prototype/performance_promotion/verification/accepted-20261004/two-file-profile-correction/correction.json",
+  "promotion_dependency": "Unchanged2-file raw15/29 and full4-file candidate0/328 inert plus independently recomputed100 metadata observations remain valid. Original20 paired/36 parent and strict3 unwaived.",
+  "current_Root_four_file_results": "Fresh accepted check/head/host/execution0, affected and Core/IADT/Synthesis/fullSource/normalization/imageCLI SAN0; six fuels equal;12 publicpair/24inert/24resume exact;52/full40/strict3 unchanged;raw1152 semantic0,candidate328inert0,paired20failed.",
+  "scope": "Commit/push pending. No new cost grant/sample, lifecycle/Goal/timer or byte waiver."
+}

@@ -1,0 +1,42 @@
+{
+  "terminal": true,
+  "commands": 6,
+  "fuels": [
+    {
+      "case": "list",
+      "actual_fuel": 1915,
+      "equal": true,
+      "expected_fuel": 1915
+    },
+    {
+      "case": "imported-local-sorted",
+      "actual_fuel": 956507,
+      "equal": true,
+      "expected_fuel": 956507
+    },
+    {
+      "case": "trees4",
+      "actual_fuel": 2318248,
+      "equal": true,
+      "expected_fuel": 2318248
+    },
+    {
+      "case": "trees16",
+      "actual_fuel": 7608511,
+      "equal": true,
+      "expected_fuel": 7608511
+    },
+    {
+      "case": "trees64",
+      "actual_fuel": 29780510,
+      "equal": true,
+      "expected_fuel": 29780510
+    },
+    {
+      "case": "trees400",
+      "actual_fuel": 183507626,
+      "equal": true,
+      "expected_fuel": 183507626
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "started_UTC": "2026-10-04T12:46:56.256404+00:00",
+  "argv": [
+    "make",
+    "-j1",
+    "-f",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/performance-approved-promotion/src/Makefile",
+    "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/performance-approved-frame-only/build-san",
+    "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+    "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+    "check-frame-retirement",
+    "check-head-delivery",
+    "check-eval-io",
+    "check-identity-io"
+  ],
+  "exit": 0,
+  "finished_UTC": "2026-10-04T12:48:39.737452+00:00"
+}

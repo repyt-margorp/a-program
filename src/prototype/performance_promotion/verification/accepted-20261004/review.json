@@ -1,0 +1,73 @@
+{
+  "date_UTC": "2026-10-04T13:00:00.111474+00:00",
+  "Main_parent": "c205d507a8568bfdda355e247a78b4e67464f294",
+  "approval_receipt": "../../../coordination/inbox/performance-accepted-promotion-approval-20261004.json",
+  "accepted_baseline_commit": "94a20003b976475b1ed38025e61acb6cdbdab92c",
+  "candidate_runtime120_sha256": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907",
+  "runtime_files": [
+    "src/eval.c",
+    "src/eval.h",
+    "src/eval_internal.h",
+    "src/eval_io.c"
+  ],
+  "new_tests": [
+    "tests/frame_retirement_test.c",
+    "tests/stateless_head_cleanup_test.c",
+    "tests/callback_failure_cleanup_test.c",
+    "tests/readback_transport_bounds_test.c"
+  ],
+  "required_Makefile": "src/Makefile",
+  "fresh_Root_qualification": {
+    "accepted_check_head_host_execution_exit": 0,
+    "affected_SAN_head_frame_eval_IO_identity_IO_exit": 0,
+    "SAN_Core_IADT_Synthesis_full_Source_IO_normalization_image_CLI": {
+      "groups": 6,
+      "exits": 0
+    },
+    "six_completed_O2_fuels_equal": true,
+    "public12_images24_inert24_resume_exact": true,
+    "public52_images_full40_TSV_exact_accepted_parent": true,
+    "strict_exit": 1,
+    "original_strict3_unwaived": true,
+    "raw_runtime_commands": 1152,
+    "semantic_fuel_step0_SAN_unexpected_failures": 0,
+    "candidate_inert_bytes": {
+      "images": 328,
+      "failures": 0
+    },
+    "paired_bytes_vs_original_parent": {
+      "images": 164,
+      "failures_unwaived": 20
+    },
+    "recorded_commands_log_pins_all_exact": 1228
+  },
+  "two_file_trial": {
+    "runtime120": "70ad568248f32621651342c0911dfa2a98839da8cf0d967fedd4b1c1d19ae1d7",
+    "decision": "Excluded from promotion: fresh raw15 paired/29 inert-byte failures. The public957 rejection rationale is WITHDRAWN by fresh exact-profile correction; materialized write/inert matches, while switching to compact reproduces old artifact pair. Original argv unretained, no assertion that reconstructed argv was original.",
+    "public_counterexample": "two-file-rejected-public-profile-counterexample.json",
+    "profile_correction": "two-file-profile-correction/correction.json"
+  },
+  "scope_decision": "Approved stateless returned captured-head frame reuse and demonstrated raw readback ordering dependency. Opaque state/materialized/return2 lifetimes and existing cache answers are preserved. Canonical four-file frozen source is exact; no Surface/C/new authority/wire field/checkpoint trial imported. Root independently recomputed100 existing failed artifact observations: DAG bodies/counts/steps/flags equal, metadata permutations explain this cohort only. Original parent36 and paired20 remain failed byte comparisons. This is scoped accepted implementation qualification, not raw-byte/full #51/runtime READY.",
+  "cost_boundary": "No current matched RSS/time; head-ready field relocation preserves eval/frame layout. readback entry88->96 with individual aligned extent96 unchanged; loader array/writer scratch add8*n before rounding, included in future net-cost experiment. Historical measurements do not transfer.",
+  "not_claimed": [
+    "Full check-acceptance pass: old E25 timeout and previous accepted Job aggregate failure retained; only listed fresh commands qualify this scope.",
+    "Universal byte equivalence, strict resume completion, actual RSS/time, #51/#56/#61/Goal completion.",
+    "Acceptance of unrelated Main work or prototype alternatives."
+  ],
+  "archive": {
+    "path": "Root-fresh-qualification-evidence.tar.gz",
+    "sha256": "e061348222ea980325176bc885ab7900e0791786d36db7e1f940af45778365ab"
+  },
+  "Main_preservation_before": {
+    "doc/2026-09-18-IADT-SURFACE-AND-ISSUE-29-30-PRIORITY-PLAN.md": "f5efef567ba2099e99e47f24822ec2a4b1625128e23d15fb6be677e5bbdb9958",
+    "src/evidence.c": "76c2b65a4a902705199b0c477f93fd17c396f46d5831946b2ebe25c1a0c0e5ee",
+    "src/evidence.h": "a83530344d78e142a129a6ca2726eaace6a72f22c6a787b9ab5137378379719b",
+    "src/iadt.c": "0707d477ce6f764a879fae7faec2794caad8bbd643e0f0fcef6dab601152723b",
+    "src/iadt.h": "11b5d3579ec43a7390c9921858f2d8ed1ae45d07bfc3a6c3d8555927ef2179d0",
+    "tests/core.c": "eb92f3814907bf7b4bf5af7842986309185bd9ed4d8ea26c0314a29635457715",
+    "tests/iadt.c": "652c5a215131c9687205b30a05b18189362d177035efad5f6c4c5b3e4afaf739",
+    "tests/acceptance/generic-quick-sorted-derived-lt.p": "04f765868a23867be98d780eac40de62439b44b3cf3c77f2a234946adcd1621f",
+    "tests/fixtures/sorted-proof-provider-derived-lt.p": "17cf6d520e69f644a5e675a1474e64361359dd4cc1e96a4a40d1fdea66f954c7"
+  },
+  "publication": "Qualified intentional accepted diff; commit/push and live Main local-edit interaction checks pending."
+}

@@ -1,0 +1,14 @@
+{
+  "date_UTC": "2026-10-04T13:02:15.835396+00:00",
+  "argv": [
+    "make",
+    "-j1",
+    "-f",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/performance-profile-recheck/src/Makefile",
+    "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/performance-two-file-profile-recheck/build",
+    "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+    "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+    "pointer-check"
+  ],
+  "exit": 0
+}

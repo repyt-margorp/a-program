@@ -1,0 +1,458 @@
+{
+  "terminal": true,
+  "commands": 60,
+  "image_pairs": 12,
+  "inert_rows": 24,
+  "resumes": 24,
+  "all_bytes_verdicts_fuels_equal": true,
+  "images": [
+    {
+      "profile": "--save",
+      "cut": 0,
+      "equal": true,
+      "image_sha256": "6a5c01a48dabbbf27cfebcc3bbe4428a30ea5c818dd47824cbd70724b7cf5577",
+      "parent_sha256": "6a5c01a48dabbbf27cfebcc3bbe4428a30ea5c818dd47824cbd70724b7cf5577"
+    },
+    {
+      "profile": "--save",
+      "cut": 1,
+      "equal": true,
+      "image_sha256": "6a5c01a48dabbbf27cfebcc3bbe4428a30ea5c818dd47824cbd70724b7cf5577",
+      "parent_sha256": "6a5c01a48dabbbf27cfebcc3bbe4428a30ea5c818dd47824cbd70724b7cf5577"
+    },
+    {
+      "profile": "--save",
+      "cut": 100,
+      "equal": true,
+      "image_sha256": "2480cca9513b064a4e1f56c198e9f71acbada3865a95ba463a7855b97bea734b",
+      "parent_sha256": "2480cca9513b064a4e1f56c198e9f71acbada3865a95ba463a7855b97bea734b"
+    },
+    {
+      "profile": "--save",
+      "cut": 957,
+      "equal": true,
+      "image_sha256": "87822c1e831623b3294b3a287c824113d1377dc84f4a57a5e82f44570ebf740f",
+      "parent_sha256": "87822c1e831623b3294b3a287c824113d1377dc84f4a57a5e82f44570ebf740f"
+    },
+    {
+      "profile": "--save",
+      "cut": 1914,
+      "equal": true,
+      "image_sha256": "87822c1e831623b3294b3a287c824113d1377dc84f4a57a5e82f44570ebf740f",
+      "parent_sha256": "87822c1e831623b3294b3a287c824113d1377dc84f4a57a5e82f44570ebf740f"
+    },
+    {
+      "profile": "--save",
+      "cut": 1915,
+      "equal": true,
+      "image_sha256": "87822c1e831623b3294b3a287c824113d1377dc84f4a57a5e82f44570ebf740f",
+      "parent_sha256": "87822c1e831623b3294b3a287c824113d1377dc84f4a57a5e82f44570ebf740f"
+    },
+    {
+      "profile": "--save-materialized",
+      "cut": 0,
+      "equal": true,
+      "image_sha256": "6a5c01a48dabbbf27cfebcc3bbe4428a30ea5c818dd47824cbd70724b7cf5577",
+      "parent_sha256": "6a5c01a48dabbbf27cfebcc3bbe4428a30ea5c818dd47824cbd70724b7cf5577"
+    },
+    {
+      "profile": "--save-materialized",
+      "cut": 1,
+      "equal": true,
+      "image_sha256": "6a5c01a48dabbbf27cfebcc3bbe4428a30ea5c818dd47824cbd70724b7cf5577",
+      "parent_sha256": "6a5c01a48dabbbf27cfebcc3bbe4428a30ea5c818dd47824cbd70724b7cf5577"
+    },
+    {
+      "profile": "--save-materialized",
+      "cut": 100,
+      "equal": true,
+      "image_sha256": "2480cca9513b064a4e1f56c198e9f71acbada3865a95ba463a7855b97bea734b",
+      "parent_sha256": "2480cca9513b064a4e1f56c198e9f71acbada3865a95ba463a7855b97bea734b"
+    },
+    {
+      "profile": "--save-materialized",
+      "cut": 957,
+      "equal": true,
+      "image_sha256": "af36f96cfda1a6c9b2304d75e7a3e422129753ca1458f12fe714d7a1b0f97cd1",
+      "parent_sha256": "af36f96cfda1a6c9b2304d75e7a3e422129753ca1458f12fe714d7a1b0f97cd1"
+    },
+    {
+      "profile": "--save-materialized",
+      "cut": 1914,
+      "equal": true,
+      "image_sha256": "c16017e5a3b379a43d3d678110236ea72ce648db1a0b891a9e93f61d5b40a7f4",
+      "parent_sha256": "c16017e5a3b379a43d3d678110236ea72ce648db1a0b891a9e93f61d5b40a7f4"
+    },
+    {
+      "profile": "--save-materialized",
+      "cut": 1915,
+      "equal": true,
+      "image_sha256": "9807e22a72442798d054b803387eabb64472bf7ffe43d2b1702444f72939b105",
+      "parent_sha256": "9807e22a72442798d054b803387eabb64472bf7ffe43d2b1702444f72939b105"
+    }
+  ],
+  "inert": [
+    {
+      "profile": "--save",
+      "cut": 0,
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "6a5c01a48dabbbf27cfebcc3bbe4428a30ea5c818dd47824cbd70724b7cf5577",
+      "resave_sha256": "6a5c01a48dabbbf27cfebcc3bbe4428a30ea5c818dd47824cbd70724b7cf5577"
+    },
+    {
+      "profile": "--save",
+      "cut": 0,
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "6a5c01a48dabbbf27cfebcc3bbe4428a30ea5c818dd47824cbd70724b7cf5577",
+      "resave_sha256": "6a5c01a48dabbbf27cfebcc3bbe4428a30ea5c818dd47824cbd70724b7cf5577"
+    },
+    {
+      "profile": "--save",
+      "cut": 1,
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "6a5c01a48dabbbf27cfebcc3bbe4428a30ea5c818dd47824cbd70724b7cf5577",
+      "resave_sha256": "6a5c01a48dabbbf27cfebcc3bbe4428a30ea5c818dd47824cbd70724b7cf5577"
+    },
+    {
+      "profile": "--save",
+      "cut": 1,
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "6a5c01a48dabbbf27cfebcc3bbe4428a30ea5c818dd47824cbd70724b7cf5577",
+      "resave_sha256": "6a5c01a48dabbbf27cfebcc3bbe4428a30ea5c818dd47824cbd70724b7cf5577"
+    },
+    {
+      "profile": "--save",
+      "cut": 100,
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "2480cca9513b064a4e1f56c198e9f71acbada3865a95ba463a7855b97bea734b",
+      "resave_sha256": "2480cca9513b064a4e1f56c198e9f71acbada3865a95ba463a7855b97bea734b"
+    },
+    {
+      "profile": "--save",
+      "cut": 100,
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "2480cca9513b064a4e1f56c198e9f71acbada3865a95ba463a7855b97bea734b",
+      "resave_sha256": "2480cca9513b064a4e1f56c198e9f71acbada3865a95ba463a7855b97bea734b"
+    },
+    {
+      "profile": "--save",
+      "cut": 957,
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "87822c1e831623b3294b3a287c824113d1377dc84f4a57a5e82f44570ebf740f",
+      "resave_sha256": "87822c1e831623b3294b3a287c824113d1377dc84f4a57a5e82f44570ebf740f"
+    },
+    {
+      "profile": "--save",
+      "cut": 957,
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "87822c1e831623b3294b3a287c824113d1377dc84f4a57a5e82f44570ebf740f",
+      "resave_sha256": "87822c1e831623b3294b3a287c824113d1377dc84f4a57a5e82f44570ebf740f"
+    },
+    {
+      "profile": "--save",
+      "cut": 1914,
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "87822c1e831623b3294b3a287c824113d1377dc84f4a57a5e82f44570ebf740f",
+      "resave_sha256": "87822c1e831623b3294b3a287c824113d1377dc84f4a57a5e82f44570ebf740f"
+    },
+    {
+      "profile": "--save",
+      "cut": 1914,
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "87822c1e831623b3294b3a287c824113d1377dc84f4a57a5e82f44570ebf740f",
+      "resave_sha256": "87822c1e831623b3294b3a287c824113d1377dc84f4a57a5e82f44570ebf740f"
+    },
+    {
+      "profile": "--save",
+      "cut": 1915,
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "87822c1e831623b3294b3a287c824113d1377dc84f4a57a5e82f44570ebf740f",
+      "resave_sha256": "87822c1e831623b3294b3a287c824113d1377dc84f4a57a5e82f44570ebf740f"
+    },
+    {
+      "profile": "--save",
+      "cut": 1915,
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "87822c1e831623b3294b3a287c824113d1377dc84f4a57a5e82f44570ebf740f",
+      "resave_sha256": "87822c1e831623b3294b3a287c824113d1377dc84f4a57a5e82f44570ebf740f"
+    },
+    {
+      "profile": "--save-materialized",
+      "cut": 0,
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "6a5c01a48dabbbf27cfebcc3bbe4428a30ea5c818dd47824cbd70724b7cf5577",
+      "resave_sha256": "6a5c01a48dabbbf27cfebcc3bbe4428a30ea5c818dd47824cbd70724b7cf5577"
+    },
+    {
+      "profile": "--save-materialized",
+      "cut": 0,
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "6a5c01a48dabbbf27cfebcc3bbe4428a30ea5c818dd47824cbd70724b7cf5577",
+      "resave_sha256": "6a5c01a48dabbbf27cfebcc3bbe4428a30ea5c818dd47824cbd70724b7cf5577"
+    },
+    {
+      "profile": "--save-materialized",
+      "cut": 1,
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "6a5c01a48dabbbf27cfebcc3bbe4428a30ea5c818dd47824cbd70724b7cf5577",
+      "resave_sha256": "6a5c01a48dabbbf27cfebcc3bbe4428a30ea5c818dd47824cbd70724b7cf5577"
+    },
+    {
+      "profile": "--save-materialized",
+      "cut": 1,
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "6a5c01a48dabbbf27cfebcc3bbe4428a30ea5c818dd47824cbd70724b7cf5577",
+      "resave_sha256": "6a5c01a48dabbbf27cfebcc3bbe4428a30ea5c818dd47824cbd70724b7cf5577"
+    },
+    {
+      "profile": "--save-materialized",
+      "cut": 100,
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "2480cca9513b064a4e1f56c198e9f71acbada3865a95ba463a7855b97bea734b",
+      "resave_sha256": "2480cca9513b064a4e1f56c198e9f71acbada3865a95ba463a7855b97bea734b"
+    },
+    {
+      "profile": "--save-materialized",
+      "cut": 100,
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "2480cca9513b064a4e1f56c198e9f71acbada3865a95ba463a7855b97bea734b",
+      "resave_sha256": "2480cca9513b064a4e1f56c198e9f71acbada3865a95ba463a7855b97bea734b"
+    },
+    {
+      "profile": "--save-materialized",
+      "cut": 957,
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "af36f96cfda1a6c9b2304d75e7a3e422129753ca1458f12fe714d7a1b0f97cd1",
+      "resave_sha256": "af36f96cfda1a6c9b2304d75e7a3e422129753ca1458f12fe714d7a1b0f97cd1"
+    },
+    {
+      "profile": "--save-materialized",
+      "cut": 957,
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "af36f96cfda1a6c9b2304d75e7a3e422129753ca1458f12fe714d7a1b0f97cd1",
+      "resave_sha256": "af36f96cfda1a6c9b2304d75e7a3e422129753ca1458f12fe714d7a1b0f97cd1"
+    },
+    {
+      "profile": "--save-materialized",
+      "cut": 1914,
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "c16017e5a3b379a43d3d678110236ea72ce648db1a0b891a9e93f61d5b40a7f4",
+      "resave_sha256": "c16017e5a3b379a43d3d678110236ea72ce648db1a0b891a9e93f61d5b40a7f4"
+    },
+    {
+      "profile": "--save-materialized",
+      "cut": 1914,
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "c16017e5a3b379a43d3d678110236ea72ce648db1a0b891a9e93f61d5b40a7f4",
+      "resave_sha256": "c16017e5a3b379a43d3d678110236ea72ce648db1a0b891a9e93f61d5b40a7f4"
+    },
+    {
+      "profile": "--save-materialized",
+      "cut": 1915,
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "9807e22a72442798d054b803387eabb64472bf7ffe43d2b1702444f72939b105",
+      "resave_sha256": "9807e22a72442798d054b803387eabb64472bf7ffe43d2b1702444f72939b105"
+    },
+    {
+      "profile": "--save-materialized",
+      "cut": 1915,
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "9807e22a72442798d054b803387eabb64472bf7ffe43d2b1702444f72939b105",
+      "resave_sha256": "9807e22a72442798d054b803387eabb64472bf7ffe43d2b1702444f72939b105"
+    }
+  ],
+  "resume_rows": [
+    {
+      "profile": "--save",
+      "cut": 0,
+      "flavor": "o2",
+      "output": "done steps=1915",
+      "matches_current_accepted_parent": true
+    },
+    {
+      "profile": "--save",
+      "cut": 0,
+      "flavor": "san",
+      "output": "done steps=1915",
+      "matches_current_accepted_parent": true
+    },
+    {
+      "profile": "--save",
+      "cut": 1,
+      "flavor": "o2",
+      "output": "done steps=1915",
+      "matches_current_accepted_parent": true
+    },
+    {
+      "profile": "--save",
+      "cut": 1,
+      "flavor": "san",
+      "output": "done steps=1915",
+      "matches_current_accepted_parent": true
+    },
+    {
+      "profile": "--save",
+      "cut": 100,
+      "flavor": "o2",
+      "output": "done steps=1883",
+      "matches_current_accepted_parent": true
+    },
+    {
+      "profile": "--save",
+      "cut": 100,
+      "flavor": "san",
+      "output": "done steps=1883",
+      "matches_current_accepted_parent": true
+    },
+    {
+      "profile": "--save",
+      "cut": 957,
+      "flavor": "o2",
+      "output": "done steps=1871",
+      "matches_current_accepted_parent": true
+    },
+    {
+      "profile": "--save",
+      "cut": 957,
+      "flavor": "san",
+      "output": "done steps=1871",
+      "matches_current_accepted_parent": true
+    },
+    {
+      "profile": "--save",
+      "cut": 1914,
+      "flavor": "o2",
+      "output": "done steps=1871",
+      "matches_current_accepted_parent": true
+    },
+    {
+      "profile": "--save",
+      "cut": 1914,
+      "flavor": "san",
+      "output": "done steps=1871",
+      "matches_current_accepted_parent": true
+    },
+    {
+      "profile": "--save",
+      "cut": 1915,
+      "flavor": "o2",
+      "output": "done steps=1871",
+      "matches_current_accepted_parent": true
+    },
+    {
+      "profile": "--save",
+      "cut": 1915,
+      "flavor": "san",
+      "output": "done steps=1871",
+      "matches_current_accepted_parent": true
+    },
+    {
+      "profile": "--save-materialized",
+      "cut": 0,
+      "flavor": "o2",
+      "output": "done steps=1915",
+      "matches_current_accepted_parent": true
+    },
+    {
+      "profile": "--save-materialized",
+      "cut": 0,
+      "flavor": "san",
+      "output": "done steps=1915",
+      "matches_current_accepted_parent": true
+    },
+    {
+      "profile": "--save-materialized",
+      "cut": 1,
+      "flavor": "o2",
+      "output": "done steps=1915",
+      "matches_current_accepted_parent": true
+    },
+    {
+      "profile": "--save-materialized",
+      "cut": 1,
+      "flavor": "san",
+      "output": "done steps=1915",
+      "matches_current_accepted_parent": true
+    },
+    {
+      "profile": "--save-materialized",
+      "cut": 100,
+      "flavor": "o2",
+      "output": "done steps=1883",
+      "matches_current_accepted_parent": true
+    },
+    {
+      "profile": "--save-materialized",
+      "cut": 100,
+      "flavor": "san",
+      "output": "done steps=1883",
+      "matches_current_accepted_parent": true
+    },
+    {
+      "profile": "--save-materialized",
+      "cut": 957,
+      "flavor": "o2",
+      "output": "done steps=1865",
+      "matches_current_accepted_parent": true
+    },
+    {
+      "profile": "--save-materialized",
+      "cut": 957,
+      "flavor": "san",
+      "output": "done steps=1865",
+      "matches_current_accepted_parent": true
+    },
+    {
+      "profile": "--save-materialized",
+      "cut": 1914,
+      "flavor": "o2",
+      "output": "done steps=1858",
+      "matches_current_accepted_parent": true
+    },
+    {
+      "profile": "--save-materialized",
+      "cut": 1914,
+      "flavor": "san",
+      "output": "done steps=1858",
+      "matches_current_accepted_parent": true
+    },
+    {
+      "profile": "--save-materialized",
+      "cut": 1915,
+      "flavor": "o2",
+      "output": "done steps=1858",
+      "matches_current_accepted_parent": true
+    },
+    {
+      "profile": "--save-materialized",
+      "cut": 1915,
+      "flavor": "san",
+      "output": "done steps=1858",
+      "matches_current_accepted_parent": true
+    }
+  ]
+}

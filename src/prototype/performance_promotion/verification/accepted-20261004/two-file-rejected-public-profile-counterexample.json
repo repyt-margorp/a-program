@@ -1,0 +1,13 @@
+{
+  "date_UTC": "2026-10-04T12:46:03.056844+00:00",
+  "source120": "70ad568248f32621651342c0911dfa2a98839da8cf0d967fedd4b1c1d19ae1d7",
+  "classification": "Fresh Root public materialized957 inert byte failure; two-file promotion rejected, not asserted passing.",
+  "image": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/performance-approved-frame-only/public-profiles/save-materialized-957.a",
+  "image_sha256": "af36f96cfda1a6c9b2304d75e7a3e422129753ca1458f12fe714d7a1b0f97cd1",
+  "resave": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/performance-approved-frame-only/public-profiles/save-materialized-957-o2-inert.a",
+  "resave_sha256": "87822c1e831623b3294b3a287c824113d1377dc84f4a57a5e82f44570ebf740f",
+  "semantic_inert_exit": 3,
+  "expected_inert_exit": 3,
+  "byte_equal": false,
+  "decision": "The two-file deletion does not independently qualify the public save/load-byte contract. Include required submitted readback creation/wire-order dependency as a four-file candidate; preserve original20 paired/36 parent failures, no full raw byte waiver."
+}

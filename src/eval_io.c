@@ -217,9 +217,23 @@ static int readback_write(FILE *file, const char format[8], const struct readbac
 	if (pg_dag_init(&entries, readback_child, NULL) || pg_graph_init(&entries.storage)) goto done;
 	if (root && pg_dag_add(&entries, root)) goto done;
 	/* Earlier arguments may leave reusable results outside the current root. */
-	for (size_t i = 0; i < context->results.capacity; ++i)
-		for (const struct pg_index_entry *entry = context->results.buckets[i]; entry; entry = entry->next)
-			if (pg_dag_add(&entries, entry)) goto done;
+	if (context->results.count) {
+		if (context->results.count > SIZE_MAX / sizeof(struct readback_entry *)) goto done;
+		const struct readback_entry **ordered = pg_alloc(&entries.storage, context->results.count * sizeof(*ordered));
+		if (!ordered) goto done;
+		memset(ordered, 0, context->results.count * sizeof(*ordered));
+		for (size_t i = 0; i < context->results.capacity; ++i) {
+			for (const struct pg_index_entry *index = context->results.buckets[i]; index; index = index->next) {
+				const struct readback_entry *entry = (const struct readback_entry *)index;
+				if (entry->order >= context->results.count || ordered[entry->order]) goto done;
+				ordered[entry->order] = entry;
+			}
+		}
+		/* Keep all answers; pointer buckets only serve runtime lookup. Restored
+		 * record order is already child-before-parent and preserves discovery. */
+		for (size_t i = 0; i < context->results.count; ++i)
+			if (!ordered[i] || pg_dag_add(&entries, ordered[i])) goto done;
+	}
 	if (extra_count > SIZE_MAX / sizeof(struct pg_eval_configuration)) goto done;
 	if (entries.count > (SIZE_MAX / sizeof(struct pg_eval_configuration) - extra_count) / 4) goto done;
 	size_t total = 4 * entries.count + extra_count;

@@ -1,7 +1,7 @@
 # Performance Goal: Current Speed and Memory Work
 
 Date: 2026-10-03
-Status: active; V3 measured gain reviewed; MEM2 IADT prototype has bounded tree RSS savings with mixed timing; further safe deletions continue.
+Status: active; new approved stateless-frame/required ordinal dependency freshly qualified for accepted promotion; commit/push and current matched RSS/time pending. Historical gains remain producer-specific.
 This is the active successor to the frozen
 [Performance Goal at0539051](2026-10-03-PERFORMANCE-GOAL.md). Its published bytes
 and historical handoffs remain immutable. The single current issue-status table
@@ -15,6 +15,12 @@ and work list remain in [Joint Verification](2026-10-03-PERFORMANCE-JOINT-VERIFI
 ## 1. Speed and Memory Recovery
 
 ### Subjective (User)
+
+2026-10-04 12:20 UTC, English translation of the new explicit human approval
+received by inquiry desk `019ebfae`: the performance work appears to have
+removed unnecessary Reduction and substantially improved speed; move those
+improvements into the accepted implementation. This is a new adoption approval,
+not a fresh measurement or an assertion that every prototype has passed.
 
 2026-10-03, dated English paraphrase of the human priority relayed by inquiry
 desk `019ebfae`: AP tree peak memory of about1847MiB after optimization remains
@@ -77,7 +83,24 @@ The private `73fa86c9` snapshot remains the qualification anchor.
 Original observer, sanitizer, strict partition and setup failures remain
 separate. No E11/E12 runtime is included.
 
+2026-10-04, fresh Root exact accepted94a/c206 qualification is recorded in the
+[separate promotion work list](2026-10-03-VERIFIED-PERFORMANCE-PROMOTION-PLAN.md#2-stateless-frame-deletion-promotion).
+Accepted check/head/host/execution and affected SAN/consumer checks pass, six
+completed fuels equal. Public profiles and52 partition images/full40 TSV match;
+strict3 and old writer paired20 remain failed. Candidate own328 inert images
+match. The initial public957 rationale was a profile-mismatched comparison and
+is explicitly withdrawn with a fresh same-profile correction; valid raw two-file
+15/29 ordering failures are distinct. Commit/push and actual net RSS/time remain.
+
 ### Assessment
+
+2026-10-04 12:20 UTC, inquiry-desk scope decision: route the approved accepted
+promotion to the existing Merge owner. Compare against accepted Job `94a20003`
+and select verified redundant-work deletions with their necessary dependencies.
+The current `c206` candidate's paired save-byte failures remain unresolved; this
+approval does not waive them or establish measured peak-memory/time gains.
+Keep the single current work list in Joint Verification and preserve unrelated
+local edits. Merge owns accepted edits, regression verification and Main push.
 
 2026-10-03 19:38 UTC, Root Fold qualification/publication: exact12 task86a0699 on57a94cc
 and prototype Main9d5cda2 are pushed/remote exact. All1257 pins/source12881c3ad27

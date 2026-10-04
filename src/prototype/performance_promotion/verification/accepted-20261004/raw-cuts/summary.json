@@ -1,0 +1,3295 @@
+{
+  "terminal": true,
+  "build_commands": 2,
+  "runtime_commands": 1152,
+  "semantic_fuel_SAN_unexpected_failures": 0,
+  "paired": 164,
+  "paired_byte_failures_unwaived": 20,
+  "inert": 328,
+  "candidate_inert_byte_failures_unwaived": 0,
+  "pairs": [
+    {
+      "image": "fold_spine_test-0-0.image",
+      "equal": true,
+      "candidate_sha256": "095657157857d758cadcd3696ff49c1f7c6bb9eb61ec396bca4c3a8864a1a09d",
+      "parent_sha256": "095657157857d758cadcd3696ff49c1f7c6bb9eb61ec396bca4c3a8864a1a09d"
+    },
+    {
+      "image": "fold_spine_test-0-1.image",
+      "equal": true,
+      "candidate_sha256": "65223187334e8e67f903ea5f3f1e5f5d86250846454472f93e0da402c5e04e6d",
+      "parent_sha256": "65223187334e8e67f903ea5f3f1e5f5d86250846454472f93e0da402c5e04e6d"
+    },
+    {
+      "image": "fold_spine_test-0-10.image",
+      "equal": true,
+      "candidate_sha256": "0e3a35d442451c5e7650c0a50cfd276631c5152b1c2d3703a8b9d46f1ef2aa91",
+      "parent_sha256": "0e3a35d442451c5e7650c0a50cfd276631c5152b1c2d3703a8b9d46f1ef2aa91"
+    },
+    {
+      "image": "fold_spine_test-0-11.image",
+      "equal": true,
+      "candidate_sha256": "9a776f55a147adb957c46ed59c3f1b5feda3d03a7d5bb90ac52e0743239681c9",
+      "parent_sha256": "9a776f55a147adb957c46ed59c3f1b5feda3d03a7d5bb90ac52e0743239681c9"
+    },
+    {
+      "image": "fold_spine_test-0-2.image",
+      "equal": true,
+      "candidate_sha256": "0107ff28df28e8078e5f8b9ad83086be3c2bc08dd03a0bc5e02993a71acb9b22",
+      "parent_sha256": "0107ff28df28e8078e5f8b9ad83086be3c2bc08dd03a0bc5e02993a71acb9b22"
+    },
+    {
+      "image": "fold_spine_test-0-3.image",
+      "equal": true,
+      "candidate_sha256": "53371bfac32b712439c0ab1bea26b0be640fef0b7ec3e7e96cf890f7e69ad238",
+      "parent_sha256": "53371bfac32b712439c0ab1bea26b0be640fef0b7ec3e7e96cf890f7e69ad238"
+    },
+    {
+      "image": "fold_spine_test-0-4.image",
+      "equal": true,
+      "candidate_sha256": "89dff4a63f3c4916a0e425ac405e3de3c7cceafd5f9d145e37fd7f0424402948",
+      "parent_sha256": "89dff4a63f3c4916a0e425ac405e3de3c7cceafd5f9d145e37fd7f0424402948"
+    },
+    {
+      "image": "fold_spine_test-0-5.image",
+      "equal": true,
+      "candidate_sha256": "bcbe2b534ae0783933c931cb14fd516b5c4db4a11914765b7099f4916cfb5834",
+      "parent_sha256": "bcbe2b534ae0783933c931cb14fd516b5c4db4a11914765b7099f4916cfb5834"
+    },
+    {
+      "image": "fold_spine_test-0-6.image",
+      "equal": true,
+      "candidate_sha256": "4abfa884fa0ff4940fe922619a23c3ee5112bcd0a6e947e310e812b6d3049f04",
+      "parent_sha256": "4abfa884fa0ff4940fe922619a23c3ee5112bcd0a6e947e310e812b6d3049f04"
+    },
+    {
+      "image": "fold_spine_test-0-7.image",
+      "equal": true,
+      "candidate_sha256": "7a61439e6d5c906b92a796e1e5aaf95b8ea8ef78e3ba637679f55041f51ecc7e",
+      "parent_sha256": "7a61439e6d5c906b92a796e1e5aaf95b8ea8ef78e3ba637679f55041f51ecc7e"
+    },
+    {
+      "image": "fold_spine_test-0-8.image",
+      "equal": true,
+      "candidate_sha256": "a8b9387ac67eb906586b10652e65b061dff8f86ffb6f9747aba132a9f2d04b0b",
+      "parent_sha256": "a8b9387ac67eb906586b10652e65b061dff8f86ffb6f9747aba132a9f2d04b0b"
+    },
+    {
+      "image": "fold_spine_test-0-9.image",
+      "equal": true,
+      "candidate_sha256": "1e25c4446e5b5af9a0dd60482f85d46f5394c71272bcdda9b10f3c1150262569",
+      "parent_sha256": "1e25c4446e5b5af9a0dd60482f85d46f5394c71272bcdda9b10f3c1150262569"
+    },
+    {
+      "image": "fold_spine_test-1-0.image",
+      "equal": true,
+      "candidate_sha256": "b2fb9919d6bb412ba0845e26fe480c991abe4a47a7f126937f3cc8a76d3ad3a5",
+      "parent_sha256": "b2fb9919d6bb412ba0845e26fe480c991abe4a47a7f126937f3cc8a76d3ad3a5"
+    },
+    {
+      "image": "fold_spine_test-1-1.image",
+      "equal": true,
+      "candidate_sha256": "845bfadc886b60269330d8b3cb47a89f855f3bbe9c1a5d075b472782b994fa26",
+      "parent_sha256": "845bfadc886b60269330d8b3cb47a89f855f3bbe9c1a5d075b472782b994fa26"
+    },
+    {
+      "image": "fold_spine_test-1-10.image",
+      "equal": true,
+      "candidate_sha256": "5e960aa039bbe7f814167a8efdbe4c9891ed6eaff1060d2dac57e8d720c698d9",
+      "parent_sha256": "5e960aa039bbe7f814167a8efdbe4c9891ed6eaff1060d2dac57e8d720c698d9"
+    },
+    {
+      "image": "fold_spine_test-1-11.image",
+      "equal": true,
+      "candidate_sha256": "a36cb01841882fcbeac04f595d3cd217888d58bec7425b3be3d8ea68ca08fe94",
+      "parent_sha256": "a36cb01841882fcbeac04f595d3cd217888d58bec7425b3be3d8ea68ca08fe94"
+    },
+    {
+      "image": "fold_spine_test-1-12.image",
+      "equal": true,
+      "candidate_sha256": "a301109b1e1331654f1d8b39638020eaf3004b257ed547a10a7ff3404f94e0ca",
+      "parent_sha256": "a301109b1e1331654f1d8b39638020eaf3004b257ed547a10a7ff3404f94e0ca"
+    },
+    {
+      "image": "fold_spine_test-1-13.image",
+      "equal": true,
+      "candidate_sha256": "8f6552b4bb637990e5410d41ce751d8d62ed0c1ceb117406423e0e4a13a47ea6",
+      "parent_sha256": "8f6552b4bb637990e5410d41ce751d8d62ed0c1ceb117406423e0e4a13a47ea6"
+    },
+    {
+      "image": "fold_spine_test-1-14.image",
+      "equal": true,
+      "candidate_sha256": "9d659bde991455430502b279afa6748a44171262568e4cf1365358d01ba8344d",
+      "parent_sha256": "9d659bde991455430502b279afa6748a44171262568e4cf1365358d01ba8344d"
+    },
+    {
+      "image": "fold_spine_test-1-15.image",
+      "equal": true,
+      "candidate_sha256": "513cf4537906f564c7b5d8e337d32044cbc2897155fd2d8002206c65a0dd92c1",
+      "parent_sha256": "513cf4537906f564c7b5d8e337d32044cbc2897155fd2d8002206c65a0dd92c1"
+    },
+    {
+      "image": "fold_spine_test-1-2.image",
+      "equal": true,
+      "candidate_sha256": "2ed57121a684bbb5f45ccb6768086119843666fd968cbf21ab0c01a5a2a4b6c8",
+      "parent_sha256": "2ed57121a684bbb5f45ccb6768086119843666fd968cbf21ab0c01a5a2a4b6c8"
+    },
+    {
+      "image": "fold_spine_test-1-3.image",
+      "equal": true,
+      "candidate_sha256": "7672584143f334e50cbe389a3aabb99098e82fae4b5624cbe27c96009907fc23",
+      "parent_sha256": "7672584143f334e50cbe389a3aabb99098e82fae4b5624cbe27c96009907fc23"
+    },
+    {
+      "image": "fold_spine_test-1-4.image",
+      "equal": true,
+      "candidate_sha256": "82a27487756761422468db4d101f43a6d45cdc107d50b397068762c0021cb429",
+      "parent_sha256": "82a27487756761422468db4d101f43a6d45cdc107d50b397068762c0021cb429"
+    },
+    {
+      "image": "fold_spine_test-1-5.image",
+      "equal": true,
+      "candidate_sha256": "900cf3426eab561f38da19c565de3816cd656019d3667ea30b8bdd6dc5efc29d",
+      "parent_sha256": "900cf3426eab561f38da19c565de3816cd656019d3667ea30b8bdd6dc5efc29d"
+    },
+    {
+      "image": "fold_spine_test-1-6.image",
+      "equal": true,
+      "candidate_sha256": "178cfd7177377bccc10095ad202086e7716ec1223348eaa284f86a88dcdada64",
+      "parent_sha256": "178cfd7177377bccc10095ad202086e7716ec1223348eaa284f86a88dcdada64"
+    },
+    {
+      "image": "fold_spine_test-1-7.image",
+      "equal": true,
+      "candidate_sha256": "f8c05f174dbc0ae97d30411cfaa5d8e2ad34ddf54f572ee73333d0909d4272ad",
+      "parent_sha256": "f8c05f174dbc0ae97d30411cfaa5d8e2ad34ddf54f572ee73333d0909d4272ad"
+    },
+    {
+      "image": "fold_spine_test-1-8.image",
+      "equal": true,
+      "candidate_sha256": "ce62efa716150d9a2b0626ff91e8f660c9e6ee453542c163b76f527ba2b2323f",
+      "parent_sha256": "ce62efa716150d9a2b0626ff91e8f660c9e6ee453542c163b76f527ba2b2323f"
+    },
+    {
+      "image": "fold_spine_test-1-9.image",
+      "equal": true,
+      "candidate_sha256": "763c856b1db1b7872a5433036ce28ad0a1ba7bad821ee3105918126fa848d33a",
+      "parent_sha256": "763c856b1db1b7872a5433036ce28ad0a1ba7bad821ee3105918126fa848d33a"
+    },
+    {
+      "image": "fold_spine_test-2-0.image",
+      "equal": true,
+      "candidate_sha256": "65d1aec8a03583124530d4a7eb2c665eff94faf86395eb3412060e2c77f9e72c",
+      "parent_sha256": "65d1aec8a03583124530d4a7eb2c665eff94faf86395eb3412060e2c77f9e72c"
+    },
+    {
+      "image": "fold_spine_test-2-1.image",
+      "equal": true,
+      "candidate_sha256": "55a163a02dbec4b8ac7c96ec7ae88c1a73401c39de9fa744049b9c885d100050",
+      "parent_sha256": "55a163a02dbec4b8ac7c96ec7ae88c1a73401c39de9fa744049b9c885d100050"
+    },
+    {
+      "image": "fold_spine_test-2-10.image",
+      "equal": true,
+      "candidate_sha256": "59218fc3876bcc47c68a21ccfaa4d060690cc00e9db0e10818471847f0b53236",
+      "parent_sha256": "59218fc3876bcc47c68a21ccfaa4d060690cc00e9db0e10818471847f0b53236"
+    },
+    {
+      "image": "fold_spine_test-2-11.image",
+      "equal": true,
+      "candidate_sha256": "94bc050ec21f31847908d3e51d5aac2d175901a35293ad9a8ecfa778e891f4fd",
+      "parent_sha256": "94bc050ec21f31847908d3e51d5aac2d175901a35293ad9a8ecfa778e891f4fd"
+    },
+    {
+      "image": "fold_spine_test-2-12.image",
+      "equal": true,
+      "candidate_sha256": "bf7a38eb5122aa0cd4204320fd9b4aa7a8cb3409c58180c194ede98546f57e6b",
+      "parent_sha256": "bf7a38eb5122aa0cd4204320fd9b4aa7a8cb3409c58180c194ede98546f57e6b"
+    },
+    {
+      "image": "fold_spine_test-2-2.image",
+      "equal": true,
+      "candidate_sha256": "efe091313b3ef11976f0cb04309985ce84f762b1b6fda0767285ff69933b80cb",
+      "parent_sha256": "efe091313b3ef11976f0cb04309985ce84f762b1b6fda0767285ff69933b80cb"
+    },
+    {
+      "image": "fold_spine_test-2-3.image",
+      "equal": true,
+      "candidate_sha256": "e66b6f2d7b91a7413dde3744a3dec29088d72be8a12f09c0cf607a7e2acd2500",
+      "parent_sha256": "e66b6f2d7b91a7413dde3744a3dec29088d72be8a12f09c0cf607a7e2acd2500"
+    },
+    {
+      "image": "fold_spine_test-2-4.image",
+      "equal": true,
+      "candidate_sha256": "868ce6aa59683e2367c7772eb7716a2c6abd090dd3cd1b75f23054152625a3fe",
+      "parent_sha256": "868ce6aa59683e2367c7772eb7716a2c6abd090dd3cd1b75f23054152625a3fe"
+    },
+    {
+      "image": "fold_spine_test-2-5.image",
+      "equal": true,
+      "candidate_sha256": "60d699e44420cc27eb324f4679a39bf8655de2da5a0b17e4c8c1d004acab9356",
+      "parent_sha256": "60d699e44420cc27eb324f4679a39bf8655de2da5a0b17e4c8c1d004acab9356"
+    },
+    {
+      "image": "fold_spine_test-2-6.image",
+      "equal": true,
+      "candidate_sha256": "738c87223b17b121c2f62a0f4e21f2f606eb703fc63f4e6546b109a57ff92cd6",
+      "parent_sha256": "738c87223b17b121c2f62a0f4e21f2f606eb703fc63f4e6546b109a57ff92cd6"
+    },
+    {
+      "image": "fold_spine_test-2-7.image",
+      "equal": true,
+      "candidate_sha256": "ad2997c391ec24290591c231ca7deb3487fa195fbcbcf7239e3043bce9bb16b9",
+      "parent_sha256": "ad2997c391ec24290591c231ca7deb3487fa195fbcbcf7239e3043bce9bb16b9"
+    },
+    {
+      "image": "fold_spine_test-2-8.image",
+      "equal": true,
+      "candidate_sha256": "50a027134c33b5835543159f4d7240d607cbe3a5d6c608be30a8df65f928c4f1",
+      "parent_sha256": "50a027134c33b5835543159f4d7240d607cbe3a5d6c608be30a8df65f928c4f1"
+    },
+    {
+      "image": "fold_spine_test-2-9.image",
+      "equal": true,
+      "candidate_sha256": "f1e6e313abbcdff30523bc809283443bf6766cee87715efa43f7dbec073f7a9a",
+      "parent_sha256": "f1e6e313abbcdff30523bc809283443bf6766cee87715efa43f7dbec073f7a9a"
+    },
+    {
+      "image": "fold_spine_test-3-0.image",
+      "equal": true,
+      "candidate_sha256": "be4ce1367b2553f520ae8a0c419e40c2af48fc345814990b9453f0e7e89d40b8",
+      "parent_sha256": "be4ce1367b2553f520ae8a0c419e40c2af48fc345814990b9453f0e7e89d40b8"
+    },
+    {
+      "image": "fold_spine_test-3-1.image",
+      "equal": true,
+      "candidate_sha256": "1c8775d0633c1904f6a908b161b02bc848b342b8e48f46af6f6ba7838acfa0c7",
+      "parent_sha256": "1c8775d0633c1904f6a908b161b02bc848b342b8e48f46af6f6ba7838acfa0c7"
+    },
+    {
+      "image": "fold_spine_test-3-10.image",
+      "equal": true,
+      "candidate_sha256": "37d53e9d029a3e38bf43d448d1b747293e21fcd44f749bdfd95cd60c7df6ef48",
+      "parent_sha256": "37d53e9d029a3e38bf43d448d1b747293e21fcd44f749bdfd95cd60c7df6ef48"
+    },
+    {
+      "image": "fold_spine_test-3-11.image",
+      "equal": true,
+      "candidate_sha256": "d0568fcf8242a7b0baa8a1dee80db873236002a4aab17ee1c1e0577b6b65fd84",
+      "parent_sha256": "d0568fcf8242a7b0baa8a1dee80db873236002a4aab17ee1c1e0577b6b65fd84"
+    },
+    {
+      "image": "fold_spine_test-3-12.image",
+      "equal": true,
+      "candidate_sha256": "452976a0737e91a1dadeaafd6ee72e974a172513b34f90988ec091f1cc750017",
+      "parent_sha256": "452976a0737e91a1dadeaafd6ee72e974a172513b34f90988ec091f1cc750017"
+    },
+    {
+      "image": "fold_spine_test-3-13.image",
+      "equal": true,
+      "candidate_sha256": "c37b375891c8cfa59e61a188856807e097bfd7d40aed6eefa2e0681541c1454d",
+      "parent_sha256": "c37b375891c8cfa59e61a188856807e097bfd7d40aed6eefa2e0681541c1454d"
+    },
+    {
+      "image": "fold_spine_test-3-2.image",
+      "equal": true,
+      "candidate_sha256": "7e68537fd487f26ea513030326de56933e47101cced713869c0bdf07aab9bcb6",
+      "parent_sha256": "7e68537fd487f26ea513030326de56933e47101cced713869c0bdf07aab9bcb6"
+    },
+    {
+      "image": "fold_spine_test-3-3.image",
+      "equal": true,
+      "candidate_sha256": "870fbd195892c81aae298c27fc3583d5bca275d068c440ce307bd6a7e32975ad",
+      "parent_sha256": "870fbd195892c81aae298c27fc3583d5bca275d068c440ce307bd6a7e32975ad"
+    },
+    {
+      "image": "fold_spine_test-3-4.image",
+      "equal": true,
+      "candidate_sha256": "9981a5c173c321dcd8d06f7771f00f714ff0b313f82078069538de81709d46c7",
+      "parent_sha256": "9981a5c173c321dcd8d06f7771f00f714ff0b313f82078069538de81709d46c7"
+    },
+    {
+      "image": "fold_spine_test-3-5.image",
+      "equal": true,
+      "candidate_sha256": "cce5a205c3720af8eda879266ab7f84dd75d362222223627566aa5ffa14767e9",
+      "parent_sha256": "cce5a205c3720af8eda879266ab7f84dd75d362222223627566aa5ffa14767e9"
+    },
+    {
+      "image": "fold_spine_test-3-6.image",
+      "equal": true,
+      "candidate_sha256": "782f26c54f725d550a5681f160302d156ffeb42e7996c984c91aacc393444905",
+      "parent_sha256": "782f26c54f725d550a5681f160302d156ffeb42e7996c984c91aacc393444905"
+    },
+    {
+      "image": "fold_spine_test-3-7.image",
+      "equal": true,
+      "candidate_sha256": "359dab367a41746d39e1cd84b7d4854a71655a5a7ed4895ca3757f82f11f77d6",
+      "parent_sha256": "359dab367a41746d39e1cd84b7d4854a71655a5a7ed4895ca3757f82f11f77d6"
+    },
+    {
+      "image": "fold_spine_test-3-8.image",
+      "equal": true,
+      "candidate_sha256": "2dd8956a1747a24f1e323a354a160ab2146c91d88cefac2bb43981f3c0154bc2",
+      "parent_sha256": "2dd8956a1747a24f1e323a354a160ab2146c91d88cefac2bb43981f3c0154bc2"
+    },
+    {
+      "image": "fold_spine_test-3-9.image",
+      "equal": true,
+      "candidate_sha256": "8fcd10de535e09bd6b6a2364d5f8ed2afccb060ad4b6c6452fc656eb505a1699",
+      "parent_sha256": "8fcd10de535e09bd6b6a2364d5f8ed2afccb060ad4b6c6452fc656eb505a1699"
+    },
+    {
+      "image": "fold_spine_test-4-0.image",
+      "equal": true,
+      "candidate_sha256": "27b767cb6eb6f0985fcbd37ad5ab4a228fc96c18330024edebaae006ca51210d",
+      "parent_sha256": "27b767cb6eb6f0985fcbd37ad5ab4a228fc96c18330024edebaae006ca51210d"
+    },
+    {
+      "image": "fold_spine_test-4-1.image",
+      "equal": true,
+      "candidate_sha256": "05b1c48ba986391cbc4d905176c09b37c73957286c627e6fa0bdb324f12bdccf",
+      "parent_sha256": "05b1c48ba986391cbc4d905176c09b37c73957286c627e6fa0bdb324f12bdccf"
+    },
+    {
+      "image": "fold_spine_test-4-10.image",
+      "equal": false,
+      "candidate_sha256": "bfafe394dd1b709525de733efd5d85388b946005e8beaf727c341f2106545d48",
+      "parent_sha256": "25cab1f69c3359cc9e00dd4559474c566491db31fe446f329419a07c02cbc9a6"
+    },
+    {
+      "image": "fold_spine_test-4-11.image",
+      "equal": true,
+      "candidate_sha256": "462c3aa226468d143f709394acb0de9d539ebdf4c57d0d3f198f7b1f21c6af6f",
+      "parent_sha256": "462c3aa226468d143f709394acb0de9d539ebdf4c57d0d3f198f7b1f21c6af6f"
+    },
+    {
+      "image": "fold_spine_test-4-2.image",
+      "equal": true,
+      "candidate_sha256": "d5bd4716d7004fc23a0d20248c626f616b4b832a9c72c900781282dd03da08d3",
+      "parent_sha256": "d5bd4716d7004fc23a0d20248c626f616b4b832a9c72c900781282dd03da08d3"
+    },
+    {
+      "image": "fold_spine_test-4-3.image",
+      "equal": true,
+      "candidate_sha256": "8a4f6d2175cfb4dd0e9b5b7956584b363acc71486e89ba6222c7b680a600adb9",
+      "parent_sha256": "8a4f6d2175cfb4dd0e9b5b7956584b363acc71486e89ba6222c7b680a600adb9"
+    },
+    {
+      "image": "fold_spine_test-4-4.image",
+      "equal": true,
+      "candidate_sha256": "e7eb3435da9422807ffdcef670e03bcea70cd0822ee609b80e12b95cc1729912",
+      "parent_sha256": "e7eb3435da9422807ffdcef670e03bcea70cd0822ee609b80e12b95cc1729912"
+    },
+    {
+      "image": "fold_spine_test-4-5.image",
+      "equal": true,
+      "candidate_sha256": "ffe22db780bc12eeb1ecad99c235286e4c2279c2a6a52205a1b68e45f4e10407",
+      "parent_sha256": "ffe22db780bc12eeb1ecad99c235286e4c2279c2a6a52205a1b68e45f4e10407"
+    },
+    {
+      "image": "fold_spine_test-4-6.image",
+      "equal": true,
+      "candidate_sha256": "87cf50f16db5905174bbbb247c470f6d98d138dd4c7fd99fe3e08187417ff0a6",
+      "parent_sha256": "87cf50f16db5905174bbbb247c470f6d98d138dd4c7fd99fe3e08187417ff0a6"
+    },
+    {
+      "image": "fold_spine_test-4-7.image",
+      "equal": true,
+      "candidate_sha256": "180f01532fc3379bb4d728fc94baa2246c68dbc99eef4144dfc71b1297cf9d60",
+      "parent_sha256": "180f01532fc3379bb4d728fc94baa2246c68dbc99eef4144dfc71b1297cf9d60"
+    },
+    {
+      "image": "fold_spine_test-4-8.image",
+      "equal": true,
+      "candidate_sha256": "100e03d1b72a8e312cc5edbcf420ec90cdc7b94db6fb1e45d5a105b12c9e7374",
+      "parent_sha256": "100e03d1b72a8e312cc5edbcf420ec90cdc7b94db6fb1e45d5a105b12c9e7374"
+    },
+    {
+      "image": "fold_spine_test-4-9.image",
+      "equal": true,
+      "candidate_sha256": "df27fe09fd4582d70d2be854267db74f4fec7cfeb81f30f87a0d50b10a0696c0",
+      "parent_sha256": "df27fe09fd4582d70d2be854267db74f4fec7cfeb81f30f87a0d50b10a0696c0"
+    },
+    {
+      "image": "materialized_fields_test-0-0.image",
+      "equal": true,
+      "candidate_sha256": "6bee4abe81b36c7dd3d2712dcdce943c99629d58f036c735931cdcc223e081d1",
+      "parent_sha256": "6bee4abe81b36c7dd3d2712dcdce943c99629d58f036c735931cdcc223e081d1"
+    },
+    {
+      "image": "materialized_fields_test-0-1.image",
+      "equal": true,
+      "candidate_sha256": "0c1a701a4a5e8e8c2a55d28a131f96c43a6d7c092cade5261350e588d5e88b66",
+      "parent_sha256": "0c1a701a4a5e8e8c2a55d28a131f96c43a6d7c092cade5261350e588d5e88b66"
+    },
+    {
+      "image": "materialized_fields_test-0-10.image",
+      "equal": true,
+      "candidate_sha256": "3066245ee89629efd91f7e0499681298ea762fdef82e3a774c8ba8f018120b77",
+      "parent_sha256": "3066245ee89629efd91f7e0499681298ea762fdef82e3a774c8ba8f018120b77"
+    },
+    {
+      "image": "materialized_fields_test-0-11.image",
+      "equal": true,
+      "candidate_sha256": "dd62e4d82a8d0776862f5323121387a0d4d005c0d9a18bab44a0488bbe4d41b4",
+      "parent_sha256": "dd62e4d82a8d0776862f5323121387a0d4d005c0d9a18bab44a0488bbe4d41b4"
+    },
+    {
+      "image": "materialized_fields_test-0-12.image",
+      "equal": false,
+      "candidate_sha256": "aea5b5e03a177184855d372f051c547a1b3da2fa1b7e8e8915c7773bf0fbd0cb",
+      "parent_sha256": "76ce30ed82049b0ac21499b061586e25cfbc73237486a7e3f15abf086439fdef"
+    },
+    {
+      "image": "materialized_fields_test-0-13.image",
+      "equal": false,
+      "candidate_sha256": "e8b73b807cc927b39c84b09b843f01ed29f4c63c7308c1957993fe4f40c19b11",
+      "parent_sha256": "b4c333cf6ad5c723a0c1350f18ec13d5d597b24c8490e3042bca3efff6aa0796"
+    },
+    {
+      "image": "materialized_fields_test-0-14.image",
+      "equal": true,
+      "candidate_sha256": "dbdcaa8f4dc128c150df41d85f050b23d20df807421ae668887b1234a794b064",
+      "parent_sha256": "dbdcaa8f4dc128c150df41d85f050b23d20df807421ae668887b1234a794b064"
+    },
+    {
+      "image": "materialized_fields_test-0-15.image",
+      "equal": false,
+      "candidate_sha256": "225420260d890486d4ad8d83f72f3eb950197678e68fc210dc272d1dac1c07e9",
+      "parent_sha256": "1586f3f1e51693a414516610d0727822a3d8f179487ab52ade4f276660cd6abb"
+    },
+    {
+      "image": "materialized_fields_test-0-16.image",
+      "equal": true,
+      "candidate_sha256": "fa5e9ce5022cd77c80bc06cd06667c0330d294c51a300d88d83c8a14efe089eb",
+      "parent_sha256": "fa5e9ce5022cd77c80bc06cd06667c0330d294c51a300d88d83c8a14efe089eb"
+    },
+    {
+      "image": "materialized_fields_test-0-17.image",
+      "equal": false,
+      "candidate_sha256": "ee15e6a66e91a9cf6e8d4af48858e753ce0a2e06bb2f35de7430d16098bd4ddb",
+      "parent_sha256": "57474635b8a4461055dfec9b7af57dd540dd1facdb095fc4313239c5ebd0e060"
+    },
+    {
+      "image": "materialized_fields_test-0-18.image",
+      "equal": false,
+      "candidate_sha256": "5d649b19847ec56d0da30e9993adff56f593dd646e4deea27170354b4f9ec51f",
+      "parent_sha256": "c370be675542adfad845bc54e651100da0e013c731e0146a0d38ad673b2235aa"
+    },
+    {
+      "image": "materialized_fields_test-0-19.image",
+      "equal": false,
+      "candidate_sha256": "2f67017b10ca258c002f6f98d0d81af2c61fb308d45890d4dbca2166dfc1ea59",
+      "parent_sha256": "a4a485df530d3187353a9e745a49169d9e2d7987bbe071b07ebc4104bad36399"
+    },
+    {
+      "image": "materialized_fields_test-0-2.image",
+      "equal": true,
+      "candidate_sha256": "24381bf855172fec466191602025666a9ae0d4a9388394fe7d63b511a31b1a5f",
+      "parent_sha256": "24381bf855172fec466191602025666a9ae0d4a9388394fe7d63b511a31b1a5f"
+    },
+    {
+      "image": "materialized_fields_test-0-20.image",
+      "equal": false,
+      "candidate_sha256": "13bfff6faf03aed7eb674b9e30201db030a46929c12c5cf54df7cb4d7da3ca7a",
+      "parent_sha256": "10da552bd850940aa837e71b61bffb344321a889bc362edf10d697d60f8dbd79"
+    },
+    {
+      "image": "materialized_fields_test-0-21.image",
+      "equal": true,
+      "candidate_sha256": "7e837811382a6db52c8685165c1840c52009935caf5766c7ebd1e8508b1d2484",
+      "parent_sha256": "7e837811382a6db52c8685165c1840c52009935caf5766c7ebd1e8508b1d2484"
+    },
+    {
+      "image": "materialized_fields_test-0-22.image",
+      "equal": true,
+      "candidate_sha256": "3a89d34d895ec4eb03cefc5f1141a7fa5b6347492f1f3c644be3f72c912dd87b",
+      "parent_sha256": "3a89d34d895ec4eb03cefc5f1141a7fa5b6347492f1f3c644be3f72c912dd87b"
+    },
+    {
+      "image": "materialized_fields_test-0-23.image",
+      "equal": true,
+      "candidate_sha256": "4aef64a56f2fc01ea7e1d9be321c9739792b1cf13441d6ff7fb9c95406d83ca1",
+      "parent_sha256": "4aef64a56f2fc01ea7e1d9be321c9739792b1cf13441d6ff7fb9c95406d83ca1"
+    },
+    {
+      "image": "materialized_fields_test-0-24.image",
+      "equal": true,
+      "candidate_sha256": "960247c47ee85bca228c0445c8465fdb98d5b6d10a943d22b20ff60357724d36",
+      "parent_sha256": "960247c47ee85bca228c0445c8465fdb98d5b6d10a943d22b20ff60357724d36"
+    },
+    {
+      "image": "materialized_fields_test-0-25.image",
+      "equal": true,
+      "candidate_sha256": "27195f39404ab1f84980f608f0351c207ac90cf8dbffaa2f6c24d57b5ce796cb",
+      "parent_sha256": "27195f39404ab1f84980f608f0351c207ac90cf8dbffaa2f6c24d57b5ce796cb"
+    },
+    {
+      "image": "materialized_fields_test-0-26.image",
+      "equal": true,
+      "candidate_sha256": "dac7e4574c1815278b2ce8f9ae3a909ed641130bead38d52a1811347ca66aba6",
+      "parent_sha256": "dac7e4574c1815278b2ce8f9ae3a909ed641130bead38d52a1811347ca66aba6"
+    },
+    {
+      "image": "materialized_fields_test-0-27.image",
+      "equal": true,
+      "candidate_sha256": "db3ed903dcabb48b1616e83a0aaab50633de0e159428a4e1684d11b14166f338",
+      "parent_sha256": "db3ed903dcabb48b1616e83a0aaab50633de0e159428a4e1684d11b14166f338"
+    },
+    {
+      "image": "materialized_fields_test-0-28.image",
+      "equal": true,
+      "candidate_sha256": "5ea877ec6411f1dec0c271b40b5bfb6f2c96a01262d50b2fc60986a9a1f55119",
+      "parent_sha256": "5ea877ec6411f1dec0c271b40b5bfb6f2c96a01262d50b2fc60986a9a1f55119"
+    },
+    {
+      "image": "materialized_fields_test-0-3.image",
+      "equal": true,
+      "candidate_sha256": "66ba7d16a41a240f81d709044296891dbc7ad2d5883bf847036411ce389f8b2b",
+      "parent_sha256": "66ba7d16a41a240f81d709044296891dbc7ad2d5883bf847036411ce389f8b2b"
+    },
+    {
+      "image": "materialized_fields_test-0-4.image",
+      "equal": true,
+      "candidate_sha256": "6743f01bac949d6b7016d5ee4cc1e73f29ca3fd6bd5eea2a57eec06cdff20cf3",
+      "parent_sha256": "6743f01bac949d6b7016d5ee4cc1e73f29ca3fd6bd5eea2a57eec06cdff20cf3"
+    },
+    {
+      "image": "materialized_fields_test-0-5.image",
+      "equal": true,
+      "candidate_sha256": "68124a51a60101c9fdc17c79475acccc4211dccccded2d5fbfa7c48aa7fe4982",
+      "parent_sha256": "68124a51a60101c9fdc17c79475acccc4211dccccded2d5fbfa7c48aa7fe4982"
+    },
+    {
+      "image": "materialized_fields_test-0-6.image",
+      "equal": true,
+      "candidate_sha256": "b73107ab8c824e67fe549e1056c08eb95635c5d42bf7f67a629fc936160df86e",
+      "parent_sha256": "b73107ab8c824e67fe549e1056c08eb95635c5d42bf7f67a629fc936160df86e"
+    },
+    {
+      "image": "materialized_fields_test-0-7.image",
+      "equal": true,
+      "candidate_sha256": "e96672a674b4b6075c2a395c0bbe2aa3f70dc9707d5857c4fd9174476399c4eb",
+      "parent_sha256": "e96672a674b4b6075c2a395c0bbe2aa3f70dc9707d5857c4fd9174476399c4eb"
+    },
+    {
+      "image": "materialized_fields_test-0-8.image",
+      "equal": true,
+      "candidate_sha256": "990171ebb5a965dc40ad1a6ca5927a505f23faa78e0ac65df4467ae4c99a76f6",
+      "parent_sha256": "990171ebb5a965dc40ad1a6ca5927a505f23faa78e0ac65df4467ae4c99a76f6"
+    },
+    {
+      "image": "materialized_fields_test-0-9.image",
+      "equal": true,
+      "candidate_sha256": "e3bfc40af5b0533b48e2676c9df60b1316694b85a23b6799b394d47dd332ea81",
+      "parent_sha256": "e3bfc40af5b0533b48e2676c9df60b1316694b85a23b6799b394d47dd332ea81"
+    },
+    {
+      "image": "materialized_fields_test-1-0.image",
+      "equal": true,
+      "candidate_sha256": "abd619e6ab0e707f62c5e4f6011ce187bcf09d4dcec400c041b6467a0642af02",
+      "parent_sha256": "abd619e6ab0e707f62c5e4f6011ce187bcf09d4dcec400c041b6467a0642af02"
+    },
+    {
+      "image": "materialized_fields_test-1-1.image",
+      "equal": true,
+      "candidate_sha256": "9a4426f352854152d6f17aa35c75850edd11fe99bbe5bffe1be41c75bc7ef61a",
+      "parent_sha256": "9a4426f352854152d6f17aa35c75850edd11fe99bbe5bffe1be41c75bc7ef61a"
+    },
+    {
+      "image": "materialized_fields_test-1-10.image",
+      "equal": true,
+      "candidate_sha256": "94d50fc35903193ee09f9c3771503a09a014c1e0653d5877b125135850d95782",
+      "parent_sha256": "94d50fc35903193ee09f9c3771503a09a014c1e0653d5877b125135850d95782"
+    },
+    {
+      "image": "materialized_fields_test-1-11.image",
+      "equal": true,
+      "candidate_sha256": "cc91da87b6e905a137eb1d28b00dfb43eb5e836b5898d497477b16b6670e1725",
+      "parent_sha256": "cc91da87b6e905a137eb1d28b00dfb43eb5e836b5898d497477b16b6670e1725"
+    },
+    {
+      "image": "materialized_fields_test-1-12.image",
+      "equal": false,
+      "candidate_sha256": "9c0b12a8bb95616df4558a27011c8d93c7c736411b57bbf560e0d88f80772fb0",
+      "parent_sha256": "0d8d7604f9479faf2cc8fd4071be5c99a27667161144523877db4d7bc696706c"
+    },
+    {
+      "image": "materialized_fields_test-1-13.image",
+      "equal": false,
+      "candidate_sha256": "0306243973bf6c9f8ad18e7267ebbd4223400f5e2b5e92afc92e78fc98ae67b3",
+      "parent_sha256": "0bf4167e598b58aa64bc4ce9852fef2cabc7e71667c409787234f9c79abf4179"
+    },
+    {
+      "image": "materialized_fields_test-1-14.image",
+      "equal": false,
+      "candidate_sha256": "688fe74d531df680c7c3fed446a9db7032b17149cc028adf37b7d099f957b280",
+      "parent_sha256": "e4b2d8b7ec9b28a3e7a2df8f983fba5f41d2d1c697202c58a210908716aeaed7"
+    },
+    {
+      "image": "materialized_fields_test-1-15.image",
+      "equal": false,
+      "candidate_sha256": "5b9b69bbfabfe06b55b4a8aa7fa0a30b2844fa625c23f5595a151bd3685e1529",
+      "parent_sha256": "c3707bd781d64ebbc66b44ca668b2c9a9ead3c45901afc1e3a8284bfa7dd84d9"
+    },
+    {
+      "image": "materialized_fields_test-1-16.image",
+      "equal": false,
+      "candidate_sha256": "40859b5344579cc8f13220a1e44452424463539e7017da339adc0ee5bc35e20b",
+      "parent_sha256": "bf74eee227f19f25c7376996da3ab5386f1c661e1b4213e65847b548c54370a0"
+    },
+    {
+      "image": "materialized_fields_test-1-17.image",
+      "equal": true,
+      "candidate_sha256": "38e97afd62717c4ea2a6c1c77d3445813db6ef3276a1ec3b6db1506596fa00dc",
+      "parent_sha256": "38e97afd62717c4ea2a6c1c77d3445813db6ef3276a1ec3b6db1506596fa00dc"
+    },
+    {
+      "image": "materialized_fields_test-1-18.image",
+      "equal": false,
+      "candidate_sha256": "6c5d1fa7e1ce0a5f75201f5b296224a005afff961a9375ab14bee6efa0a3d165",
+      "parent_sha256": "aa4bc65fe3f92d8361113936bd5bfeda322db905f2bf2f1a19c1572001e85c0e"
+    },
+    {
+      "image": "materialized_fields_test-1-19.image",
+      "equal": false,
+      "candidate_sha256": "0e4e110abff78bd39a36fca91f64d8f25cea48bb629524c51638f10af5405a4f",
+      "parent_sha256": "a0f64e44ad392c4ddf2dd19234d45af564edfd7bf8238df1f2eea38be6a912db"
+    },
+    {
+      "image": "materialized_fields_test-1-2.image",
+      "equal": true,
+      "candidate_sha256": "e89ffeefdbe400129775f246bc7481cb13daf49e8160e91987980f5856c2d64f",
+      "parent_sha256": "e89ffeefdbe400129775f246bc7481cb13daf49e8160e91987980f5856c2d64f"
+    },
+    {
+      "image": "materialized_fields_test-1-20.image",
+      "equal": true,
+      "candidate_sha256": "f079d140906b1273e986ab590f025d52b7d4b9d38ce2702ddde738824ffb1bfd",
+      "parent_sha256": "f079d140906b1273e986ab590f025d52b7d4b9d38ce2702ddde738824ffb1bfd"
+    },
+    {
+      "image": "materialized_fields_test-1-21.image",
+      "equal": false,
+      "candidate_sha256": "ad316722cc01ccdc8fe71ec385c8416f2c76d8463a6dd0095816716ba9f3f294",
+      "parent_sha256": "54b9ec1571b60ed85d03e1112712f891a802a9db1a289f39a7633cf306360528"
+    },
+    {
+      "image": "materialized_fields_test-1-22.image",
+      "equal": false,
+      "candidate_sha256": "0d77d15f7cf84fb2be40753302b702c46685e92721fe47e2811aa0e741d34a76",
+      "parent_sha256": "779796b1c1bc59a67765f892db6bef45bab535523b6033be9e781748e0acc9e2"
+    },
+    {
+      "image": "materialized_fields_test-1-23.image",
+      "equal": true,
+      "candidate_sha256": "02cea11219f1a1790eda57987777089f0c3b484ac38ab5d37fb25156f7e13820",
+      "parent_sha256": "02cea11219f1a1790eda57987777089f0c3b484ac38ab5d37fb25156f7e13820"
+    },
+    {
+      "image": "materialized_fields_test-1-24.image",
+      "equal": true,
+      "candidate_sha256": "76eabdadea4f8b445b7a6a1664cd0d7262443975db513a5e9882f85b0b6add15",
+      "parent_sha256": "76eabdadea4f8b445b7a6a1664cd0d7262443975db513a5e9882f85b0b6add15"
+    },
+    {
+      "image": "materialized_fields_test-1-25.image",
+      "equal": true,
+      "candidate_sha256": "511b7590033d756351113a7909e69f5b559bfa773f38b312234db728801a8aa5",
+      "parent_sha256": "511b7590033d756351113a7909e69f5b559bfa773f38b312234db728801a8aa5"
+    },
+    {
+      "image": "materialized_fields_test-1-26.image",
+      "equal": true,
+      "candidate_sha256": "fa108071ba03a3ea536d63183f739033786d677370c230fa405c8562d0f5ea37",
+      "parent_sha256": "fa108071ba03a3ea536d63183f739033786d677370c230fa405c8562d0f5ea37"
+    },
+    {
+      "image": "materialized_fields_test-1-27.image",
+      "equal": true,
+      "candidate_sha256": "d12d6cf41ecaf17c0f327c10394b47cc2a9a2e07109c1e583013113fd127c93d",
+      "parent_sha256": "d12d6cf41ecaf17c0f327c10394b47cc2a9a2e07109c1e583013113fd127c93d"
+    },
+    {
+      "image": "materialized_fields_test-1-28.image",
+      "equal": true,
+      "candidate_sha256": "84e200a4efbb8dd20a8c5c6cd635e204315536b72b338b682d1896ada354aee2",
+      "parent_sha256": "84e200a4efbb8dd20a8c5c6cd635e204315536b72b338b682d1896ada354aee2"
+    },
+    {
+      "image": "materialized_fields_test-1-3.image",
+      "equal": true,
+      "candidate_sha256": "36ec37f444d6d04b7b19249122586a41c1829bb068f468edba4df4d02c4749a6",
+      "parent_sha256": "36ec37f444d6d04b7b19249122586a41c1829bb068f468edba4df4d02c4749a6"
+    },
+    {
+      "image": "materialized_fields_test-1-4.image",
+      "equal": true,
+      "candidate_sha256": "93d48ea0e83bfff6ff75c25687b89db66c3b67d583600a2b91b8165e0beb0ad4",
+      "parent_sha256": "93d48ea0e83bfff6ff75c25687b89db66c3b67d583600a2b91b8165e0beb0ad4"
+    },
+    {
+      "image": "materialized_fields_test-1-5.image",
+      "equal": true,
+      "candidate_sha256": "c57c2d39b3790dc8e15992040c403d838107ce4822483fd8a252ddc91763d131",
+      "parent_sha256": "c57c2d39b3790dc8e15992040c403d838107ce4822483fd8a252ddc91763d131"
+    },
+    {
+      "image": "materialized_fields_test-1-6.image",
+      "equal": true,
+      "candidate_sha256": "b5e98c2c6c35180515c4c9548f4035223b14b2ae3e4b7b967beb46a0bce88ea8",
+      "parent_sha256": "b5e98c2c6c35180515c4c9548f4035223b14b2ae3e4b7b967beb46a0bce88ea8"
+    },
+    {
+      "image": "materialized_fields_test-1-7.image",
+      "equal": true,
+      "candidate_sha256": "e53ed9c9fbd696ce87f1d3d895cf3abc0b119d815267f0bb6ef24839e894bc2b",
+      "parent_sha256": "e53ed9c9fbd696ce87f1d3d895cf3abc0b119d815267f0bb6ef24839e894bc2b"
+    },
+    {
+      "image": "materialized_fields_test-1-8.image",
+      "equal": true,
+      "candidate_sha256": "376f37d90c2091acafd8df61a4cf3641e625cea363f4ba311d66ec6212de8aa6",
+      "parent_sha256": "376f37d90c2091acafd8df61a4cf3641e625cea363f4ba311d66ec6212de8aa6"
+    },
+    {
+      "image": "materialized_fields_test-1-9.image",
+      "equal": true,
+      "candidate_sha256": "eb9c7873096fb87a46d6be2fb1f66aac678965b2965d24b403349aa134d27583",
+      "parent_sha256": "eb9c7873096fb87a46d6be2fb1f66aac678965b2965d24b403349aa134d27583"
+    },
+    {
+      "image": "materialized_fields_test-2-0.image",
+      "equal": true,
+      "candidate_sha256": "6abec1970ba0523d8bad2d1af68a57528647d608473699c03dbc85b4d43e1203",
+      "parent_sha256": "6abec1970ba0523d8bad2d1af68a57528647d608473699c03dbc85b4d43e1203"
+    },
+    {
+      "image": "materialized_fields_test-2-1.image",
+      "equal": true,
+      "candidate_sha256": "b60339eb3b49cbe55a997478e808cb3671028e80cfdddf8e14b5aad41aeaff3a",
+      "parent_sha256": "b60339eb3b49cbe55a997478e808cb3671028e80cfdddf8e14b5aad41aeaff3a"
+    },
+    {
+      "image": "materialized_fields_test-2-2.image",
+      "equal": true,
+      "candidate_sha256": "f8779ed392ec5a03d121dff26138312edbb9201d5104b7b4520273575fbfd354",
+      "parent_sha256": "f8779ed392ec5a03d121dff26138312edbb9201d5104b7b4520273575fbfd354"
+    },
+    {
+      "image": "materialized_fields_test-2-3.image",
+      "equal": true,
+      "candidate_sha256": "e4ba4457b383636edc7235b760a3904e92bbbee93b752ac922666c08fc5b68d6",
+      "parent_sha256": "e4ba4457b383636edc7235b760a3904e92bbbee93b752ac922666c08fc5b68d6"
+    },
+    {
+      "image": "materialized_fields_test-2-4.image",
+      "equal": true,
+      "candidate_sha256": "3423aeaa84c7422bddc8cce7b55c8bab0f9b8496201a033a08ab089147b52e7f",
+      "parent_sha256": "3423aeaa84c7422bddc8cce7b55c8bab0f9b8496201a033a08ab089147b52e7f"
+    },
+    {
+      "image": "materialized_fields_test-2-5.image",
+      "equal": true,
+      "candidate_sha256": "0e6f2f30c9af07204a3c3ee7964abf4435bc1fede56ccafb03fa72715fabf51e",
+      "parent_sha256": "0e6f2f30c9af07204a3c3ee7964abf4435bc1fede56ccafb03fa72715fabf51e"
+    },
+    {
+      "image": "materialized_fields_test-2-6.image",
+      "equal": true,
+      "candidate_sha256": "d103591ab4059127d2a61f90b58cccde97a38fa842abc41577c9ee9018edcc31",
+      "parent_sha256": "d103591ab4059127d2a61f90b58cccde97a38fa842abc41577c9ee9018edcc31"
+    },
+    {
+      "image": "materialized_fields_test-3-0.image",
+      "equal": true,
+      "candidate_sha256": "b2592d9d6c11c66481b23a697bec47c5de39b8005aebbcb1676c4c889feef72d",
+      "parent_sha256": "b2592d9d6c11c66481b23a697bec47c5de39b8005aebbcb1676c4c889feef72d"
+    },
+    {
+      "image": "materialized_fields_test-3-1.image",
+      "equal": true,
+      "candidate_sha256": "d5b5af6edaf3e411854dfec94c6932193c7c9837aa4d22ba7155fdfd9643858f",
+      "parent_sha256": "d5b5af6edaf3e411854dfec94c6932193c7c9837aa4d22ba7155fdfd9643858f"
+    },
+    {
+      "image": "materialized_fields_test-3-2.image",
+      "equal": true,
+      "candidate_sha256": "917b4890d41698c2fadc14a1577c11180bb0ff0152305bf0182a1ee4508ca88e",
+      "parent_sha256": "917b4890d41698c2fadc14a1577c11180bb0ff0152305bf0182a1ee4508ca88e"
+    },
+    {
+      "image": "materialized_fields_test-3-3.image",
+      "equal": true,
+      "candidate_sha256": "dc7c8422ecf16b81af85aa0abe24c39270ca04b0ef362dff1bcba03e8793c814",
+      "parent_sha256": "dc7c8422ecf16b81af85aa0abe24c39270ca04b0ef362dff1bcba03e8793c814"
+    },
+    {
+      "image": "materialized_fields_test-3-4.image",
+      "equal": true,
+      "candidate_sha256": "12e017b72a40ebaa406c0092f6c1a3b34eb5e63b520896483ce55f06d02699d3",
+      "parent_sha256": "12e017b72a40ebaa406c0092f6c1a3b34eb5e63b520896483ce55f06d02699d3"
+    },
+    {
+      "image": "materialized_fields_test-4-0.image",
+      "equal": true,
+      "candidate_sha256": "c004fddb52e103eea747c3d7152cfc266f27944f6842fec2946d85ffc52d41e7",
+      "parent_sha256": "c004fddb52e103eea747c3d7152cfc266f27944f6842fec2946d85ffc52d41e7"
+    },
+    {
+      "image": "materialized_fields_test-4-1.image",
+      "equal": true,
+      "candidate_sha256": "81d6a83b90c4c8961f009a398ebab300d67a799fc28fc084f2b6e4db16c3eb8a",
+      "parent_sha256": "81d6a83b90c4c8961f009a398ebab300d67a799fc28fc084f2b6e4db16c3eb8a"
+    },
+    {
+      "image": "materialized_fields_test-4-2.image",
+      "equal": true,
+      "candidate_sha256": "55318a21f28e842e38b3b8b1e18a3d5c8ae1b2b57038f40a2f24c2e60ddf1ac2",
+      "parent_sha256": "55318a21f28e842e38b3b8b1e18a3d5c8ae1b2b57038f40a2f24c2e60ddf1ac2"
+    },
+    {
+      "image": "materialized_fields_test-4-3.image",
+      "equal": true,
+      "candidate_sha256": "39a720612b990d2d2b79709decddd9235e409b15addbfbb60d350928fad9ce77",
+      "parent_sha256": "39a720612b990d2d2b79709decddd9235e409b15addbfbb60d350928fad9ce77"
+    },
+    {
+      "image": "materialized_fields_test-4-4.image",
+      "equal": true,
+      "candidate_sha256": "e1417e458e50d46c929a6f3a87c37b660a2af6523cb79670b7d9873d66cc995d",
+      "parent_sha256": "e1417e458e50d46c929a6f3a87c37b660a2af6523cb79670b7d9873d66cc995d"
+    },
+    {
+      "image": "materialized_fields_test-4-5.image",
+      "equal": true,
+      "candidate_sha256": "04e31a08bf91e68d769bc7e0cf17a4611f663fe81d84ef269ab4ef2979f70cfe",
+      "parent_sha256": "04e31a08bf91e68d769bc7e0cf17a4611f663fe81d84ef269ab4ef2979f70cfe"
+    },
+    {
+      "image": "materialized_fields_test-4-6.image",
+      "equal": true,
+      "candidate_sha256": "7deec002ded175f930d59ccd1d1013cc20da438a1847a9d0bd25db839035c76a",
+      "parent_sha256": "7deec002ded175f930d59ccd1d1013cc20da438a1847a9d0bd25db839035c76a"
+    },
+    {
+      "image": "materialized_fields_test-5-0.image",
+      "equal": true,
+      "candidate_sha256": "65e9592eda4170d3fae07e62c0a68ce799cdeabec96d83c8030e6c6a7f9183e7",
+      "parent_sha256": "65e9592eda4170d3fae07e62c0a68ce799cdeabec96d83c8030e6c6a7f9183e7"
+    },
+    {
+      "image": "materialized_fields_test-5-1.image",
+      "equal": true,
+      "candidate_sha256": "105cf3485e009d617cd66763dcec809149da46a06ba6310212fd416e573f02d0",
+      "parent_sha256": "105cf3485e009d617cd66763dcec809149da46a06ba6310212fd416e573f02d0"
+    },
+    {
+      "image": "materialized_fields_test-5-10.image",
+      "equal": true,
+      "candidate_sha256": "185d7a48dd35a43fd974c6b7042265bd1d97f7bf925d138e460e1e3a4903405c",
+      "parent_sha256": "185d7a48dd35a43fd974c6b7042265bd1d97f7bf925d138e460e1e3a4903405c"
+    },
+    {
+      "image": "materialized_fields_test-5-2.image",
+      "equal": true,
+      "candidate_sha256": "46c6e1b78f514cb9c42984156a45b7d335ce113884438f022a1373b6bcfcf9b4",
+      "parent_sha256": "46c6e1b78f514cb9c42984156a45b7d335ce113884438f022a1373b6bcfcf9b4"
+    },
+    {
+      "image": "materialized_fields_test-5-3.image",
+      "equal": true,
+      "candidate_sha256": "3532added8be0521015264f173b187c11a0c6397700f0b84521b1978eeb1e505",
+      "parent_sha256": "3532added8be0521015264f173b187c11a0c6397700f0b84521b1978eeb1e505"
+    },
+    {
+      "image": "materialized_fields_test-5-4.image",
+      "equal": true,
+      "candidate_sha256": "213229d15c161e261ffbf5d4721b1b6b835cffcc60247f662a616d62054f6dd0",
+      "parent_sha256": "213229d15c161e261ffbf5d4721b1b6b835cffcc60247f662a616d62054f6dd0"
+    },
+    {
+      "image": "materialized_fields_test-5-5.image",
+      "equal": true,
+      "candidate_sha256": "964a6eef0f5d070c58a8e7020ec166babb6acb965f3824189400a7e829c211a1",
+      "parent_sha256": "964a6eef0f5d070c58a8e7020ec166babb6acb965f3824189400a7e829c211a1"
+    },
+    {
+      "image": "materialized_fields_test-5-6.image",
+      "equal": true,
+      "candidate_sha256": "cfd074624fcc69864b0b7c872286a5b966162c0f1d6fbd511ac2272f0a108a29",
+      "parent_sha256": "cfd074624fcc69864b0b7c872286a5b966162c0f1d6fbd511ac2272f0a108a29"
+    },
+    {
+      "image": "materialized_fields_test-5-7.image",
+      "equal": true,
+      "candidate_sha256": "2e108bb72cb331d2794a7f0fc2303b77f854fcb8a042bd06e423df4f641161d3",
+      "parent_sha256": "2e108bb72cb331d2794a7f0fc2303b77f854fcb8a042bd06e423df4f641161d3"
+    },
+    {
+      "image": "materialized_fields_test-5-8.image",
+      "equal": false,
+      "candidate_sha256": "ead9f2163e6c947d683cdf155afdb0be1eb8404417702dd1b62c30f7855df0ad",
+      "parent_sha256": "4c95de2c086d4ac860a2cc18dff89006b1a356a068a0e4363a44ca7f4a4daac4"
+    },
+    {
+      "image": "materialized_fields_test-5-9.image",
+      "equal": true,
+      "candidate_sha256": "19da8528c64d8e329cb9e4b77dbe2753e3d502478f7d936b37157fd8ffec74d6",
+      "parent_sha256": "19da8528c64d8e329cb9e4b77dbe2753e3d502478f7d936b37157fd8ffec74d6"
+    },
+    {
+      "image": "materialized_fields_test-6-0.image",
+      "equal": true,
+      "candidate_sha256": "11068e6bf7a446c86849ca959f158a06f59c118044f30b43bcfb2b27759e840f",
+      "parent_sha256": "11068e6bf7a446c86849ca959f158a06f59c118044f30b43bcfb2b27759e840f"
+    },
+    {
+      "image": "materialized_fields_test-6-1.image",
+      "equal": true,
+      "candidate_sha256": "09716cdc92eff15be6a3659340938e2262588218f4a9f765fc6dc3b917397cfc",
+      "parent_sha256": "09716cdc92eff15be6a3659340938e2262588218f4a9f765fc6dc3b917397cfc"
+    },
+    {
+      "image": "materialized_fields_test-6-2.image",
+      "equal": true,
+      "candidate_sha256": "daa4b2f3cfff4940a76ab3c0a08442380fb7fe426638fe12d1f880a5645a68e4",
+      "parent_sha256": "daa4b2f3cfff4940a76ab3c0a08442380fb7fe426638fe12d1f880a5645a68e4"
+    },
+    {
+      "image": "materialized_fields_test-6-3.image",
+      "equal": true,
+      "candidate_sha256": "c4f6c5d0f5ee62c0ca01656758e2e3932a1991299a95b110fbc18429d5cd9217",
+      "parent_sha256": "c4f6c5d0f5ee62c0ca01656758e2e3932a1991299a95b110fbc18429d5cd9217"
+    },
+    {
+      "image": "materialized_fields_test-6-4.image",
+      "equal": true,
+      "candidate_sha256": "933f96abf98846415d36b1b71474388293e8d475e5a90fea0777a7f5b2bbdad0",
+      "parent_sha256": "933f96abf98846415d36b1b71474388293e8d475e5a90fea0777a7f5b2bbdad0"
+    },
+    {
+      "image": "materialized_fields_test-6-5.image",
+      "equal": true,
+      "candidate_sha256": "89371334baf5e65276267c6df03880b26a8051be5d381d0cf008350b07665a48",
+      "parent_sha256": "89371334baf5e65276267c6df03880b26a8051be5d381d0cf008350b07665a48"
+    },
+    {
+      "image": "materialized_fields_test-6-6.image",
+      "equal": false,
+      "candidate_sha256": "8c1300d90045b21474930d7ac0f315068fee05ec3860610c9857f7107e2d90a1",
+      "parent_sha256": "31b7a33b41e9df112be0f99a57936756412a4cafcde51f0e7b9388c59bdd29fe"
+    },
+    {
+      "image": "materialized_fields_test-6-7.image",
+      "equal": false,
+      "candidate_sha256": "84b8e53300a6041a217d896d6e44a9aed7598a49cbe01919a5addf51a0d48d45",
+      "parent_sha256": "99a1028f44341a675a2265f4d4db8223c491aae3d7263fed11a8fbe284c977a4"
+    },
+    {
+      "image": "materialized_fields_test-6-8.image",
+      "equal": true,
+      "candidate_sha256": "bd597441a15c9e63ce57ac524ba7b5bc00b2fbcd998dfa85b08979fbf0dd7e2b",
+      "parent_sha256": "bd597441a15c9e63ce57ac524ba7b5bc00b2fbcd998dfa85b08979fbf0dd7e2b"
+    }
+  ],
+  "inert_rows": [
+    {
+      "image": "fold_spine_test-0-0.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "095657157857d758cadcd3696ff49c1f7c6bb9eb61ec396bca4c3a8864a1a09d",
+      "resave_sha256": "095657157857d758cadcd3696ff49c1f7c6bb9eb61ec396bca4c3a8864a1a09d"
+    },
+    {
+      "image": "fold_spine_test-0-0.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "095657157857d758cadcd3696ff49c1f7c6bb9eb61ec396bca4c3a8864a1a09d",
+      "resave_sha256": "095657157857d758cadcd3696ff49c1f7c6bb9eb61ec396bca4c3a8864a1a09d"
+    },
+    {
+      "image": "fold_spine_test-0-1.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "65223187334e8e67f903ea5f3f1e5f5d86250846454472f93e0da402c5e04e6d",
+      "resave_sha256": "65223187334e8e67f903ea5f3f1e5f5d86250846454472f93e0da402c5e04e6d"
+    },
+    {
+      "image": "fold_spine_test-0-1.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "65223187334e8e67f903ea5f3f1e5f5d86250846454472f93e0da402c5e04e6d",
+      "resave_sha256": "65223187334e8e67f903ea5f3f1e5f5d86250846454472f93e0da402c5e04e6d"
+    },
+    {
+      "image": "fold_spine_test-0-10.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "0e3a35d442451c5e7650c0a50cfd276631c5152b1c2d3703a8b9d46f1ef2aa91",
+      "resave_sha256": "0e3a35d442451c5e7650c0a50cfd276631c5152b1c2d3703a8b9d46f1ef2aa91"
+    },
+    {
+      "image": "fold_spine_test-0-10.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "0e3a35d442451c5e7650c0a50cfd276631c5152b1c2d3703a8b9d46f1ef2aa91",
+      "resave_sha256": "0e3a35d442451c5e7650c0a50cfd276631c5152b1c2d3703a8b9d46f1ef2aa91"
+    },
+    {
+      "image": "fold_spine_test-0-11.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "9a776f55a147adb957c46ed59c3f1b5feda3d03a7d5bb90ac52e0743239681c9",
+      "resave_sha256": "9a776f55a147adb957c46ed59c3f1b5feda3d03a7d5bb90ac52e0743239681c9"
+    },
+    {
+      "image": "fold_spine_test-0-11.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "9a776f55a147adb957c46ed59c3f1b5feda3d03a7d5bb90ac52e0743239681c9",
+      "resave_sha256": "9a776f55a147adb957c46ed59c3f1b5feda3d03a7d5bb90ac52e0743239681c9"
+    },
+    {
+      "image": "fold_spine_test-0-2.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "0107ff28df28e8078e5f8b9ad83086be3c2bc08dd03a0bc5e02993a71acb9b22",
+      "resave_sha256": "0107ff28df28e8078e5f8b9ad83086be3c2bc08dd03a0bc5e02993a71acb9b22"
+    },
+    {
+      "image": "fold_spine_test-0-2.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "0107ff28df28e8078e5f8b9ad83086be3c2bc08dd03a0bc5e02993a71acb9b22",
+      "resave_sha256": "0107ff28df28e8078e5f8b9ad83086be3c2bc08dd03a0bc5e02993a71acb9b22"
+    },
+    {
+      "image": "fold_spine_test-0-3.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "53371bfac32b712439c0ab1bea26b0be640fef0b7ec3e7e96cf890f7e69ad238",
+      "resave_sha256": "53371bfac32b712439c0ab1bea26b0be640fef0b7ec3e7e96cf890f7e69ad238"
+    },
+    {
+      "image": "fold_spine_test-0-3.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "53371bfac32b712439c0ab1bea26b0be640fef0b7ec3e7e96cf890f7e69ad238",
+      "resave_sha256": "53371bfac32b712439c0ab1bea26b0be640fef0b7ec3e7e96cf890f7e69ad238"
+    },
+    {
+      "image": "fold_spine_test-0-4.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "89dff4a63f3c4916a0e425ac405e3de3c7cceafd5f9d145e37fd7f0424402948",
+      "resave_sha256": "89dff4a63f3c4916a0e425ac405e3de3c7cceafd5f9d145e37fd7f0424402948"
+    },
+    {
+      "image": "fold_spine_test-0-4.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "89dff4a63f3c4916a0e425ac405e3de3c7cceafd5f9d145e37fd7f0424402948",
+      "resave_sha256": "89dff4a63f3c4916a0e425ac405e3de3c7cceafd5f9d145e37fd7f0424402948"
+    },
+    {
+      "image": "fold_spine_test-0-5.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "bcbe2b534ae0783933c931cb14fd516b5c4db4a11914765b7099f4916cfb5834",
+      "resave_sha256": "bcbe2b534ae0783933c931cb14fd516b5c4db4a11914765b7099f4916cfb5834"
+    },
+    {
+      "image": "fold_spine_test-0-5.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "bcbe2b534ae0783933c931cb14fd516b5c4db4a11914765b7099f4916cfb5834",
+      "resave_sha256": "bcbe2b534ae0783933c931cb14fd516b5c4db4a11914765b7099f4916cfb5834"
+    },
+    {
+      "image": "fold_spine_test-0-6.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "4abfa884fa0ff4940fe922619a23c3ee5112bcd0a6e947e310e812b6d3049f04",
+      "resave_sha256": "4abfa884fa0ff4940fe922619a23c3ee5112bcd0a6e947e310e812b6d3049f04"
+    },
+    {
+      "image": "fold_spine_test-0-6.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "4abfa884fa0ff4940fe922619a23c3ee5112bcd0a6e947e310e812b6d3049f04",
+      "resave_sha256": "4abfa884fa0ff4940fe922619a23c3ee5112bcd0a6e947e310e812b6d3049f04"
+    },
+    {
+      "image": "fold_spine_test-0-7.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "7a61439e6d5c906b92a796e1e5aaf95b8ea8ef78e3ba637679f55041f51ecc7e",
+      "resave_sha256": "7a61439e6d5c906b92a796e1e5aaf95b8ea8ef78e3ba637679f55041f51ecc7e"
+    },
+    {
+      "image": "fold_spine_test-0-7.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "7a61439e6d5c906b92a796e1e5aaf95b8ea8ef78e3ba637679f55041f51ecc7e",
+      "resave_sha256": "7a61439e6d5c906b92a796e1e5aaf95b8ea8ef78e3ba637679f55041f51ecc7e"
+    },
+    {
+      "image": "fold_spine_test-0-8.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "a8b9387ac67eb906586b10652e65b061dff8f86ffb6f9747aba132a9f2d04b0b",
+      "resave_sha256": "a8b9387ac67eb906586b10652e65b061dff8f86ffb6f9747aba132a9f2d04b0b"
+    },
+    {
+      "image": "fold_spine_test-0-8.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "a8b9387ac67eb906586b10652e65b061dff8f86ffb6f9747aba132a9f2d04b0b",
+      "resave_sha256": "a8b9387ac67eb906586b10652e65b061dff8f86ffb6f9747aba132a9f2d04b0b"
+    },
+    {
+      "image": "fold_spine_test-0-9.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "1e25c4446e5b5af9a0dd60482f85d46f5394c71272bcdda9b10f3c1150262569",
+      "resave_sha256": "1e25c4446e5b5af9a0dd60482f85d46f5394c71272bcdda9b10f3c1150262569"
+    },
+    {
+      "image": "fold_spine_test-0-9.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "1e25c4446e5b5af9a0dd60482f85d46f5394c71272bcdda9b10f3c1150262569",
+      "resave_sha256": "1e25c4446e5b5af9a0dd60482f85d46f5394c71272bcdda9b10f3c1150262569"
+    },
+    {
+      "image": "fold_spine_test-1-0.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "b2fb9919d6bb412ba0845e26fe480c991abe4a47a7f126937f3cc8a76d3ad3a5",
+      "resave_sha256": "b2fb9919d6bb412ba0845e26fe480c991abe4a47a7f126937f3cc8a76d3ad3a5"
+    },
+    {
+      "image": "fold_spine_test-1-0.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "b2fb9919d6bb412ba0845e26fe480c991abe4a47a7f126937f3cc8a76d3ad3a5",
+      "resave_sha256": "b2fb9919d6bb412ba0845e26fe480c991abe4a47a7f126937f3cc8a76d3ad3a5"
+    },
+    {
+      "image": "fold_spine_test-1-1.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "845bfadc886b60269330d8b3cb47a89f855f3bbe9c1a5d075b472782b994fa26",
+      "resave_sha256": "845bfadc886b60269330d8b3cb47a89f855f3bbe9c1a5d075b472782b994fa26"
+    },
+    {
+      "image": "fold_spine_test-1-1.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "845bfadc886b60269330d8b3cb47a89f855f3bbe9c1a5d075b472782b994fa26",
+      "resave_sha256": "845bfadc886b60269330d8b3cb47a89f855f3bbe9c1a5d075b472782b994fa26"
+    },
+    {
+      "image": "fold_spine_test-1-10.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "5e960aa039bbe7f814167a8efdbe4c9891ed6eaff1060d2dac57e8d720c698d9",
+      "resave_sha256": "5e960aa039bbe7f814167a8efdbe4c9891ed6eaff1060d2dac57e8d720c698d9"
+    },
+    {
+      "image": "fold_spine_test-1-10.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "5e960aa039bbe7f814167a8efdbe4c9891ed6eaff1060d2dac57e8d720c698d9",
+      "resave_sha256": "5e960aa039bbe7f814167a8efdbe4c9891ed6eaff1060d2dac57e8d720c698d9"
+    },
+    {
+      "image": "fold_spine_test-1-11.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "a36cb01841882fcbeac04f595d3cd217888d58bec7425b3be3d8ea68ca08fe94",
+      "resave_sha256": "a36cb01841882fcbeac04f595d3cd217888d58bec7425b3be3d8ea68ca08fe94"
+    },
+    {
+      "image": "fold_spine_test-1-11.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "a36cb01841882fcbeac04f595d3cd217888d58bec7425b3be3d8ea68ca08fe94",
+      "resave_sha256": "a36cb01841882fcbeac04f595d3cd217888d58bec7425b3be3d8ea68ca08fe94"
+    },
+    {
+      "image": "fold_spine_test-1-12.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "a301109b1e1331654f1d8b39638020eaf3004b257ed547a10a7ff3404f94e0ca",
+      "resave_sha256": "a301109b1e1331654f1d8b39638020eaf3004b257ed547a10a7ff3404f94e0ca"
+    },
+    {
+      "image": "fold_spine_test-1-12.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "a301109b1e1331654f1d8b39638020eaf3004b257ed547a10a7ff3404f94e0ca",
+      "resave_sha256": "a301109b1e1331654f1d8b39638020eaf3004b257ed547a10a7ff3404f94e0ca"
+    },
+    {
+      "image": "fold_spine_test-1-13.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "8f6552b4bb637990e5410d41ce751d8d62ed0c1ceb117406423e0e4a13a47ea6",
+      "resave_sha256": "8f6552b4bb637990e5410d41ce751d8d62ed0c1ceb117406423e0e4a13a47ea6"
+    },
+    {
+      "image": "fold_spine_test-1-13.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "8f6552b4bb637990e5410d41ce751d8d62ed0c1ceb117406423e0e4a13a47ea6",
+      "resave_sha256": "8f6552b4bb637990e5410d41ce751d8d62ed0c1ceb117406423e0e4a13a47ea6"
+    },
+    {
+      "image": "fold_spine_test-1-14.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "9d659bde991455430502b279afa6748a44171262568e4cf1365358d01ba8344d",
+      "resave_sha256": "9d659bde991455430502b279afa6748a44171262568e4cf1365358d01ba8344d"
+    },
+    {
+      "image": "fold_spine_test-1-14.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "9d659bde991455430502b279afa6748a44171262568e4cf1365358d01ba8344d",
+      "resave_sha256": "9d659bde991455430502b279afa6748a44171262568e4cf1365358d01ba8344d"
+    },
+    {
+      "image": "fold_spine_test-1-15.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "513cf4537906f564c7b5d8e337d32044cbc2897155fd2d8002206c65a0dd92c1",
+      "resave_sha256": "513cf4537906f564c7b5d8e337d32044cbc2897155fd2d8002206c65a0dd92c1"
+    },
+    {
+      "image": "fold_spine_test-1-15.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "513cf4537906f564c7b5d8e337d32044cbc2897155fd2d8002206c65a0dd92c1",
+      "resave_sha256": "513cf4537906f564c7b5d8e337d32044cbc2897155fd2d8002206c65a0dd92c1"
+    },
+    {
+      "image": "fold_spine_test-1-2.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "2ed57121a684bbb5f45ccb6768086119843666fd968cbf21ab0c01a5a2a4b6c8",
+      "resave_sha256": "2ed57121a684bbb5f45ccb6768086119843666fd968cbf21ab0c01a5a2a4b6c8"
+    },
+    {
+      "image": "fold_spine_test-1-2.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "2ed57121a684bbb5f45ccb6768086119843666fd968cbf21ab0c01a5a2a4b6c8",
+      "resave_sha256": "2ed57121a684bbb5f45ccb6768086119843666fd968cbf21ab0c01a5a2a4b6c8"
+    },
+    {
+      "image": "fold_spine_test-1-3.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "7672584143f334e50cbe389a3aabb99098e82fae4b5624cbe27c96009907fc23",
+      "resave_sha256": "7672584143f334e50cbe389a3aabb99098e82fae4b5624cbe27c96009907fc23"
+    },
+    {
+      "image": "fold_spine_test-1-3.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "7672584143f334e50cbe389a3aabb99098e82fae4b5624cbe27c96009907fc23",
+      "resave_sha256": "7672584143f334e50cbe389a3aabb99098e82fae4b5624cbe27c96009907fc23"
+    },
+    {
+      "image": "fold_spine_test-1-4.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "82a27487756761422468db4d101f43a6d45cdc107d50b397068762c0021cb429",
+      "resave_sha256": "82a27487756761422468db4d101f43a6d45cdc107d50b397068762c0021cb429"
+    },
+    {
+      "image": "fold_spine_test-1-4.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "82a27487756761422468db4d101f43a6d45cdc107d50b397068762c0021cb429",
+      "resave_sha256": "82a27487756761422468db4d101f43a6d45cdc107d50b397068762c0021cb429"
+    },
+    {
+      "image": "fold_spine_test-1-5.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "900cf3426eab561f38da19c565de3816cd656019d3667ea30b8bdd6dc5efc29d",
+      "resave_sha256": "900cf3426eab561f38da19c565de3816cd656019d3667ea30b8bdd6dc5efc29d"
+    },
+    {
+      "image": "fold_spine_test-1-5.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "900cf3426eab561f38da19c565de3816cd656019d3667ea30b8bdd6dc5efc29d",
+      "resave_sha256": "900cf3426eab561f38da19c565de3816cd656019d3667ea30b8bdd6dc5efc29d"
+    },
+    {
+      "image": "fold_spine_test-1-6.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "178cfd7177377bccc10095ad202086e7716ec1223348eaa284f86a88dcdada64",
+      "resave_sha256": "178cfd7177377bccc10095ad202086e7716ec1223348eaa284f86a88dcdada64"
+    },
+    {
+      "image": "fold_spine_test-1-6.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "178cfd7177377bccc10095ad202086e7716ec1223348eaa284f86a88dcdada64",
+      "resave_sha256": "178cfd7177377bccc10095ad202086e7716ec1223348eaa284f86a88dcdada64"
+    },
+    {
+      "image": "fold_spine_test-1-7.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "f8c05f174dbc0ae97d30411cfaa5d8e2ad34ddf54f572ee73333d0909d4272ad",
+      "resave_sha256": "f8c05f174dbc0ae97d30411cfaa5d8e2ad34ddf54f572ee73333d0909d4272ad"
+    },
+    {
+      "image": "fold_spine_test-1-7.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "f8c05f174dbc0ae97d30411cfaa5d8e2ad34ddf54f572ee73333d0909d4272ad",
+      "resave_sha256": "f8c05f174dbc0ae97d30411cfaa5d8e2ad34ddf54f572ee73333d0909d4272ad"
+    },
+    {
+      "image": "fold_spine_test-1-8.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "ce62efa716150d9a2b0626ff91e8f660c9e6ee453542c163b76f527ba2b2323f",
+      "resave_sha256": "ce62efa716150d9a2b0626ff91e8f660c9e6ee453542c163b76f527ba2b2323f"
+    },
+    {
+      "image": "fold_spine_test-1-8.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "ce62efa716150d9a2b0626ff91e8f660c9e6ee453542c163b76f527ba2b2323f",
+      "resave_sha256": "ce62efa716150d9a2b0626ff91e8f660c9e6ee453542c163b76f527ba2b2323f"
+    },
+    {
+      "image": "fold_spine_test-1-9.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "763c856b1db1b7872a5433036ce28ad0a1ba7bad821ee3105918126fa848d33a",
+      "resave_sha256": "763c856b1db1b7872a5433036ce28ad0a1ba7bad821ee3105918126fa848d33a"
+    },
+    {
+      "image": "fold_spine_test-1-9.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "763c856b1db1b7872a5433036ce28ad0a1ba7bad821ee3105918126fa848d33a",
+      "resave_sha256": "763c856b1db1b7872a5433036ce28ad0a1ba7bad821ee3105918126fa848d33a"
+    },
+    {
+      "image": "fold_spine_test-2-0.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "65d1aec8a03583124530d4a7eb2c665eff94faf86395eb3412060e2c77f9e72c",
+      "resave_sha256": "65d1aec8a03583124530d4a7eb2c665eff94faf86395eb3412060e2c77f9e72c"
+    },
+    {
+      "image": "fold_spine_test-2-0.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "65d1aec8a03583124530d4a7eb2c665eff94faf86395eb3412060e2c77f9e72c",
+      "resave_sha256": "65d1aec8a03583124530d4a7eb2c665eff94faf86395eb3412060e2c77f9e72c"
+    },
+    {
+      "image": "fold_spine_test-2-1.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "55a163a02dbec4b8ac7c96ec7ae88c1a73401c39de9fa744049b9c885d100050",
+      "resave_sha256": "55a163a02dbec4b8ac7c96ec7ae88c1a73401c39de9fa744049b9c885d100050"
+    },
+    {
+      "image": "fold_spine_test-2-1.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "55a163a02dbec4b8ac7c96ec7ae88c1a73401c39de9fa744049b9c885d100050",
+      "resave_sha256": "55a163a02dbec4b8ac7c96ec7ae88c1a73401c39de9fa744049b9c885d100050"
+    },
+    {
+      "image": "fold_spine_test-2-10.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "59218fc3876bcc47c68a21ccfaa4d060690cc00e9db0e10818471847f0b53236",
+      "resave_sha256": "59218fc3876bcc47c68a21ccfaa4d060690cc00e9db0e10818471847f0b53236"
+    },
+    {
+      "image": "fold_spine_test-2-10.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "59218fc3876bcc47c68a21ccfaa4d060690cc00e9db0e10818471847f0b53236",
+      "resave_sha256": "59218fc3876bcc47c68a21ccfaa4d060690cc00e9db0e10818471847f0b53236"
+    },
+    {
+      "image": "fold_spine_test-2-11.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "94bc050ec21f31847908d3e51d5aac2d175901a35293ad9a8ecfa778e891f4fd",
+      "resave_sha256": "94bc050ec21f31847908d3e51d5aac2d175901a35293ad9a8ecfa778e891f4fd"
+    },
+    {
+      "image": "fold_spine_test-2-11.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "94bc050ec21f31847908d3e51d5aac2d175901a35293ad9a8ecfa778e891f4fd",
+      "resave_sha256": "94bc050ec21f31847908d3e51d5aac2d175901a35293ad9a8ecfa778e891f4fd"
+    },
+    {
+      "image": "fold_spine_test-2-12.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "bf7a38eb5122aa0cd4204320fd9b4aa7a8cb3409c58180c194ede98546f57e6b",
+      "resave_sha256": "bf7a38eb5122aa0cd4204320fd9b4aa7a8cb3409c58180c194ede98546f57e6b"
+    },
+    {
+      "image": "fold_spine_test-2-12.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "bf7a38eb5122aa0cd4204320fd9b4aa7a8cb3409c58180c194ede98546f57e6b",
+      "resave_sha256": "bf7a38eb5122aa0cd4204320fd9b4aa7a8cb3409c58180c194ede98546f57e6b"
+    },
+    {
+      "image": "fold_spine_test-2-2.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "efe091313b3ef11976f0cb04309985ce84f762b1b6fda0767285ff69933b80cb",
+      "resave_sha256": "efe091313b3ef11976f0cb04309985ce84f762b1b6fda0767285ff69933b80cb"
+    },
+    {
+      "image": "fold_spine_test-2-2.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "efe091313b3ef11976f0cb04309985ce84f762b1b6fda0767285ff69933b80cb",
+      "resave_sha256": "efe091313b3ef11976f0cb04309985ce84f762b1b6fda0767285ff69933b80cb"
+    },
+    {
+      "image": "fold_spine_test-2-3.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "e66b6f2d7b91a7413dde3744a3dec29088d72be8a12f09c0cf607a7e2acd2500",
+      "resave_sha256": "e66b6f2d7b91a7413dde3744a3dec29088d72be8a12f09c0cf607a7e2acd2500"
+    },
+    {
+      "image": "fold_spine_test-2-3.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "e66b6f2d7b91a7413dde3744a3dec29088d72be8a12f09c0cf607a7e2acd2500",
+      "resave_sha256": "e66b6f2d7b91a7413dde3744a3dec29088d72be8a12f09c0cf607a7e2acd2500"
+    },
+    {
+      "image": "fold_spine_test-2-4.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "868ce6aa59683e2367c7772eb7716a2c6abd090dd3cd1b75f23054152625a3fe",
+      "resave_sha256": "868ce6aa59683e2367c7772eb7716a2c6abd090dd3cd1b75f23054152625a3fe"
+    },
+    {
+      "image": "fold_spine_test-2-4.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "868ce6aa59683e2367c7772eb7716a2c6abd090dd3cd1b75f23054152625a3fe",
+      "resave_sha256": "868ce6aa59683e2367c7772eb7716a2c6abd090dd3cd1b75f23054152625a3fe"
+    },
+    {
+      "image": "fold_spine_test-2-5.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "60d699e44420cc27eb324f4679a39bf8655de2da5a0b17e4c8c1d004acab9356",
+      "resave_sha256": "60d699e44420cc27eb324f4679a39bf8655de2da5a0b17e4c8c1d004acab9356"
+    },
+    {
+      "image": "fold_spine_test-2-5.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "60d699e44420cc27eb324f4679a39bf8655de2da5a0b17e4c8c1d004acab9356",
+      "resave_sha256": "60d699e44420cc27eb324f4679a39bf8655de2da5a0b17e4c8c1d004acab9356"
+    },
+    {
+      "image": "fold_spine_test-2-6.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "738c87223b17b121c2f62a0f4e21f2f606eb703fc63f4e6546b109a57ff92cd6",
+      "resave_sha256": "738c87223b17b121c2f62a0f4e21f2f606eb703fc63f4e6546b109a57ff92cd6"
+    },
+    {
+      "image": "fold_spine_test-2-6.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "738c87223b17b121c2f62a0f4e21f2f606eb703fc63f4e6546b109a57ff92cd6",
+      "resave_sha256": "738c87223b17b121c2f62a0f4e21f2f606eb703fc63f4e6546b109a57ff92cd6"
+    },
+    {
+      "image": "fold_spine_test-2-7.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "ad2997c391ec24290591c231ca7deb3487fa195fbcbcf7239e3043bce9bb16b9",
+      "resave_sha256": "ad2997c391ec24290591c231ca7deb3487fa195fbcbcf7239e3043bce9bb16b9"
+    },
+    {
+      "image": "fold_spine_test-2-7.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "ad2997c391ec24290591c231ca7deb3487fa195fbcbcf7239e3043bce9bb16b9",
+      "resave_sha256": "ad2997c391ec24290591c231ca7deb3487fa195fbcbcf7239e3043bce9bb16b9"
+    },
+    {
+      "image": "fold_spine_test-2-8.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "50a027134c33b5835543159f4d7240d607cbe3a5d6c608be30a8df65f928c4f1",
+      "resave_sha256": "50a027134c33b5835543159f4d7240d607cbe3a5d6c608be30a8df65f928c4f1"
+    },
+    {
+      "image": "fold_spine_test-2-8.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "50a027134c33b5835543159f4d7240d607cbe3a5d6c608be30a8df65f928c4f1",
+      "resave_sha256": "50a027134c33b5835543159f4d7240d607cbe3a5d6c608be30a8df65f928c4f1"
+    },
+    {
+      "image": "fold_spine_test-2-9.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "f1e6e313abbcdff30523bc809283443bf6766cee87715efa43f7dbec073f7a9a",
+      "resave_sha256": "f1e6e313abbcdff30523bc809283443bf6766cee87715efa43f7dbec073f7a9a"
+    },
+    {
+      "image": "fold_spine_test-2-9.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "f1e6e313abbcdff30523bc809283443bf6766cee87715efa43f7dbec073f7a9a",
+      "resave_sha256": "f1e6e313abbcdff30523bc809283443bf6766cee87715efa43f7dbec073f7a9a"
+    },
+    {
+      "image": "fold_spine_test-3-0.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "be4ce1367b2553f520ae8a0c419e40c2af48fc345814990b9453f0e7e89d40b8",
+      "resave_sha256": "be4ce1367b2553f520ae8a0c419e40c2af48fc345814990b9453f0e7e89d40b8"
+    },
+    {
+      "image": "fold_spine_test-3-0.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "be4ce1367b2553f520ae8a0c419e40c2af48fc345814990b9453f0e7e89d40b8",
+      "resave_sha256": "be4ce1367b2553f520ae8a0c419e40c2af48fc345814990b9453f0e7e89d40b8"
+    },
+    {
+      "image": "fold_spine_test-3-1.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "1c8775d0633c1904f6a908b161b02bc848b342b8e48f46af6f6ba7838acfa0c7",
+      "resave_sha256": "1c8775d0633c1904f6a908b161b02bc848b342b8e48f46af6f6ba7838acfa0c7"
+    },
+    {
+      "image": "fold_spine_test-3-1.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "1c8775d0633c1904f6a908b161b02bc848b342b8e48f46af6f6ba7838acfa0c7",
+      "resave_sha256": "1c8775d0633c1904f6a908b161b02bc848b342b8e48f46af6f6ba7838acfa0c7"
+    },
+    {
+      "image": "fold_spine_test-3-10.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "37d53e9d029a3e38bf43d448d1b747293e21fcd44f749bdfd95cd60c7df6ef48",
+      "resave_sha256": "37d53e9d029a3e38bf43d448d1b747293e21fcd44f749bdfd95cd60c7df6ef48"
+    },
+    {
+      "image": "fold_spine_test-3-10.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "37d53e9d029a3e38bf43d448d1b747293e21fcd44f749bdfd95cd60c7df6ef48",
+      "resave_sha256": "37d53e9d029a3e38bf43d448d1b747293e21fcd44f749bdfd95cd60c7df6ef48"
+    },
+    {
+      "image": "fold_spine_test-3-11.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "d0568fcf8242a7b0baa8a1dee80db873236002a4aab17ee1c1e0577b6b65fd84",
+      "resave_sha256": "d0568fcf8242a7b0baa8a1dee80db873236002a4aab17ee1c1e0577b6b65fd84"
+    },
+    {
+      "image": "fold_spine_test-3-11.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "d0568fcf8242a7b0baa8a1dee80db873236002a4aab17ee1c1e0577b6b65fd84",
+      "resave_sha256": "d0568fcf8242a7b0baa8a1dee80db873236002a4aab17ee1c1e0577b6b65fd84"
+    },
+    {
+      "image": "fold_spine_test-3-12.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "452976a0737e91a1dadeaafd6ee72e974a172513b34f90988ec091f1cc750017",
+      "resave_sha256": "452976a0737e91a1dadeaafd6ee72e974a172513b34f90988ec091f1cc750017"
+    },
+    {
+      "image": "fold_spine_test-3-12.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "452976a0737e91a1dadeaafd6ee72e974a172513b34f90988ec091f1cc750017",
+      "resave_sha256": "452976a0737e91a1dadeaafd6ee72e974a172513b34f90988ec091f1cc750017"
+    },
+    {
+      "image": "fold_spine_test-3-13.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "c37b375891c8cfa59e61a188856807e097bfd7d40aed6eefa2e0681541c1454d",
+      "resave_sha256": "c37b375891c8cfa59e61a188856807e097bfd7d40aed6eefa2e0681541c1454d"
+    },
+    {
+      "image": "fold_spine_test-3-13.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "c37b375891c8cfa59e61a188856807e097bfd7d40aed6eefa2e0681541c1454d",
+      "resave_sha256": "c37b375891c8cfa59e61a188856807e097bfd7d40aed6eefa2e0681541c1454d"
+    },
+    {
+      "image": "fold_spine_test-3-2.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "7e68537fd487f26ea513030326de56933e47101cced713869c0bdf07aab9bcb6",
+      "resave_sha256": "7e68537fd487f26ea513030326de56933e47101cced713869c0bdf07aab9bcb6"
+    },
+    {
+      "image": "fold_spine_test-3-2.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "7e68537fd487f26ea513030326de56933e47101cced713869c0bdf07aab9bcb6",
+      "resave_sha256": "7e68537fd487f26ea513030326de56933e47101cced713869c0bdf07aab9bcb6"
+    },
+    {
+      "image": "fold_spine_test-3-3.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "870fbd195892c81aae298c27fc3583d5bca275d068c440ce307bd6a7e32975ad",
+      "resave_sha256": "870fbd195892c81aae298c27fc3583d5bca275d068c440ce307bd6a7e32975ad"
+    },
+    {
+      "image": "fold_spine_test-3-3.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "870fbd195892c81aae298c27fc3583d5bca275d068c440ce307bd6a7e32975ad",
+      "resave_sha256": "870fbd195892c81aae298c27fc3583d5bca275d068c440ce307bd6a7e32975ad"
+    },
+    {
+      "image": "fold_spine_test-3-4.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "9981a5c173c321dcd8d06f7771f00f714ff0b313f82078069538de81709d46c7",
+      "resave_sha256": "9981a5c173c321dcd8d06f7771f00f714ff0b313f82078069538de81709d46c7"
+    },
+    {
+      "image": "fold_spine_test-3-4.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "9981a5c173c321dcd8d06f7771f00f714ff0b313f82078069538de81709d46c7",
+      "resave_sha256": "9981a5c173c321dcd8d06f7771f00f714ff0b313f82078069538de81709d46c7"
+    },
+    {
+      "image": "fold_spine_test-3-5.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "cce5a205c3720af8eda879266ab7f84dd75d362222223627566aa5ffa14767e9",
+      "resave_sha256": "cce5a205c3720af8eda879266ab7f84dd75d362222223627566aa5ffa14767e9"
+    },
+    {
+      "image": "fold_spine_test-3-5.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "cce5a205c3720af8eda879266ab7f84dd75d362222223627566aa5ffa14767e9",
+      "resave_sha256": "cce5a205c3720af8eda879266ab7f84dd75d362222223627566aa5ffa14767e9"
+    },
+    {
+      "image": "fold_spine_test-3-6.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "782f26c54f725d550a5681f160302d156ffeb42e7996c984c91aacc393444905",
+      "resave_sha256": "782f26c54f725d550a5681f160302d156ffeb42e7996c984c91aacc393444905"
+    },
+    {
+      "image": "fold_spine_test-3-6.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "782f26c54f725d550a5681f160302d156ffeb42e7996c984c91aacc393444905",
+      "resave_sha256": "782f26c54f725d550a5681f160302d156ffeb42e7996c984c91aacc393444905"
+    },
+    {
+      "image": "fold_spine_test-3-7.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "359dab367a41746d39e1cd84b7d4854a71655a5a7ed4895ca3757f82f11f77d6",
+      "resave_sha256": "359dab367a41746d39e1cd84b7d4854a71655a5a7ed4895ca3757f82f11f77d6"
+    },
+    {
+      "image": "fold_spine_test-3-7.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "359dab367a41746d39e1cd84b7d4854a71655a5a7ed4895ca3757f82f11f77d6",
+      "resave_sha256": "359dab367a41746d39e1cd84b7d4854a71655a5a7ed4895ca3757f82f11f77d6"
+    },
+    {
+      "image": "fold_spine_test-3-8.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "2dd8956a1747a24f1e323a354a160ab2146c91d88cefac2bb43981f3c0154bc2",
+      "resave_sha256": "2dd8956a1747a24f1e323a354a160ab2146c91d88cefac2bb43981f3c0154bc2"
+    },
+    {
+      "image": "fold_spine_test-3-8.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "2dd8956a1747a24f1e323a354a160ab2146c91d88cefac2bb43981f3c0154bc2",
+      "resave_sha256": "2dd8956a1747a24f1e323a354a160ab2146c91d88cefac2bb43981f3c0154bc2"
+    },
+    {
+      "image": "fold_spine_test-3-9.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "8fcd10de535e09bd6b6a2364d5f8ed2afccb060ad4b6c6452fc656eb505a1699",
+      "resave_sha256": "8fcd10de535e09bd6b6a2364d5f8ed2afccb060ad4b6c6452fc656eb505a1699"
+    },
+    {
+      "image": "fold_spine_test-3-9.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "8fcd10de535e09bd6b6a2364d5f8ed2afccb060ad4b6c6452fc656eb505a1699",
+      "resave_sha256": "8fcd10de535e09bd6b6a2364d5f8ed2afccb060ad4b6c6452fc656eb505a1699"
+    },
+    {
+      "image": "fold_spine_test-4-0.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "27b767cb6eb6f0985fcbd37ad5ab4a228fc96c18330024edebaae006ca51210d",
+      "resave_sha256": "27b767cb6eb6f0985fcbd37ad5ab4a228fc96c18330024edebaae006ca51210d"
+    },
+    {
+      "image": "fold_spine_test-4-0.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "27b767cb6eb6f0985fcbd37ad5ab4a228fc96c18330024edebaae006ca51210d",
+      "resave_sha256": "27b767cb6eb6f0985fcbd37ad5ab4a228fc96c18330024edebaae006ca51210d"
+    },
+    {
+      "image": "fold_spine_test-4-1.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "05b1c48ba986391cbc4d905176c09b37c73957286c627e6fa0bdb324f12bdccf",
+      "resave_sha256": "05b1c48ba986391cbc4d905176c09b37c73957286c627e6fa0bdb324f12bdccf"
+    },
+    {
+      "image": "fold_spine_test-4-1.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "05b1c48ba986391cbc4d905176c09b37c73957286c627e6fa0bdb324f12bdccf",
+      "resave_sha256": "05b1c48ba986391cbc4d905176c09b37c73957286c627e6fa0bdb324f12bdccf"
+    },
+    {
+      "image": "fold_spine_test-4-10.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "bfafe394dd1b709525de733efd5d85388b946005e8beaf727c341f2106545d48",
+      "resave_sha256": "bfafe394dd1b709525de733efd5d85388b946005e8beaf727c341f2106545d48"
+    },
+    {
+      "image": "fold_spine_test-4-10.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "bfafe394dd1b709525de733efd5d85388b946005e8beaf727c341f2106545d48",
+      "resave_sha256": "bfafe394dd1b709525de733efd5d85388b946005e8beaf727c341f2106545d48"
+    },
+    {
+      "image": "fold_spine_test-4-11.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "462c3aa226468d143f709394acb0de9d539ebdf4c57d0d3f198f7b1f21c6af6f",
+      "resave_sha256": "462c3aa226468d143f709394acb0de9d539ebdf4c57d0d3f198f7b1f21c6af6f"
+    },
+    {
+      "image": "fold_spine_test-4-11.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "462c3aa226468d143f709394acb0de9d539ebdf4c57d0d3f198f7b1f21c6af6f",
+      "resave_sha256": "462c3aa226468d143f709394acb0de9d539ebdf4c57d0d3f198f7b1f21c6af6f"
+    },
+    {
+      "image": "fold_spine_test-4-2.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "d5bd4716d7004fc23a0d20248c626f616b4b832a9c72c900781282dd03da08d3",
+      "resave_sha256": "d5bd4716d7004fc23a0d20248c626f616b4b832a9c72c900781282dd03da08d3"
+    },
+    {
+      "image": "fold_spine_test-4-2.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "d5bd4716d7004fc23a0d20248c626f616b4b832a9c72c900781282dd03da08d3",
+      "resave_sha256": "d5bd4716d7004fc23a0d20248c626f616b4b832a9c72c900781282dd03da08d3"
+    },
+    {
+      "image": "fold_spine_test-4-3.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "8a4f6d2175cfb4dd0e9b5b7956584b363acc71486e89ba6222c7b680a600adb9",
+      "resave_sha256": "8a4f6d2175cfb4dd0e9b5b7956584b363acc71486e89ba6222c7b680a600adb9"
+    },
+    {
+      "image": "fold_spine_test-4-3.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "8a4f6d2175cfb4dd0e9b5b7956584b363acc71486e89ba6222c7b680a600adb9",
+      "resave_sha256": "8a4f6d2175cfb4dd0e9b5b7956584b363acc71486e89ba6222c7b680a600adb9"
+    },
+    {
+      "image": "fold_spine_test-4-4.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "e7eb3435da9422807ffdcef670e03bcea70cd0822ee609b80e12b95cc1729912",
+      "resave_sha256": "e7eb3435da9422807ffdcef670e03bcea70cd0822ee609b80e12b95cc1729912"
+    },
+    {
+      "image": "fold_spine_test-4-4.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "e7eb3435da9422807ffdcef670e03bcea70cd0822ee609b80e12b95cc1729912",
+      "resave_sha256": "e7eb3435da9422807ffdcef670e03bcea70cd0822ee609b80e12b95cc1729912"
+    },
+    {
+      "image": "fold_spine_test-4-5.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "ffe22db780bc12eeb1ecad99c235286e4c2279c2a6a52205a1b68e45f4e10407",
+      "resave_sha256": "ffe22db780bc12eeb1ecad99c235286e4c2279c2a6a52205a1b68e45f4e10407"
+    },
+    {
+      "image": "fold_spine_test-4-5.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "ffe22db780bc12eeb1ecad99c235286e4c2279c2a6a52205a1b68e45f4e10407",
+      "resave_sha256": "ffe22db780bc12eeb1ecad99c235286e4c2279c2a6a52205a1b68e45f4e10407"
+    },
+    {
+      "image": "fold_spine_test-4-6.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "87cf50f16db5905174bbbb247c470f6d98d138dd4c7fd99fe3e08187417ff0a6",
+      "resave_sha256": "87cf50f16db5905174bbbb247c470f6d98d138dd4c7fd99fe3e08187417ff0a6"
+    },
+    {
+      "image": "fold_spine_test-4-6.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "87cf50f16db5905174bbbb247c470f6d98d138dd4c7fd99fe3e08187417ff0a6",
+      "resave_sha256": "87cf50f16db5905174bbbb247c470f6d98d138dd4c7fd99fe3e08187417ff0a6"
+    },
+    {
+      "image": "fold_spine_test-4-7.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "180f01532fc3379bb4d728fc94baa2246c68dbc99eef4144dfc71b1297cf9d60",
+      "resave_sha256": "180f01532fc3379bb4d728fc94baa2246c68dbc99eef4144dfc71b1297cf9d60"
+    },
+    {
+      "image": "fold_spine_test-4-7.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "180f01532fc3379bb4d728fc94baa2246c68dbc99eef4144dfc71b1297cf9d60",
+      "resave_sha256": "180f01532fc3379bb4d728fc94baa2246c68dbc99eef4144dfc71b1297cf9d60"
+    },
+    {
+      "image": "fold_spine_test-4-8.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "100e03d1b72a8e312cc5edbcf420ec90cdc7b94db6fb1e45d5a105b12c9e7374",
+      "resave_sha256": "100e03d1b72a8e312cc5edbcf420ec90cdc7b94db6fb1e45d5a105b12c9e7374"
+    },
+    {
+      "image": "fold_spine_test-4-8.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "100e03d1b72a8e312cc5edbcf420ec90cdc7b94db6fb1e45d5a105b12c9e7374",
+      "resave_sha256": "100e03d1b72a8e312cc5edbcf420ec90cdc7b94db6fb1e45d5a105b12c9e7374"
+    },
+    {
+      "image": "fold_spine_test-4-9.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "df27fe09fd4582d70d2be854267db74f4fec7cfeb81f30f87a0d50b10a0696c0",
+      "resave_sha256": "df27fe09fd4582d70d2be854267db74f4fec7cfeb81f30f87a0d50b10a0696c0"
+    },
+    {
+      "image": "fold_spine_test-4-9.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "df27fe09fd4582d70d2be854267db74f4fec7cfeb81f30f87a0d50b10a0696c0",
+      "resave_sha256": "df27fe09fd4582d70d2be854267db74f4fec7cfeb81f30f87a0d50b10a0696c0"
+    },
+    {
+      "image": "materialized_fields_test-0-0.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "6bee4abe81b36c7dd3d2712dcdce943c99629d58f036c735931cdcc223e081d1",
+      "resave_sha256": "6bee4abe81b36c7dd3d2712dcdce943c99629d58f036c735931cdcc223e081d1"
+    },
+    {
+      "image": "materialized_fields_test-0-0.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "6bee4abe81b36c7dd3d2712dcdce943c99629d58f036c735931cdcc223e081d1",
+      "resave_sha256": "6bee4abe81b36c7dd3d2712dcdce943c99629d58f036c735931cdcc223e081d1"
+    },
+    {
+      "image": "materialized_fields_test-0-1.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "0c1a701a4a5e8e8c2a55d28a131f96c43a6d7c092cade5261350e588d5e88b66",
+      "resave_sha256": "0c1a701a4a5e8e8c2a55d28a131f96c43a6d7c092cade5261350e588d5e88b66"
+    },
+    {
+      "image": "materialized_fields_test-0-1.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "0c1a701a4a5e8e8c2a55d28a131f96c43a6d7c092cade5261350e588d5e88b66",
+      "resave_sha256": "0c1a701a4a5e8e8c2a55d28a131f96c43a6d7c092cade5261350e588d5e88b66"
+    },
+    {
+      "image": "materialized_fields_test-0-10.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "3066245ee89629efd91f7e0499681298ea762fdef82e3a774c8ba8f018120b77",
+      "resave_sha256": "3066245ee89629efd91f7e0499681298ea762fdef82e3a774c8ba8f018120b77"
+    },
+    {
+      "image": "materialized_fields_test-0-10.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "3066245ee89629efd91f7e0499681298ea762fdef82e3a774c8ba8f018120b77",
+      "resave_sha256": "3066245ee89629efd91f7e0499681298ea762fdef82e3a774c8ba8f018120b77"
+    },
+    {
+      "image": "materialized_fields_test-0-11.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "dd62e4d82a8d0776862f5323121387a0d4d005c0d9a18bab44a0488bbe4d41b4",
+      "resave_sha256": "dd62e4d82a8d0776862f5323121387a0d4d005c0d9a18bab44a0488bbe4d41b4"
+    },
+    {
+      "image": "materialized_fields_test-0-11.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "dd62e4d82a8d0776862f5323121387a0d4d005c0d9a18bab44a0488bbe4d41b4",
+      "resave_sha256": "dd62e4d82a8d0776862f5323121387a0d4d005c0d9a18bab44a0488bbe4d41b4"
+    },
+    {
+      "image": "materialized_fields_test-0-12.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "aea5b5e03a177184855d372f051c547a1b3da2fa1b7e8e8915c7773bf0fbd0cb",
+      "resave_sha256": "aea5b5e03a177184855d372f051c547a1b3da2fa1b7e8e8915c7773bf0fbd0cb"
+    },
+    {
+      "image": "materialized_fields_test-0-12.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "aea5b5e03a177184855d372f051c547a1b3da2fa1b7e8e8915c7773bf0fbd0cb",
+      "resave_sha256": "aea5b5e03a177184855d372f051c547a1b3da2fa1b7e8e8915c7773bf0fbd0cb"
+    },
+    {
+      "image": "materialized_fields_test-0-13.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "e8b73b807cc927b39c84b09b843f01ed29f4c63c7308c1957993fe4f40c19b11",
+      "resave_sha256": "e8b73b807cc927b39c84b09b843f01ed29f4c63c7308c1957993fe4f40c19b11"
+    },
+    {
+      "image": "materialized_fields_test-0-13.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "e8b73b807cc927b39c84b09b843f01ed29f4c63c7308c1957993fe4f40c19b11",
+      "resave_sha256": "e8b73b807cc927b39c84b09b843f01ed29f4c63c7308c1957993fe4f40c19b11"
+    },
+    {
+      "image": "materialized_fields_test-0-14.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "dbdcaa8f4dc128c150df41d85f050b23d20df807421ae668887b1234a794b064",
+      "resave_sha256": "dbdcaa8f4dc128c150df41d85f050b23d20df807421ae668887b1234a794b064"
+    },
+    {
+      "image": "materialized_fields_test-0-14.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "dbdcaa8f4dc128c150df41d85f050b23d20df807421ae668887b1234a794b064",
+      "resave_sha256": "dbdcaa8f4dc128c150df41d85f050b23d20df807421ae668887b1234a794b064"
+    },
+    {
+      "image": "materialized_fields_test-0-15.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "225420260d890486d4ad8d83f72f3eb950197678e68fc210dc272d1dac1c07e9",
+      "resave_sha256": "225420260d890486d4ad8d83f72f3eb950197678e68fc210dc272d1dac1c07e9"
+    },
+    {
+      "image": "materialized_fields_test-0-15.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "225420260d890486d4ad8d83f72f3eb950197678e68fc210dc272d1dac1c07e9",
+      "resave_sha256": "225420260d890486d4ad8d83f72f3eb950197678e68fc210dc272d1dac1c07e9"
+    },
+    {
+      "image": "materialized_fields_test-0-16.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "fa5e9ce5022cd77c80bc06cd06667c0330d294c51a300d88d83c8a14efe089eb",
+      "resave_sha256": "fa5e9ce5022cd77c80bc06cd06667c0330d294c51a300d88d83c8a14efe089eb"
+    },
+    {
+      "image": "materialized_fields_test-0-16.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "fa5e9ce5022cd77c80bc06cd06667c0330d294c51a300d88d83c8a14efe089eb",
+      "resave_sha256": "fa5e9ce5022cd77c80bc06cd06667c0330d294c51a300d88d83c8a14efe089eb"
+    },
+    {
+      "image": "materialized_fields_test-0-17.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "ee15e6a66e91a9cf6e8d4af48858e753ce0a2e06bb2f35de7430d16098bd4ddb",
+      "resave_sha256": "ee15e6a66e91a9cf6e8d4af48858e753ce0a2e06bb2f35de7430d16098bd4ddb"
+    },
+    {
+      "image": "materialized_fields_test-0-17.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "ee15e6a66e91a9cf6e8d4af48858e753ce0a2e06bb2f35de7430d16098bd4ddb",
+      "resave_sha256": "ee15e6a66e91a9cf6e8d4af48858e753ce0a2e06bb2f35de7430d16098bd4ddb"
+    },
+    {
+      "image": "materialized_fields_test-0-18.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "5d649b19847ec56d0da30e9993adff56f593dd646e4deea27170354b4f9ec51f",
+      "resave_sha256": "5d649b19847ec56d0da30e9993adff56f593dd646e4deea27170354b4f9ec51f"
+    },
+    {
+      "image": "materialized_fields_test-0-18.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "5d649b19847ec56d0da30e9993adff56f593dd646e4deea27170354b4f9ec51f",
+      "resave_sha256": "5d649b19847ec56d0da30e9993adff56f593dd646e4deea27170354b4f9ec51f"
+    },
+    {
+      "image": "materialized_fields_test-0-19.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "2f67017b10ca258c002f6f98d0d81af2c61fb308d45890d4dbca2166dfc1ea59",
+      "resave_sha256": "2f67017b10ca258c002f6f98d0d81af2c61fb308d45890d4dbca2166dfc1ea59"
+    },
+    {
+      "image": "materialized_fields_test-0-19.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "2f67017b10ca258c002f6f98d0d81af2c61fb308d45890d4dbca2166dfc1ea59",
+      "resave_sha256": "2f67017b10ca258c002f6f98d0d81af2c61fb308d45890d4dbca2166dfc1ea59"
+    },
+    {
+      "image": "materialized_fields_test-0-2.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "24381bf855172fec466191602025666a9ae0d4a9388394fe7d63b511a31b1a5f",
+      "resave_sha256": "24381bf855172fec466191602025666a9ae0d4a9388394fe7d63b511a31b1a5f"
+    },
+    {
+      "image": "materialized_fields_test-0-2.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "24381bf855172fec466191602025666a9ae0d4a9388394fe7d63b511a31b1a5f",
+      "resave_sha256": "24381bf855172fec466191602025666a9ae0d4a9388394fe7d63b511a31b1a5f"
+    },
+    {
+      "image": "materialized_fields_test-0-20.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "13bfff6faf03aed7eb674b9e30201db030a46929c12c5cf54df7cb4d7da3ca7a",
+      "resave_sha256": "13bfff6faf03aed7eb674b9e30201db030a46929c12c5cf54df7cb4d7da3ca7a"
+    },
+    {
+      "image": "materialized_fields_test-0-20.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "13bfff6faf03aed7eb674b9e30201db030a46929c12c5cf54df7cb4d7da3ca7a",
+      "resave_sha256": "13bfff6faf03aed7eb674b9e30201db030a46929c12c5cf54df7cb4d7da3ca7a"
+    },
+    {
+      "image": "materialized_fields_test-0-21.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "7e837811382a6db52c8685165c1840c52009935caf5766c7ebd1e8508b1d2484",
+      "resave_sha256": "7e837811382a6db52c8685165c1840c52009935caf5766c7ebd1e8508b1d2484"
+    },
+    {
+      "image": "materialized_fields_test-0-21.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "7e837811382a6db52c8685165c1840c52009935caf5766c7ebd1e8508b1d2484",
+      "resave_sha256": "7e837811382a6db52c8685165c1840c52009935caf5766c7ebd1e8508b1d2484"
+    },
+    {
+      "image": "materialized_fields_test-0-22.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "3a89d34d895ec4eb03cefc5f1141a7fa5b6347492f1f3c644be3f72c912dd87b",
+      "resave_sha256": "3a89d34d895ec4eb03cefc5f1141a7fa5b6347492f1f3c644be3f72c912dd87b"
+    },
+    {
+      "image": "materialized_fields_test-0-22.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "3a89d34d895ec4eb03cefc5f1141a7fa5b6347492f1f3c644be3f72c912dd87b",
+      "resave_sha256": "3a89d34d895ec4eb03cefc5f1141a7fa5b6347492f1f3c644be3f72c912dd87b"
+    },
+    {
+      "image": "materialized_fields_test-0-23.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "4aef64a56f2fc01ea7e1d9be321c9739792b1cf13441d6ff7fb9c95406d83ca1",
+      "resave_sha256": "4aef64a56f2fc01ea7e1d9be321c9739792b1cf13441d6ff7fb9c95406d83ca1"
+    },
+    {
+      "image": "materialized_fields_test-0-23.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "4aef64a56f2fc01ea7e1d9be321c9739792b1cf13441d6ff7fb9c95406d83ca1",
+      "resave_sha256": "4aef64a56f2fc01ea7e1d9be321c9739792b1cf13441d6ff7fb9c95406d83ca1"
+    },
+    {
+      "image": "materialized_fields_test-0-24.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "960247c47ee85bca228c0445c8465fdb98d5b6d10a943d22b20ff60357724d36",
+      "resave_sha256": "960247c47ee85bca228c0445c8465fdb98d5b6d10a943d22b20ff60357724d36"
+    },
+    {
+      "image": "materialized_fields_test-0-24.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "960247c47ee85bca228c0445c8465fdb98d5b6d10a943d22b20ff60357724d36",
+      "resave_sha256": "960247c47ee85bca228c0445c8465fdb98d5b6d10a943d22b20ff60357724d36"
+    },
+    {
+      "image": "materialized_fields_test-0-25.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "27195f39404ab1f84980f608f0351c207ac90cf8dbffaa2f6c24d57b5ce796cb",
+      "resave_sha256": "27195f39404ab1f84980f608f0351c207ac90cf8dbffaa2f6c24d57b5ce796cb"
+    },
+    {
+      "image": "materialized_fields_test-0-25.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "27195f39404ab1f84980f608f0351c207ac90cf8dbffaa2f6c24d57b5ce796cb",
+      "resave_sha256": "27195f39404ab1f84980f608f0351c207ac90cf8dbffaa2f6c24d57b5ce796cb"
+    },
+    {
+      "image": "materialized_fields_test-0-26.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "dac7e4574c1815278b2ce8f9ae3a909ed641130bead38d52a1811347ca66aba6",
+      "resave_sha256": "dac7e4574c1815278b2ce8f9ae3a909ed641130bead38d52a1811347ca66aba6"
+    },
+    {
+      "image": "materialized_fields_test-0-26.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "dac7e4574c1815278b2ce8f9ae3a909ed641130bead38d52a1811347ca66aba6",
+      "resave_sha256": "dac7e4574c1815278b2ce8f9ae3a909ed641130bead38d52a1811347ca66aba6"
+    },
+    {
+      "image": "materialized_fields_test-0-27.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "db3ed903dcabb48b1616e83a0aaab50633de0e159428a4e1684d11b14166f338",
+      "resave_sha256": "db3ed903dcabb48b1616e83a0aaab50633de0e159428a4e1684d11b14166f338"
+    },
+    {
+      "image": "materialized_fields_test-0-27.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "db3ed903dcabb48b1616e83a0aaab50633de0e159428a4e1684d11b14166f338",
+      "resave_sha256": "db3ed903dcabb48b1616e83a0aaab50633de0e159428a4e1684d11b14166f338"
+    },
+    {
+      "image": "materialized_fields_test-0-28.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "5ea877ec6411f1dec0c271b40b5bfb6f2c96a01262d50b2fc60986a9a1f55119",
+      "resave_sha256": "5ea877ec6411f1dec0c271b40b5bfb6f2c96a01262d50b2fc60986a9a1f55119"
+    },
+    {
+      "image": "materialized_fields_test-0-28.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "5ea877ec6411f1dec0c271b40b5bfb6f2c96a01262d50b2fc60986a9a1f55119",
+      "resave_sha256": "5ea877ec6411f1dec0c271b40b5bfb6f2c96a01262d50b2fc60986a9a1f55119"
+    },
+    {
+      "image": "materialized_fields_test-0-3.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "66ba7d16a41a240f81d709044296891dbc7ad2d5883bf847036411ce389f8b2b",
+      "resave_sha256": "66ba7d16a41a240f81d709044296891dbc7ad2d5883bf847036411ce389f8b2b"
+    },
+    {
+      "image": "materialized_fields_test-0-3.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "66ba7d16a41a240f81d709044296891dbc7ad2d5883bf847036411ce389f8b2b",
+      "resave_sha256": "66ba7d16a41a240f81d709044296891dbc7ad2d5883bf847036411ce389f8b2b"
+    },
+    {
+      "image": "materialized_fields_test-0-4.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "6743f01bac949d6b7016d5ee4cc1e73f29ca3fd6bd5eea2a57eec06cdff20cf3",
+      "resave_sha256": "6743f01bac949d6b7016d5ee4cc1e73f29ca3fd6bd5eea2a57eec06cdff20cf3"
+    },
+    {
+      "image": "materialized_fields_test-0-4.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "6743f01bac949d6b7016d5ee4cc1e73f29ca3fd6bd5eea2a57eec06cdff20cf3",
+      "resave_sha256": "6743f01bac949d6b7016d5ee4cc1e73f29ca3fd6bd5eea2a57eec06cdff20cf3"
+    },
+    {
+      "image": "materialized_fields_test-0-5.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "68124a51a60101c9fdc17c79475acccc4211dccccded2d5fbfa7c48aa7fe4982",
+      "resave_sha256": "68124a51a60101c9fdc17c79475acccc4211dccccded2d5fbfa7c48aa7fe4982"
+    },
+    {
+      "image": "materialized_fields_test-0-5.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "68124a51a60101c9fdc17c79475acccc4211dccccded2d5fbfa7c48aa7fe4982",
+      "resave_sha256": "68124a51a60101c9fdc17c79475acccc4211dccccded2d5fbfa7c48aa7fe4982"
+    },
+    {
+      "image": "materialized_fields_test-0-6.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "b73107ab8c824e67fe549e1056c08eb95635c5d42bf7f67a629fc936160df86e",
+      "resave_sha256": "b73107ab8c824e67fe549e1056c08eb95635c5d42bf7f67a629fc936160df86e"
+    },
+    {
+      "image": "materialized_fields_test-0-6.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "b73107ab8c824e67fe549e1056c08eb95635c5d42bf7f67a629fc936160df86e",
+      "resave_sha256": "b73107ab8c824e67fe549e1056c08eb95635c5d42bf7f67a629fc936160df86e"
+    },
+    {
+      "image": "materialized_fields_test-0-7.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "e96672a674b4b6075c2a395c0bbe2aa3f70dc9707d5857c4fd9174476399c4eb",
+      "resave_sha256": "e96672a674b4b6075c2a395c0bbe2aa3f70dc9707d5857c4fd9174476399c4eb"
+    },
+    {
+      "image": "materialized_fields_test-0-7.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "e96672a674b4b6075c2a395c0bbe2aa3f70dc9707d5857c4fd9174476399c4eb",
+      "resave_sha256": "e96672a674b4b6075c2a395c0bbe2aa3f70dc9707d5857c4fd9174476399c4eb"
+    },
+    {
+      "image": "materialized_fields_test-0-8.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "990171ebb5a965dc40ad1a6ca5927a505f23faa78e0ac65df4467ae4c99a76f6",
+      "resave_sha256": "990171ebb5a965dc40ad1a6ca5927a505f23faa78e0ac65df4467ae4c99a76f6"
+    },
+    {
+      "image": "materialized_fields_test-0-8.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "990171ebb5a965dc40ad1a6ca5927a505f23faa78e0ac65df4467ae4c99a76f6",
+      "resave_sha256": "990171ebb5a965dc40ad1a6ca5927a505f23faa78e0ac65df4467ae4c99a76f6"
+    },
+    {
+      "image": "materialized_fields_test-0-9.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "e3bfc40af5b0533b48e2676c9df60b1316694b85a23b6799b394d47dd332ea81",
+      "resave_sha256": "e3bfc40af5b0533b48e2676c9df60b1316694b85a23b6799b394d47dd332ea81"
+    },
+    {
+      "image": "materialized_fields_test-0-9.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "e3bfc40af5b0533b48e2676c9df60b1316694b85a23b6799b394d47dd332ea81",
+      "resave_sha256": "e3bfc40af5b0533b48e2676c9df60b1316694b85a23b6799b394d47dd332ea81"
+    },
+    {
+      "image": "materialized_fields_test-1-0.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "abd619e6ab0e707f62c5e4f6011ce187bcf09d4dcec400c041b6467a0642af02",
+      "resave_sha256": "abd619e6ab0e707f62c5e4f6011ce187bcf09d4dcec400c041b6467a0642af02"
+    },
+    {
+      "image": "materialized_fields_test-1-0.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "abd619e6ab0e707f62c5e4f6011ce187bcf09d4dcec400c041b6467a0642af02",
+      "resave_sha256": "abd619e6ab0e707f62c5e4f6011ce187bcf09d4dcec400c041b6467a0642af02"
+    },
+    {
+      "image": "materialized_fields_test-1-1.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "9a4426f352854152d6f17aa35c75850edd11fe99bbe5bffe1be41c75bc7ef61a",
+      "resave_sha256": "9a4426f352854152d6f17aa35c75850edd11fe99bbe5bffe1be41c75bc7ef61a"
+    },
+    {
+      "image": "materialized_fields_test-1-1.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "9a4426f352854152d6f17aa35c75850edd11fe99bbe5bffe1be41c75bc7ef61a",
+      "resave_sha256": "9a4426f352854152d6f17aa35c75850edd11fe99bbe5bffe1be41c75bc7ef61a"
+    },
+    {
+      "image": "materialized_fields_test-1-10.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "94d50fc35903193ee09f9c3771503a09a014c1e0653d5877b125135850d95782",
+      "resave_sha256": "94d50fc35903193ee09f9c3771503a09a014c1e0653d5877b125135850d95782"
+    },
+    {
+      "image": "materialized_fields_test-1-10.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "94d50fc35903193ee09f9c3771503a09a014c1e0653d5877b125135850d95782",
+      "resave_sha256": "94d50fc35903193ee09f9c3771503a09a014c1e0653d5877b125135850d95782"
+    },
+    {
+      "image": "materialized_fields_test-1-11.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "cc91da87b6e905a137eb1d28b00dfb43eb5e836b5898d497477b16b6670e1725",
+      "resave_sha256": "cc91da87b6e905a137eb1d28b00dfb43eb5e836b5898d497477b16b6670e1725"
+    },
+    {
+      "image": "materialized_fields_test-1-11.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "cc91da87b6e905a137eb1d28b00dfb43eb5e836b5898d497477b16b6670e1725",
+      "resave_sha256": "cc91da87b6e905a137eb1d28b00dfb43eb5e836b5898d497477b16b6670e1725"
+    },
+    {
+      "image": "materialized_fields_test-1-12.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "9c0b12a8bb95616df4558a27011c8d93c7c736411b57bbf560e0d88f80772fb0",
+      "resave_sha256": "9c0b12a8bb95616df4558a27011c8d93c7c736411b57bbf560e0d88f80772fb0"
+    },
+    {
+      "image": "materialized_fields_test-1-12.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "9c0b12a8bb95616df4558a27011c8d93c7c736411b57bbf560e0d88f80772fb0",
+      "resave_sha256": "9c0b12a8bb95616df4558a27011c8d93c7c736411b57bbf560e0d88f80772fb0"
+    },
+    {
+      "image": "materialized_fields_test-1-13.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "0306243973bf6c9f8ad18e7267ebbd4223400f5e2b5e92afc92e78fc98ae67b3",
+      "resave_sha256": "0306243973bf6c9f8ad18e7267ebbd4223400f5e2b5e92afc92e78fc98ae67b3"
+    },
+    {
+      "image": "materialized_fields_test-1-13.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "0306243973bf6c9f8ad18e7267ebbd4223400f5e2b5e92afc92e78fc98ae67b3",
+      "resave_sha256": "0306243973bf6c9f8ad18e7267ebbd4223400f5e2b5e92afc92e78fc98ae67b3"
+    },
+    {
+      "image": "materialized_fields_test-1-14.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "688fe74d531df680c7c3fed446a9db7032b17149cc028adf37b7d099f957b280",
+      "resave_sha256": "688fe74d531df680c7c3fed446a9db7032b17149cc028adf37b7d099f957b280"
+    },
+    {
+      "image": "materialized_fields_test-1-14.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "688fe74d531df680c7c3fed446a9db7032b17149cc028adf37b7d099f957b280",
+      "resave_sha256": "688fe74d531df680c7c3fed446a9db7032b17149cc028adf37b7d099f957b280"
+    },
+    {
+      "image": "materialized_fields_test-1-15.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "5b9b69bbfabfe06b55b4a8aa7fa0a30b2844fa625c23f5595a151bd3685e1529",
+      "resave_sha256": "5b9b69bbfabfe06b55b4a8aa7fa0a30b2844fa625c23f5595a151bd3685e1529"
+    },
+    {
+      "image": "materialized_fields_test-1-15.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "5b9b69bbfabfe06b55b4a8aa7fa0a30b2844fa625c23f5595a151bd3685e1529",
+      "resave_sha256": "5b9b69bbfabfe06b55b4a8aa7fa0a30b2844fa625c23f5595a151bd3685e1529"
+    },
+    {
+      "image": "materialized_fields_test-1-16.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "40859b5344579cc8f13220a1e44452424463539e7017da339adc0ee5bc35e20b",
+      "resave_sha256": "40859b5344579cc8f13220a1e44452424463539e7017da339adc0ee5bc35e20b"
+    },
+    {
+      "image": "materialized_fields_test-1-16.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "40859b5344579cc8f13220a1e44452424463539e7017da339adc0ee5bc35e20b",
+      "resave_sha256": "40859b5344579cc8f13220a1e44452424463539e7017da339adc0ee5bc35e20b"
+    },
+    {
+      "image": "materialized_fields_test-1-17.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "38e97afd62717c4ea2a6c1c77d3445813db6ef3276a1ec3b6db1506596fa00dc",
+      "resave_sha256": "38e97afd62717c4ea2a6c1c77d3445813db6ef3276a1ec3b6db1506596fa00dc"
+    },
+    {
+      "image": "materialized_fields_test-1-17.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "38e97afd62717c4ea2a6c1c77d3445813db6ef3276a1ec3b6db1506596fa00dc",
+      "resave_sha256": "38e97afd62717c4ea2a6c1c77d3445813db6ef3276a1ec3b6db1506596fa00dc"
+    },
+    {
+      "image": "materialized_fields_test-1-18.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "6c5d1fa7e1ce0a5f75201f5b296224a005afff961a9375ab14bee6efa0a3d165",
+      "resave_sha256": "6c5d1fa7e1ce0a5f75201f5b296224a005afff961a9375ab14bee6efa0a3d165"
+    },
+    {
+      "image": "materialized_fields_test-1-18.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "6c5d1fa7e1ce0a5f75201f5b296224a005afff961a9375ab14bee6efa0a3d165",
+      "resave_sha256": "6c5d1fa7e1ce0a5f75201f5b296224a005afff961a9375ab14bee6efa0a3d165"
+    },
+    {
+      "image": "materialized_fields_test-1-19.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "0e4e110abff78bd39a36fca91f64d8f25cea48bb629524c51638f10af5405a4f",
+      "resave_sha256": "0e4e110abff78bd39a36fca91f64d8f25cea48bb629524c51638f10af5405a4f"
+    },
+    {
+      "image": "materialized_fields_test-1-19.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "0e4e110abff78bd39a36fca91f64d8f25cea48bb629524c51638f10af5405a4f",
+      "resave_sha256": "0e4e110abff78bd39a36fca91f64d8f25cea48bb629524c51638f10af5405a4f"
+    },
+    {
+      "image": "materialized_fields_test-1-2.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "e89ffeefdbe400129775f246bc7481cb13daf49e8160e91987980f5856c2d64f",
+      "resave_sha256": "e89ffeefdbe400129775f246bc7481cb13daf49e8160e91987980f5856c2d64f"
+    },
+    {
+      "image": "materialized_fields_test-1-2.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "e89ffeefdbe400129775f246bc7481cb13daf49e8160e91987980f5856c2d64f",
+      "resave_sha256": "e89ffeefdbe400129775f246bc7481cb13daf49e8160e91987980f5856c2d64f"
+    },
+    {
+      "image": "materialized_fields_test-1-20.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "f079d140906b1273e986ab590f025d52b7d4b9d38ce2702ddde738824ffb1bfd",
+      "resave_sha256": "f079d140906b1273e986ab590f025d52b7d4b9d38ce2702ddde738824ffb1bfd"
+    },
+    {
+      "image": "materialized_fields_test-1-20.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "f079d140906b1273e986ab590f025d52b7d4b9d38ce2702ddde738824ffb1bfd",
+      "resave_sha256": "f079d140906b1273e986ab590f025d52b7d4b9d38ce2702ddde738824ffb1bfd"
+    },
+    {
+      "image": "materialized_fields_test-1-21.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "ad316722cc01ccdc8fe71ec385c8416f2c76d8463a6dd0095816716ba9f3f294",
+      "resave_sha256": "ad316722cc01ccdc8fe71ec385c8416f2c76d8463a6dd0095816716ba9f3f294"
+    },
+    {
+      "image": "materialized_fields_test-1-21.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "ad316722cc01ccdc8fe71ec385c8416f2c76d8463a6dd0095816716ba9f3f294",
+      "resave_sha256": "ad316722cc01ccdc8fe71ec385c8416f2c76d8463a6dd0095816716ba9f3f294"
+    },
+    {
+      "image": "materialized_fields_test-1-22.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "0d77d15f7cf84fb2be40753302b702c46685e92721fe47e2811aa0e741d34a76",
+      "resave_sha256": "0d77d15f7cf84fb2be40753302b702c46685e92721fe47e2811aa0e741d34a76"
+    },
+    {
+      "image": "materialized_fields_test-1-22.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "0d77d15f7cf84fb2be40753302b702c46685e92721fe47e2811aa0e741d34a76",
+      "resave_sha256": "0d77d15f7cf84fb2be40753302b702c46685e92721fe47e2811aa0e741d34a76"
+    },
+    {
+      "image": "materialized_fields_test-1-23.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "02cea11219f1a1790eda57987777089f0c3b484ac38ab5d37fb25156f7e13820",
+      "resave_sha256": "02cea11219f1a1790eda57987777089f0c3b484ac38ab5d37fb25156f7e13820"
+    },
+    {
+      "image": "materialized_fields_test-1-23.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "02cea11219f1a1790eda57987777089f0c3b484ac38ab5d37fb25156f7e13820",
+      "resave_sha256": "02cea11219f1a1790eda57987777089f0c3b484ac38ab5d37fb25156f7e13820"
+    },
+    {
+      "image": "materialized_fields_test-1-24.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "76eabdadea4f8b445b7a6a1664cd0d7262443975db513a5e9882f85b0b6add15",
+      "resave_sha256": "76eabdadea4f8b445b7a6a1664cd0d7262443975db513a5e9882f85b0b6add15"
+    },
+    {
+      "image": "materialized_fields_test-1-24.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "76eabdadea4f8b445b7a6a1664cd0d7262443975db513a5e9882f85b0b6add15",
+      "resave_sha256": "76eabdadea4f8b445b7a6a1664cd0d7262443975db513a5e9882f85b0b6add15"
+    },
+    {
+      "image": "materialized_fields_test-1-25.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "511b7590033d756351113a7909e69f5b559bfa773f38b312234db728801a8aa5",
+      "resave_sha256": "511b7590033d756351113a7909e69f5b559bfa773f38b312234db728801a8aa5"
+    },
+    {
+      "image": "materialized_fields_test-1-25.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "511b7590033d756351113a7909e69f5b559bfa773f38b312234db728801a8aa5",
+      "resave_sha256": "511b7590033d756351113a7909e69f5b559bfa773f38b312234db728801a8aa5"
+    },
+    {
+      "image": "materialized_fields_test-1-26.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "fa108071ba03a3ea536d63183f739033786d677370c230fa405c8562d0f5ea37",
+      "resave_sha256": "fa108071ba03a3ea536d63183f739033786d677370c230fa405c8562d0f5ea37"
+    },
+    {
+      "image": "materialized_fields_test-1-26.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "fa108071ba03a3ea536d63183f739033786d677370c230fa405c8562d0f5ea37",
+      "resave_sha256": "fa108071ba03a3ea536d63183f739033786d677370c230fa405c8562d0f5ea37"
+    },
+    {
+      "image": "materialized_fields_test-1-27.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "d12d6cf41ecaf17c0f327c10394b47cc2a9a2e07109c1e583013113fd127c93d",
+      "resave_sha256": "d12d6cf41ecaf17c0f327c10394b47cc2a9a2e07109c1e583013113fd127c93d"
+    },
+    {
+      "image": "materialized_fields_test-1-27.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "d12d6cf41ecaf17c0f327c10394b47cc2a9a2e07109c1e583013113fd127c93d",
+      "resave_sha256": "d12d6cf41ecaf17c0f327c10394b47cc2a9a2e07109c1e583013113fd127c93d"
+    },
+    {
+      "image": "materialized_fields_test-1-28.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "84e200a4efbb8dd20a8c5c6cd635e204315536b72b338b682d1896ada354aee2",
+      "resave_sha256": "84e200a4efbb8dd20a8c5c6cd635e204315536b72b338b682d1896ada354aee2"
+    },
+    {
+      "image": "materialized_fields_test-1-28.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "84e200a4efbb8dd20a8c5c6cd635e204315536b72b338b682d1896ada354aee2",
+      "resave_sha256": "84e200a4efbb8dd20a8c5c6cd635e204315536b72b338b682d1896ada354aee2"
+    },
+    {
+      "image": "materialized_fields_test-1-3.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "36ec37f444d6d04b7b19249122586a41c1829bb068f468edba4df4d02c4749a6",
+      "resave_sha256": "36ec37f444d6d04b7b19249122586a41c1829bb068f468edba4df4d02c4749a6"
+    },
+    {
+      "image": "materialized_fields_test-1-3.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "36ec37f444d6d04b7b19249122586a41c1829bb068f468edba4df4d02c4749a6",
+      "resave_sha256": "36ec37f444d6d04b7b19249122586a41c1829bb068f468edba4df4d02c4749a6"
+    },
+    {
+      "image": "materialized_fields_test-1-4.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "93d48ea0e83bfff6ff75c25687b89db66c3b67d583600a2b91b8165e0beb0ad4",
+      "resave_sha256": "93d48ea0e83bfff6ff75c25687b89db66c3b67d583600a2b91b8165e0beb0ad4"
+    },
+    {
+      "image": "materialized_fields_test-1-4.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "93d48ea0e83bfff6ff75c25687b89db66c3b67d583600a2b91b8165e0beb0ad4",
+      "resave_sha256": "93d48ea0e83bfff6ff75c25687b89db66c3b67d583600a2b91b8165e0beb0ad4"
+    },
+    {
+      "image": "materialized_fields_test-1-5.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "c57c2d39b3790dc8e15992040c403d838107ce4822483fd8a252ddc91763d131",
+      "resave_sha256": "c57c2d39b3790dc8e15992040c403d838107ce4822483fd8a252ddc91763d131"
+    },
+    {
+      "image": "materialized_fields_test-1-5.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "c57c2d39b3790dc8e15992040c403d838107ce4822483fd8a252ddc91763d131",
+      "resave_sha256": "c57c2d39b3790dc8e15992040c403d838107ce4822483fd8a252ddc91763d131"
+    },
+    {
+      "image": "materialized_fields_test-1-6.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "b5e98c2c6c35180515c4c9548f4035223b14b2ae3e4b7b967beb46a0bce88ea8",
+      "resave_sha256": "b5e98c2c6c35180515c4c9548f4035223b14b2ae3e4b7b967beb46a0bce88ea8"
+    },
+    {
+      "image": "materialized_fields_test-1-6.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "b5e98c2c6c35180515c4c9548f4035223b14b2ae3e4b7b967beb46a0bce88ea8",
+      "resave_sha256": "b5e98c2c6c35180515c4c9548f4035223b14b2ae3e4b7b967beb46a0bce88ea8"
+    },
+    {
+      "image": "materialized_fields_test-1-7.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "e53ed9c9fbd696ce87f1d3d895cf3abc0b119d815267f0bb6ef24839e894bc2b",
+      "resave_sha256": "e53ed9c9fbd696ce87f1d3d895cf3abc0b119d815267f0bb6ef24839e894bc2b"
+    },
+    {
+      "image": "materialized_fields_test-1-7.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "e53ed9c9fbd696ce87f1d3d895cf3abc0b119d815267f0bb6ef24839e894bc2b",
+      "resave_sha256": "e53ed9c9fbd696ce87f1d3d895cf3abc0b119d815267f0bb6ef24839e894bc2b"
+    },
+    {
+      "image": "materialized_fields_test-1-8.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "376f37d90c2091acafd8df61a4cf3641e625cea363f4ba311d66ec6212de8aa6",
+      "resave_sha256": "376f37d90c2091acafd8df61a4cf3641e625cea363f4ba311d66ec6212de8aa6"
+    },
+    {
+      "image": "materialized_fields_test-1-8.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "376f37d90c2091acafd8df61a4cf3641e625cea363f4ba311d66ec6212de8aa6",
+      "resave_sha256": "376f37d90c2091acafd8df61a4cf3641e625cea363f4ba311d66ec6212de8aa6"
+    },
+    {
+      "image": "materialized_fields_test-1-9.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "eb9c7873096fb87a46d6be2fb1f66aac678965b2965d24b403349aa134d27583",
+      "resave_sha256": "eb9c7873096fb87a46d6be2fb1f66aac678965b2965d24b403349aa134d27583"
+    },
+    {
+      "image": "materialized_fields_test-1-9.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "eb9c7873096fb87a46d6be2fb1f66aac678965b2965d24b403349aa134d27583",
+      "resave_sha256": "eb9c7873096fb87a46d6be2fb1f66aac678965b2965d24b403349aa134d27583"
+    },
+    {
+      "image": "materialized_fields_test-2-0.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "6abec1970ba0523d8bad2d1af68a57528647d608473699c03dbc85b4d43e1203",
+      "resave_sha256": "6abec1970ba0523d8bad2d1af68a57528647d608473699c03dbc85b4d43e1203"
+    },
+    {
+      "image": "materialized_fields_test-2-0.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "6abec1970ba0523d8bad2d1af68a57528647d608473699c03dbc85b4d43e1203",
+      "resave_sha256": "6abec1970ba0523d8bad2d1af68a57528647d608473699c03dbc85b4d43e1203"
+    },
+    {
+      "image": "materialized_fields_test-2-1.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "b60339eb3b49cbe55a997478e808cb3671028e80cfdddf8e14b5aad41aeaff3a",
+      "resave_sha256": "b60339eb3b49cbe55a997478e808cb3671028e80cfdddf8e14b5aad41aeaff3a"
+    },
+    {
+      "image": "materialized_fields_test-2-1.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "b60339eb3b49cbe55a997478e808cb3671028e80cfdddf8e14b5aad41aeaff3a",
+      "resave_sha256": "b60339eb3b49cbe55a997478e808cb3671028e80cfdddf8e14b5aad41aeaff3a"
+    },
+    {
+      "image": "materialized_fields_test-2-2.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "f8779ed392ec5a03d121dff26138312edbb9201d5104b7b4520273575fbfd354",
+      "resave_sha256": "f8779ed392ec5a03d121dff26138312edbb9201d5104b7b4520273575fbfd354"
+    },
+    {
+      "image": "materialized_fields_test-2-2.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "f8779ed392ec5a03d121dff26138312edbb9201d5104b7b4520273575fbfd354",
+      "resave_sha256": "f8779ed392ec5a03d121dff26138312edbb9201d5104b7b4520273575fbfd354"
+    },
+    {
+      "image": "materialized_fields_test-2-3.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "e4ba4457b383636edc7235b760a3904e92bbbee93b752ac922666c08fc5b68d6",
+      "resave_sha256": "e4ba4457b383636edc7235b760a3904e92bbbee93b752ac922666c08fc5b68d6"
+    },
+    {
+      "image": "materialized_fields_test-2-3.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "e4ba4457b383636edc7235b760a3904e92bbbee93b752ac922666c08fc5b68d6",
+      "resave_sha256": "e4ba4457b383636edc7235b760a3904e92bbbee93b752ac922666c08fc5b68d6"
+    },
+    {
+      "image": "materialized_fields_test-2-4.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "3423aeaa84c7422bddc8cce7b55c8bab0f9b8496201a033a08ab089147b52e7f",
+      "resave_sha256": "3423aeaa84c7422bddc8cce7b55c8bab0f9b8496201a033a08ab089147b52e7f"
+    },
+    {
+      "image": "materialized_fields_test-2-4.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "3423aeaa84c7422bddc8cce7b55c8bab0f9b8496201a033a08ab089147b52e7f",
+      "resave_sha256": "3423aeaa84c7422bddc8cce7b55c8bab0f9b8496201a033a08ab089147b52e7f"
+    },
+    {
+      "image": "materialized_fields_test-2-5.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "0e6f2f30c9af07204a3c3ee7964abf4435bc1fede56ccafb03fa72715fabf51e",
+      "resave_sha256": "0e6f2f30c9af07204a3c3ee7964abf4435bc1fede56ccafb03fa72715fabf51e"
+    },
+    {
+      "image": "materialized_fields_test-2-5.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "0e6f2f30c9af07204a3c3ee7964abf4435bc1fede56ccafb03fa72715fabf51e",
+      "resave_sha256": "0e6f2f30c9af07204a3c3ee7964abf4435bc1fede56ccafb03fa72715fabf51e"
+    },
+    {
+      "image": "materialized_fields_test-2-6.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "d103591ab4059127d2a61f90b58cccde97a38fa842abc41577c9ee9018edcc31",
+      "resave_sha256": "d103591ab4059127d2a61f90b58cccde97a38fa842abc41577c9ee9018edcc31"
+    },
+    {
+      "image": "materialized_fields_test-2-6.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "d103591ab4059127d2a61f90b58cccde97a38fa842abc41577c9ee9018edcc31",
+      "resave_sha256": "d103591ab4059127d2a61f90b58cccde97a38fa842abc41577c9ee9018edcc31"
+    },
+    {
+      "image": "materialized_fields_test-3-0.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "b2592d9d6c11c66481b23a697bec47c5de39b8005aebbcb1676c4c889feef72d",
+      "resave_sha256": "b2592d9d6c11c66481b23a697bec47c5de39b8005aebbcb1676c4c889feef72d"
+    },
+    {
+      "image": "materialized_fields_test-3-0.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "b2592d9d6c11c66481b23a697bec47c5de39b8005aebbcb1676c4c889feef72d",
+      "resave_sha256": "b2592d9d6c11c66481b23a697bec47c5de39b8005aebbcb1676c4c889feef72d"
+    },
+    {
+      "image": "materialized_fields_test-3-1.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "d5b5af6edaf3e411854dfec94c6932193c7c9837aa4d22ba7155fdfd9643858f",
+      "resave_sha256": "d5b5af6edaf3e411854dfec94c6932193c7c9837aa4d22ba7155fdfd9643858f"
+    },
+    {
+      "image": "materialized_fields_test-3-1.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "d5b5af6edaf3e411854dfec94c6932193c7c9837aa4d22ba7155fdfd9643858f",
+      "resave_sha256": "d5b5af6edaf3e411854dfec94c6932193c7c9837aa4d22ba7155fdfd9643858f"
+    },
+    {
+      "image": "materialized_fields_test-3-2.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "917b4890d41698c2fadc14a1577c11180bb0ff0152305bf0182a1ee4508ca88e",
+      "resave_sha256": "917b4890d41698c2fadc14a1577c11180bb0ff0152305bf0182a1ee4508ca88e"
+    },
+    {
+      "image": "materialized_fields_test-3-2.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "917b4890d41698c2fadc14a1577c11180bb0ff0152305bf0182a1ee4508ca88e",
+      "resave_sha256": "917b4890d41698c2fadc14a1577c11180bb0ff0152305bf0182a1ee4508ca88e"
+    },
+    {
+      "image": "materialized_fields_test-3-3.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "dc7c8422ecf16b81af85aa0abe24c39270ca04b0ef362dff1bcba03e8793c814",
+      "resave_sha256": "dc7c8422ecf16b81af85aa0abe24c39270ca04b0ef362dff1bcba03e8793c814"
+    },
+    {
+      "image": "materialized_fields_test-3-3.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "dc7c8422ecf16b81af85aa0abe24c39270ca04b0ef362dff1bcba03e8793c814",
+      "resave_sha256": "dc7c8422ecf16b81af85aa0abe24c39270ca04b0ef362dff1bcba03e8793c814"
+    },
+    {
+      "image": "materialized_fields_test-3-4.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "12e017b72a40ebaa406c0092f6c1a3b34eb5e63b520896483ce55f06d02699d3",
+      "resave_sha256": "12e017b72a40ebaa406c0092f6c1a3b34eb5e63b520896483ce55f06d02699d3"
+    },
+    {
+      "image": "materialized_fields_test-3-4.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "12e017b72a40ebaa406c0092f6c1a3b34eb5e63b520896483ce55f06d02699d3",
+      "resave_sha256": "12e017b72a40ebaa406c0092f6c1a3b34eb5e63b520896483ce55f06d02699d3"
+    },
+    {
+      "image": "materialized_fields_test-4-0.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "c004fddb52e103eea747c3d7152cfc266f27944f6842fec2946d85ffc52d41e7",
+      "resave_sha256": "c004fddb52e103eea747c3d7152cfc266f27944f6842fec2946d85ffc52d41e7"
+    },
+    {
+      "image": "materialized_fields_test-4-0.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "c004fddb52e103eea747c3d7152cfc266f27944f6842fec2946d85ffc52d41e7",
+      "resave_sha256": "c004fddb52e103eea747c3d7152cfc266f27944f6842fec2946d85ffc52d41e7"
+    },
+    {
+      "image": "materialized_fields_test-4-1.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "81d6a83b90c4c8961f009a398ebab300d67a799fc28fc084f2b6e4db16c3eb8a",
+      "resave_sha256": "81d6a83b90c4c8961f009a398ebab300d67a799fc28fc084f2b6e4db16c3eb8a"
+    },
+    {
+      "image": "materialized_fields_test-4-1.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "81d6a83b90c4c8961f009a398ebab300d67a799fc28fc084f2b6e4db16c3eb8a",
+      "resave_sha256": "81d6a83b90c4c8961f009a398ebab300d67a799fc28fc084f2b6e4db16c3eb8a"
+    },
+    {
+      "image": "materialized_fields_test-4-2.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "55318a21f28e842e38b3b8b1e18a3d5c8ae1b2b57038f40a2f24c2e60ddf1ac2",
+      "resave_sha256": "55318a21f28e842e38b3b8b1e18a3d5c8ae1b2b57038f40a2f24c2e60ddf1ac2"
+    },
+    {
+      "image": "materialized_fields_test-4-2.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "55318a21f28e842e38b3b8b1e18a3d5c8ae1b2b57038f40a2f24c2e60ddf1ac2",
+      "resave_sha256": "55318a21f28e842e38b3b8b1e18a3d5c8ae1b2b57038f40a2f24c2e60ddf1ac2"
+    },
+    {
+      "image": "materialized_fields_test-4-3.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "39a720612b990d2d2b79709decddd9235e409b15addbfbb60d350928fad9ce77",
+      "resave_sha256": "39a720612b990d2d2b79709decddd9235e409b15addbfbb60d350928fad9ce77"
+    },
+    {
+      "image": "materialized_fields_test-4-3.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "39a720612b990d2d2b79709decddd9235e409b15addbfbb60d350928fad9ce77",
+      "resave_sha256": "39a720612b990d2d2b79709decddd9235e409b15addbfbb60d350928fad9ce77"
+    },
+    {
+      "image": "materialized_fields_test-4-4.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "e1417e458e50d46c929a6f3a87c37b660a2af6523cb79670b7d9873d66cc995d",
+      "resave_sha256": "e1417e458e50d46c929a6f3a87c37b660a2af6523cb79670b7d9873d66cc995d"
+    },
+    {
+      "image": "materialized_fields_test-4-4.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "e1417e458e50d46c929a6f3a87c37b660a2af6523cb79670b7d9873d66cc995d",
+      "resave_sha256": "e1417e458e50d46c929a6f3a87c37b660a2af6523cb79670b7d9873d66cc995d"
+    },
+    {
+      "image": "materialized_fields_test-4-5.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "04e31a08bf91e68d769bc7e0cf17a4611f663fe81d84ef269ab4ef2979f70cfe",
+      "resave_sha256": "04e31a08bf91e68d769bc7e0cf17a4611f663fe81d84ef269ab4ef2979f70cfe"
+    },
+    {
+      "image": "materialized_fields_test-4-5.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "04e31a08bf91e68d769bc7e0cf17a4611f663fe81d84ef269ab4ef2979f70cfe",
+      "resave_sha256": "04e31a08bf91e68d769bc7e0cf17a4611f663fe81d84ef269ab4ef2979f70cfe"
+    },
+    {
+      "image": "materialized_fields_test-4-6.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "7deec002ded175f930d59ccd1d1013cc20da438a1847a9d0bd25db839035c76a",
+      "resave_sha256": "7deec002ded175f930d59ccd1d1013cc20da438a1847a9d0bd25db839035c76a"
+    },
+    {
+      "image": "materialized_fields_test-4-6.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "7deec002ded175f930d59ccd1d1013cc20da438a1847a9d0bd25db839035c76a",
+      "resave_sha256": "7deec002ded175f930d59ccd1d1013cc20da438a1847a9d0bd25db839035c76a"
+    },
+    {
+      "image": "materialized_fields_test-5-0.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "65e9592eda4170d3fae07e62c0a68ce799cdeabec96d83c8030e6c6a7f9183e7",
+      "resave_sha256": "65e9592eda4170d3fae07e62c0a68ce799cdeabec96d83c8030e6c6a7f9183e7"
+    },
+    {
+      "image": "materialized_fields_test-5-0.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "65e9592eda4170d3fae07e62c0a68ce799cdeabec96d83c8030e6c6a7f9183e7",
+      "resave_sha256": "65e9592eda4170d3fae07e62c0a68ce799cdeabec96d83c8030e6c6a7f9183e7"
+    },
+    {
+      "image": "materialized_fields_test-5-1.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "105cf3485e009d617cd66763dcec809149da46a06ba6310212fd416e573f02d0",
+      "resave_sha256": "105cf3485e009d617cd66763dcec809149da46a06ba6310212fd416e573f02d0"
+    },
+    {
+      "image": "materialized_fields_test-5-1.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "105cf3485e009d617cd66763dcec809149da46a06ba6310212fd416e573f02d0",
+      "resave_sha256": "105cf3485e009d617cd66763dcec809149da46a06ba6310212fd416e573f02d0"
+    },
+    {
+      "image": "materialized_fields_test-5-10.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "185d7a48dd35a43fd974c6b7042265bd1d97f7bf925d138e460e1e3a4903405c",
+      "resave_sha256": "185d7a48dd35a43fd974c6b7042265bd1d97f7bf925d138e460e1e3a4903405c"
+    },
+    {
+      "image": "materialized_fields_test-5-10.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "185d7a48dd35a43fd974c6b7042265bd1d97f7bf925d138e460e1e3a4903405c",
+      "resave_sha256": "185d7a48dd35a43fd974c6b7042265bd1d97f7bf925d138e460e1e3a4903405c"
+    },
+    {
+      "image": "materialized_fields_test-5-2.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "46c6e1b78f514cb9c42984156a45b7d335ce113884438f022a1373b6bcfcf9b4",
+      "resave_sha256": "46c6e1b78f514cb9c42984156a45b7d335ce113884438f022a1373b6bcfcf9b4"
+    },
+    {
+      "image": "materialized_fields_test-5-2.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "46c6e1b78f514cb9c42984156a45b7d335ce113884438f022a1373b6bcfcf9b4",
+      "resave_sha256": "46c6e1b78f514cb9c42984156a45b7d335ce113884438f022a1373b6bcfcf9b4"
+    },
+    {
+      "image": "materialized_fields_test-5-3.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "3532added8be0521015264f173b187c11a0c6397700f0b84521b1978eeb1e505",
+      "resave_sha256": "3532added8be0521015264f173b187c11a0c6397700f0b84521b1978eeb1e505"
+    },
+    {
+      "image": "materialized_fields_test-5-3.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "3532added8be0521015264f173b187c11a0c6397700f0b84521b1978eeb1e505",
+      "resave_sha256": "3532added8be0521015264f173b187c11a0c6397700f0b84521b1978eeb1e505"
+    },
+    {
+      "image": "materialized_fields_test-5-4.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "213229d15c161e261ffbf5d4721b1b6b835cffcc60247f662a616d62054f6dd0",
+      "resave_sha256": "213229d15c161e261ffbf5d4721b1b6b835cffcc60247f662a616d62054f6dd0"
+    },
+    {
+      "image": "materialized_fields_test-5-4.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "213229d15c161e261ffbf5d4721b1b6b835cffcc60247f662a616d62054f6dd0",
+      "resave_sha256": "213229d15c161e261ffbf5d4721b1b6b835cffcc60247f662a616d62054f6dd0"
+    },
+    {
+      "image": "materialized_fields_test-5-5.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "964a6eef0f5d070c58a8e7020ec166babb6acb965f3824189400a7e829c211a1",
+      "resave_sha256": "964a6eef0f5d070c58a8e7020ec166babb6acb965f3824189400a7e829c211a1"
+    },
+    {
+      "image": "materialized_fields_test-5-5.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "964a6eef0f5d070c58a8e7020ec166babb6acb965f3824189400a7e829c211a1",
+      "resave_sha256": "964a6eef0f5d070c58a8e7020ec166babb6acb965f3824189400a7e829c211a1"
+    },
+    {
+      "image": "materialized_fields_test-5-6.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "cfd074624fcc69864b0b7c872286a5b966162c0f1d6fbd511ac2272f0a108a29",
+      "resave_sha256": "cfd074624fcc69864b0b7c872286a5b966162c0f1d6fbd511ac2272f0a108a29"
+    },
+    {
+      "image": "materialized_fields_test-5-6.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "cfd074624fcc69864b0b7c872286a5b966162c0f1d6fbd511ac2272f0a108a29",
+      "resave_sha256": "cfd074624fcc69864b0b7c872286a5b966162c0f1d6fbd511ac2272f0a108a29"
+    },
+    {
+      "image": "materialized_fields_test-5-7.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "2e108bb72cb331d2794a7f0fc2303b77f854fcb8a042bd06e423df4f641161d3",
+      "resave_sha256": "2e108bb72cb331d2794a7f0fc2303b77f854fcb8a042bd06e423df4f641161d3"
+    },
+    {
+      "image": "materialized_fields_test-5-7.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "2e108bb72cb331d2794a7f0fc2303b77f854fcb8a042bd06e423df4f641161d3",
+      "resave_sha256": "2e108bb72cb331d2794a7f0fc2303b77f854fcb8a042bd06e423df4f641161d3"
+    },
+    {
+      "image": "materialized_fields_test-5-8.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "ead9f2163e6c947d683cdf155afdb0be1eb8404417702dd1b62c30f7855df0ad",
+      "resave_sha256": "ead9f2163e6c947d683cdf155afdb0be1eb8404417702dd1b62c30f7855df0ad"
+    },
+    {
+      "image": "materialized_fields_test-5-8.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "ead9f2163e6c947d683cdf155afdb0be1eb8404417702dd1b62c30f7855df0ad",
+      "resave_sha256": "ead9f2163e6c947d683cdf155afdb0be1eb8404417702dd1b62c30f7855df0ad"
+    },
+    {
+      "image": "materialized_fields_test-5-9.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "19da8528c64d8e329cb9e4b77dbe2753e3d502478f7d936b37157fd8ffec74d6",
+      "resave_sha256": "19da8528c64d8e329cb9e4b77dbe2753e3d502478f7d936b37157fd8ffec74d6"
+    },
+    {
+      "image": "materialized_fields_test-5-9.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "19da8528c64d8e329cb9e4b77dbe2753e3d502478f7d936b37157fd8ffec74d6",
+      "resave_sha256": "19da8528c64d8e329cb9e4b77dbe2753e3d502478f7d936b37157fd8ffec74d6"
+    },
+    {
+      "image": "materialized_fields_test-6-0.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "11068e6bf7a446c86849ca959f158a06f59c118044f30b43bcfb2b27759e840f",
+      "resave_sha256": "11068e6bf7a446c86849ca959f158a06f59c118044f30b43bcfb2b27759e840f"
+    },
+    {
+      "image": "materialized_fields_test-6-0.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "11068e6bf7a446c86849ca959f158a06f59c118044f30b43bcfb2b27759e840f",
+      "resave_sha256": "11068e6bf7a446c86849ca959f158a06f59c118044f30b43bcfb2b27759e840f"
+    },
+    {
+      "image": "materialized_fields_test-6-1.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "09716cdc92eff15be6a3659340938e2262588218f4a9f765fc6dc3b917397cfc",
+      "resave_sha256": "09716cdc92eff15be6a3659340938e2262588218f4a9f765fc6dc3b917397cfc"
+    },
+    {
+      "image": "materialized_fields_test-6-1.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "09716cdc92eff15be6a3659340938e2262588218f4a9f765fc6dc3b917397cfc",
+      "resave_sha256": "09716cdc92eff15be6a3659340938e2262588218f4a9f765fc6dc3b917397cfc"
+    },
+    {
+      "image": "materialized_fields_test-6-2.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "daa4b2f3cfff4940a76ab3c0a08442380fb7fe426638fe12d1f880a5645a68e4",
+      "resave_sha256": "daa4b2f3cfff4940a76ab3c0a08442380fb7fe426638fe12d1f880a5645a68e4"
+    },
+    {
+      "image": "materialized_fields_test-6-2.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "daa4b2f3cfff4940a76ab3c0a08442380fb7fe426638fe12d1f880a5645a68e4",
+      "resave_sha256": "daa4b2f3cfff4940a76ab3c0a08442380fb7fe426638fe12d1f880a5645a68e4"
+    },
+    {
+      "image": "materialized_fields_test-6-3.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "c4f6c5d0f5ee62c0ca01656758e2e3932a1991299a95b110fbc18429d5cd9217",
+      "resave_sha256": "c4f6c5d0f5ee62c0ca01656758e2e3932a1991299a95b110fbc18429d5cd9217"
+    },
+    {
+      "image": "materialized_fields_test-6-3.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "c4f6c5d0f5ee62c0ca01656758e2e3932a1991299a95b110fbc18429d5cd9217",
+      "resave_sha256": "c4f6c5d0f5ee62c0ca01656758e2e3932a1991299a95b110fbc18429d5cd9217"
+    },
+    {
+      "image": "materialized_fields_test-6-4.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "933f96abf98846415d36b1b71474388293e8d475e5a90fea0777a7f5b2bbdad0",
+      "resave_sha256": "933f96abf98846415d36b1b71474388293e8d475e5a90fea0777a7f5b2bbdad0"
+    },
+    {
+      "image": "materialized_fields_test-6-4.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "933f96abf98846415d36b1b71474388293e8d475e5a90fea0777a7f5b2bbdad0",
+      "resave_sha256": "933f96abf98846415d36b1b71474388293e8d475e5a90fea0777a7f5b2bbdad0"
+    },
+    {
+      "image": "materialized_fields_test-6-5.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "89371334baf5e65276267c6df03880b26a8051be5d381d0cf008350b07665a48",
+      "resave_sha256": "89371334baf5e65276267c6df03880b26a8051be5d381d0cf008350b07665a48"
+    },
+    {
+      "image": "materialized_fields_test-6-5.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "89371334baf5e65276267c6df03880b26a8051be5d381d0cf008350b07665a48",
+      "resave_sha256": "89371334baf5e65276267c6df03880b26a8051be5d381d0cf008350b07665a48"
+    },
+    {
+      "image": "materialized_fields_test-6-6.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "8c1300d90045b21474930d7ac0f315068fee05ec3860610c9857f7107e2d90a1",
+      "resave_sha256": "8c1300d90045b21474930d7ac0f315068fee05ec3860610c9857f7107e2d90a1"
+    },
+    {
+      "image": "materialized_fields_test-6-6.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "8c1300d90045b21474930d7ac0f315068fee05ec3860610c9857f7107e2d90a1",
+      "resave_sha256": "8c1300d90045b21474930d7ac0f315068fee05ec3860610c9857f7107e2d90a1"
+    },
+    {
+      "image": "materialized_fields_test-6-7.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "84b8e53300a6041a217d896d6e44a9aed7598a49cbe01919a5addf51a0d48d45",
+      "resave_sha256": "84b8e53300a6041a217d896d6e44a9aed7598a49cbe01919a5addf51a0d48d45"
+    },
+    {
+      "image": "materialized_fields_test-6-7.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "84b8e53300a6041a217d896d6e44a9aed7598a49cbe01919a5addf51a0d48d45",
+      "resave_sha256": "84b8e53300a6041a217d896d6e44a9aed7598a49cbe01919a5addf51a0d48d45"
+    },
+    {
+      "image": "materialized_fields_test-6-8.image",
+      "flavor": "o2",
+      "equal": true,
+      "writer_sha256": "bd597441a15c9e63ce57ac524ba7b5bc00b2fbcd998dfa85b08979fbf0dd7e2b",
+      "resave_sha256": "bd597441a15c9e63ce57ac524ba7b5bc00b2fbcd998dfa85b08979fbf0dd7e2b"
+    },
+    {
+      "image": "materialized_fields_test-6-8.image",
+      "flavor": "san",
+      "equal": true,
+      "writer_sha256": "bd597441a15c9e63ce57ac524ba7b5bc00b2fbcd998dfa85b08979fbf0dd7e2b",
+      "resave_sha256": "bd597441a15c9e63ce57ac524ba7b5bc00b2fbcd998dfa85b08979fbf0dd7e2b"
+    }
+  ],
+  "no_original_failure_waiver": true
+}

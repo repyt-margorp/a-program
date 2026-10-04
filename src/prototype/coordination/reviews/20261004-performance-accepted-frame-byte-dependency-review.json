@@ -1,0 +1,47 @@
+{
+  "date_UTC": "2026-10-04T12:55:49.328195+00:00",
+  "notice_sha256": "46d6e6b709c61df407dd529e83b3a4334c325ee8f58482235097a65490cb4572",
+  "manifest_sha256": "2a88be5f212bb87e30b72f374ba35e0bda0fcfec9ac264020bbc5056ee33edc3",
+  "all5_manifest_records_and389_input_pins_exact": true,
+  "independently_recomputed100_static_observations_exact": true,
+  "helper_SHA": "7ba074cf044415b50eaf56bc6cb47c7b2719d16bd9c42c8bcd50d9c9be90d182",
+  "summary": {
+    "terminal": true,
+    "records": 100,
+    "categories": {
+      "frame-only-inert": {
+        "records": 29,
+        "fully_explained_by_record_order": 29,
+        "Core_body_differences": 0,
+        "outside_observed_regions": 0
+      },
+      "frame-only-paired": {
+        "records": 15,
+        "fully_explained_by_record_order": 15,
+        "Core_body_differences": 0,
+        "outside_observed_regions": 0
+      },
+      "full-paired": {
+        "records": 20,
+        "fully_explained_by_record_order": 20,
+        "Core_body_differences": 0,
+        "outside_observed_regions": 0
+      },
+      "full-parent-inert": {
+        "records": 36,
+        "fully_explained_by_record_order": 36,
+        "Core_body_differences": 0,
+        "outside_observed_regions": 0
+      }
+    },
+    "all_input_hashes_exact_after": true,
+    "no_image_writes_runtime_builds_or_workloads": true,
+    "limits": [
+      "Static observations of the exact existing accepted94 cut artifacts, not a codec, image canonicalizer or acceptance authority.",
+      "Original byte failures remain failures. A record-order explanation is not a byte waiver or a universal historical cause.",
+      "Core payload comparison uses identical existing DAG bytes and IDs. No discarded reusable result or new graph/index/wire field.",
+      "No actual RSS/time measurement, launch grant, adopted runtime or completed Goal."
+    ]
+  },
+  "scope": "Exact recorded artifacts only, Core DAG bodies and counts/steps/flags equal; entry metadata/configuration/footer permutations account for these100 comparisons. No target process, byte canonicalization, image writes, universal cause or byte waiver. Paired and parent-inert comparisons remain failed."
+}

@@ -1,0 +1,11 @@
+{
+  "date_UTC": "2026-10-04T13:03:34.854778+00:00",
+  "two_file_current_materialized957_writer_sha256": "af36f96cfda1a6c9b2304d75e7a3e422129753ca1458f12fe714d7a1b0f97cd1",
+  "same_profile_inert_sha256": "af36f96cfda1a6c9b2304d75e7a3e422129753ca1458f12fe714d7a1b0f97cd1",
+  "same_profile_equal": true,
+  "old_reported_writer_exact": true,
+  "different_compact_profile_sha256": "87822c1e831623b3294b3a287c824113d1377dc84f4a57a5e82f44570ebf740f",
+  "different_compact_profile_exact_old_reported_resave": true,
+  "original_two_file_resave_argv_retained": false,
+  "decision": "Withdraw earlier public957 invariant-failure classification: exact old pair matches materialized write versus compact profile resave, while fresh correct same-profile two-file resave is byte-exact. Original argv was not durably retained, so do not assert reconstructed argv as original. Required readback-order dependency is established separately by fresh two-file raw15 paired/29 inert and full candidate0/328 inert plus bounded metadata explanation. Earlier artifacts/claim retained with this explicit correction."
+}

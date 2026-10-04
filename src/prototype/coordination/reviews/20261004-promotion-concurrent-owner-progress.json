@@ -1,0 +1,17 @@
+{
+  "date_UTC": "2026-10-04T12:57:45.093558+00:00",
+  "Main_parent": "c205d507a8568bfdda355e247a78b4e67464f294",
+  "job_notice": {
+    "path": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/coordination/outbox/main-frontier-accepted94a-source-switch-20261004.txt",
+    "sha256": "44ace4c440bc049f59610754258cc4afd56bf18f27c0b97f61cf445a4866f6dc",
+    "source_claim": "accepted94a runtime120 plus six prototype Source/Derivation/Schedule files, claimed parent12667c27411/v17 fuzz0",
+    "qualification": "Owner progress report only; private126/source reconstruction and later runtime not independently verified here. v13 immutable packet remains separate. v18/v19 build0/run134 failures retained, classifier discovery cut23 WIP. No READY/unsupported typed-query transport accepted."
+  },
+  "C37_notice": {
+    "path": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/coordination/outbox/c-backend-c37-acc-partition-ready-20261004.txt",
+    "sha256": "e9b81aaf5db4e3aa050dfa88993b9c2613145eebb9be1f9c2b4b1e5ddf0348e0",
+    "source_claim": "Source-driven Partition Fold and decision/lower/upper now emitted86 lines, manual primitives/append/accessibility/outer remain.",
+    "qualification": "Notice digest read/verified only; exact13/raw419/inputs156/old-E8 expected64 gates require independent review after this accepted promotion. No current producer/task/native61 claim."
+  },
+  "worker_lifecycle": "Original owners continue; four bounded owners remain stopped. No resume/duplicate/model change/Goal or timer reset."
+}

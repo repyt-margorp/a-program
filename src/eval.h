@@ -28,12 +28,14 @@ struct pg_eval {
 	struct pg_closure current;
 	const struct pg_argument *arguments;
 	enum pg_eval_status status;
+	int head_ready;
 	uint64_t steps;
 	/* Optional fixed semantic dispatcher. NULL preserves beta-only policy. */
 	int (*dispatch)(struct pg_eval *machine);
 	struct pg_graph *output;
 	struct pg_eval_frame *frames;
-	int head_ready;
+	/* Stateless head frames, after their existing callback cleanup. */
+	struct pg_eval_frame *free_frames;
 	struct pg_eval_task *task;
 };
 

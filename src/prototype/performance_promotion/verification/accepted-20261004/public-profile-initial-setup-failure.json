@@ -1,0 +1,5 @@
+{
+  "initial_exit": 1,
+  "classification": "Root helper label-filter preflight matched no write records; terminal cardinality assertion failed before any build/runtime or image creation.",
+  "correction": "Match existing write-save labels; unchanged source/fixture/binary/expected statuses."
+}

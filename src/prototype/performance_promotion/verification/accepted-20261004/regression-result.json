@@ -1,0 +1,19 @@
+{
+  "started_UTC": "2026-10-04T12:46:55.094885+00:00",
+  "argv": [
+    "make",
+    "-j1",
+    "-f",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/performance-approved-promotion/src/Makefile",
+    "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/performance-approved-frame-only/build-o2",
+    "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+    "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+    "check",
+    "check-head-delivery",
+    "check-host",
+    "check-execution"
+  ],
+  "source120": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907",
+  "exit": 0,
+  "finished_UTC": "2026-10-04T12:50:19.702035+00:00"
+}

@@ -1,7 +1,7 @@
 # Parallel Development: Inquiry Desk, Merge and Workers
 
 Date: 2026-10-03
-Status: accepted Job94a20003 pushed/remote exact, live Main Core/IADT/CLI0; six unowned edits remain unstaged. C33 faithful full manual mockup delivered/current-qualified; C36 actual clause emission exact13/raw320/inputs152 verified statically, helper bodies/current qualification pending; C32 parked. Performance accepted94a focused88/cuts2296 records and raw bytes verified: candidate inert0/328, parent36/328 and paired20/164 unwaived; current CLI/consumers/fuels/cost pending. Old E25 full acceptance remains timed out/incomplete. Job frontier v13 Lambda/Domain/Body private WIP, seven-file reconstruction exact. Full strict/frontier/actual-cost criteria remain open; four bounded owners stay stopped. No Goal reset.
+Status: accepted Job94a20003 retained; approved Performance exact four-file c206 promotion freshly qualified, commit/push pending. Necessary raw readback-order dependency and4 normative tests are selected; candidate inert0/328, old paired20/164 and strict3 unwaived. No actual RSS/time/full acceptance claim. C36 actual clause verified statically; C37 actual partition notice pending review/current qualification. Job accepted94a source switch/phase2 progress is owner evidence, new Evidence/typed-Occurrence authority audit routed to original owner. Four bounded owners stay stopped; Goal/timer unchanged.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `fd45c42`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -26,6 +26,31 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | 8 | `issue-audit`: evidence-backed GitHub disposition | All open Issues/PRs | Bounded Goal complete; verified dispositions, task8bb5018/Mainb461ace; #61 retains C residuals |
 
 ### Current Delivery Status
+
+2026-10-04 13:07 UTC, approved Performance promotion qualification at Mainc205d507:
+selected exact eval.c/h, eval_internal.h and eval_io.c plus four normative tests
+and Make integration. Root fresh accepted check/head/host/execution and affected
+SAN/consumer groups pass; six completed fuels equal accepted parent. Public12
+pairs/24 inert/24 resume exact, all52 partition images/full40 TSV unchanged;
+strict3/exit1 retained. Fresh raw1152 semantic/fuel/SAN commands0, own328 inert0;
+old writer paired20 remain failed. The two-file public957 rationale is WITHDRAWN:
+same materialized profile is exact, compact control reproduces the old mismatch;
+original argv was not retained. Valid two-file raw15/29 and independently
+recomputed100 metadata-only permutations establish the necessary ordinal repair.
+No cached answer or wire field removed/added. Loader/scratch+8*n is included in
+future matched cost. [Promotion review](../src/prototype/performance_promotion/verification/accepted-20261004/review.json),
+[static freeze/cost review](../src/prototype/coordination/reviews/20261004-performance-accepted94-frozen-cost-review.json).
+Intentional accepted commit/push/local-edit interaction is next, not full raw-byte
+READY, #51/#56 completion or an RSS/time claim.
+
+New Job accepted94a+six prototype modules source-switch and phase2 binder/query
+progress are owner reports pending independent frozen/source/runtime review;
+partial typed-query transport is explicitly unsupported. The new human Evidence
+DAG/typed-Occurrence audit is routed to this original owner with human concern
+separate from agent all-rule/field scope; actual acknowledgment/report pending.
+C37 actual emitted partition86/helper notice read and digest verified; exact13/
+raw419/inputs156/current qualified producer/task publication remain separate.
+[Concurrent owner progress](../src/prototype/coordination/reviews/20261004-promotion-concurrent-owner-progress.json).
 
 2026-10-04 12:16 UTC, C36 partial automatic READY at Main0bd64e50:
 Root verified immutable13/archive/freeze, raw320, copied152 and independently
@@ -700,7 +725,7 @@ cost slot or accepted edit; protected9/timer unchanged, next07:44:22 UTC.
 | --- | --- | --- |
 | Job/Evidence; SE1-SE5 / AP0, #51/#47 | Reviewed Job/dependency closure accepted94a20003; runtime120930997b6, compact-default acceptance coverage, five owner/18 CLI sanitizer controls and live local-edit Core/IADT/CLI0. Private v13 Lambda/Domain/Body/WHNF packet13 verified; Root reconstructs seven changed files/all128 hashes with fuzz0. [Latest review](../src/prototype/coordination/reviews/20261004-accepted-port-frontier-v13-review.json) | v13 old-E25 source1b2d581c is private WIP, not READY/current accepted/joint. Worker24 destroyed-owner cuts and wrong-child/affected O2-SAN pass; strict3/general public resume/full SE-AP/cost remain. Next canonical typed-owner normalization/classifier-query continuation and accepted94a composition with explicit prototype checkpoint dependencies. Compact1369677 vs old1365999; materialized20728552 growth is not a memory win. |
 | C backend; #61 | C33 faithful manual actual Acc QuickSort exact11 task588b2cb/prototype integration083c2592; Root current final compact-default O2/SAN9 rows each0, source3/Core341/resource controls, delivered before deadline. C34 declarations/C35 plumbing preserved. C36 actual source-driven Match/SEQ/both IH/pivot/append clause exact13/raw320/inputs152 and O2-SAN25 expected rows each verified statically, including changed-source code/output control. [C36 review](../src/prototype/coordination/reviews/20261004-c36-ready-static-review.json) | C33 Nat32/proofs/helpers/allocation/outer entry remain manual; helper body/capture, closure lifetime/index constructors/general native61/cost open. Worker E8 evidence is not current accepted qualification; task/Main publication separate. C33 remains full manual CODE. C32 micro-convenience implementation parked; no missing producer view demonstrated. |
-| Performance; #56/#51/#52 | Exact accepted94a four-file120c206 port/source vectors verified. Current focused88/cuts2296 worker commands0; Root maps1442/1445, raw logs,18 unit outputs and164 pair/656 inert bytes verify. Candidate own inert0/328; parent36/328 and paired20/164 failures retained. [Raw review](../src/prototype/coordination/reviews/20261004-performance-accepted94-raw-cuts-review.json) | NOT READY: current compact-default/materialized CLI and affected consumers, fresh completed fuels/current joint/downstream C/publication and matched36-job RSS/time remain. Six paired-only/seven inert-only unique cuts reject universal cause/equivalence claims. Old E25 acceptance1200s censored/incomplete, old cost4a414f41 deferred, overhead and every historical/strict3 failure unwaived. No slot. |
+| Performance; #56/#51/#52 | Human-approved exact accepted94a four-file c206 deletion/ordinal repair, four normative tests and Make integration freshly qualified. Root check/head/host/execution/affected SAN0, six fuels equal, public12/24inert/24resume and52/full40 exact; raw1152 semantic0/candidate328inert0. [Promotion review](../src/prototype/performance_promotion/verification/accepted-20261004/review.json) | Intentional commit/push and live local-edit interaction pending. Paired20/parent36/strict3 and old censored full acceptance remain unwaived; public957 false rationale explicitly withdrawn. Net cost includes ordinal arrays/scratch+8*n; no current RSS/time/slot/full raw READY or Goal completion. |
 | Surface; #57 | Verified prototype integrated, completed owner stopped | Accepted policy/promotion and selector diagnostics unresolved; no owner restart |
 | Static audit; #59/PR #60 | Task7ed3ad1/Main5683755; Root385 source/114 archived dependency hashes and exact inventory verified; bounded Goal achieved | Dynamic/full #59 and controlled cost remain open; no static-owner restart |
 | Sort; #41/F3-F5 | PR54 and finite-function task5e6ed84/Main966c4e1 integrated; bounded Goal achieved, focused gates0 | Accepted Sort/F5 and broader interfaces remain separate |
@@ -732,8 +757,8 @@ reporting subsystem. Its audit cover is pinned to `37de1e8`, not current Main.
 | Order / owner | Issue or PR | Next deliverable and dependency |
 | --- | --- | --- |
 | 0 / desk -> Merge | Workflow | All three original implementation owners actually acknowledged major-problem priority. Goal objective intact/blocked service label unchanged; event-driven work active. C actual Acc mockup deadline21:16:56UTC; Job Source codec/frontier; Performance dominant deletion/matched RSS-time. Original owners/Job HEAD-index/timer retained; next scheduled13:44:22UTC |
-| 1 / Job, Root reviews independently | SE/AP, #51 | Reviewed ownership accepted94a20003. Preserve v13 private13/seven-file old-E25 packet; Lambda/Domain/Body and pending-WHNF progress acknowledged. Continue later canonical typed-owner normalization/classifier-query continuation, then joint accepted94a source preparation with explicit checkpoint dependencies. Strict3/full SE-AP remain; E26/E27 parked and original HEAD/staged tree retained |
-| 1 / performance + Root shared-owner review | #56 / #51 | Current accepted94a focused/raw cuts verified; continue already running CLI compact/materialized and affected consumer gates, then fresh six completed fuels and one normal-O2 matched36 cost config/exclusive drain. Candidate inert0/328 is cohort progress; parent36/328/paired20/164 are unwaived. Preserve old-E25 READY/timed-out acceptance; no current READY or cost grant. Peripheral micro-epochs parked |
+| 1 / Job, Root reviews independently | SE/AP, #51 | Preserve accepted94a and immutable v13. New owner source-switch/phase2 review18 reports binder/query56 cuts +3 negatives and public52 same strict3; verify exact126/eight-file frozen sources separately. Continue canonical typed-owner deletion at safe boundary and new human Evidence/Occurrence authority Markdown audit in its single focused SOAP plan; acknowledgment pending. E26/E27 parked; original HEAD/staged tree retained. |
+| 1 / performance + Root shared-owner review | #56 / #51 | Publish approved minimal accepted four-file deletion/order dependency after fresh scope qualification; preserve four normative tests and all raw/strict/historical failures. Matched normal-O2 source-exact36-job RSS/time remains next exclusive experiment after safe drain; no slot/sample yet. Peripheral micro-epochs parked. |
 | Complete bounded / test-suite; Root publishes | #59 / PR #60 | Verified pilot removes22 duplicate calls with all distinct outcomes preserved; Root raw/assembly review complete. Exact7 taskbc16df9/Main36a27be prototype integrated; broader inventory/cost/accepted adoption remain open |
 | Complete bounded / issue-audit | All open Issues/PRs | Verified comments/dispositions,44/49 superseded by61; nine issues open. Owner stopped; Root resumes coordination, no repeat audit |
 | Complete bounded / verification-audit | #59 / PR #60; #51 | Static inventory/pilot delivered and worker complete; four-job measured cost remains deferred, full #59 open. Do not restart the completed owner automatically |
@@ -2056,6 +2081,12 @@ with corresponding positive and retained dynamic/indexed refusal coverage.
 
 ### Subjective (User)
 
+2026-10-04 12:20 UTC, English translation of the latest explicit human approval
+received by inquiry desk `019ebfae`: the performance work appears to have
+removed unnecessary Reduction and substantially improved speed; move those
+improvements into the accepted implementation. This authorizes accepted
+promotion of the performance changes, not blanket adoption of private trials.
+
 2026-10-04, English translation of the explicit human
 clarification relayed by the inquiry desk (Japanese original supplied):
 continue the current performance direction and adjust toward reducing peak
@@ -2659,6 +2690,13 @@ the exact Bend2 implementation before choosing commands or citing claims.
 ## 5. Job/Evidence Implementation Owner
 
 ### Subjective (User)
+
+2026-10-04 12:58 UTC, English translation of the latest human request via
+inquiry desk `019ebfae`: investigate the suspected reconstruction of Term's tree
+in Evidence, whether it can be reduced or integrated into typed Occurrence,
+and record the findings in Markdown. Assign the focused
+[Evidence/Occurrence audit](2026-10-04-EVIDENCE-OCCURRENCE-AUTHORITY-AUDIT-AND-PLAN.md)
+to the existing Job/Evidence owner; do not assume the suspicion is already proven.
 
 2026-10-04 09:42 UTC, English translation of explicit user authorization via
 inquiry desk `019ebfae`: "Job may now enter accepted code. Migrate it; replace

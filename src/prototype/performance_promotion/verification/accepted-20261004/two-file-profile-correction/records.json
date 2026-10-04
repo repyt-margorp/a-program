@@ -1,0 +1,46 @@
+[
+  {
+    "label": "write-materialized",
+    "argv": [
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/performance-two-file-profile-recheck/build/pointer-check",
+      "--steps",
+      "957",
+      "--save-materialized",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/performance-two-file-profile-recheck/write-materialized957.a",
+      "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/list.p"
+    ],
+    "exit": 3,
+    "expected_exit": 3,
+    "log_sha256": "9a4e1ec4b5b7b76137e76d9f2741062be9f0c9c0ff1fff107f91e1fc5f79800d"
+  },
+  {
+    "label": "same-profile-inert",
+    "argv": [
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/performance-two-file-profile-recheck/build/pointer-check",
+      "--load",
+      "--steps",
+      "0",
+      "--save-materialized",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/performance-two-file-profile-recheck/same-profile-inert.a",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/performance-two-file-profile-recheck/write-materialized957.a"
+    ],
+    "exit": 3,
+    "expected_exit": 3,
+    "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+  },
+  {
+    "label": "different-compact-profile-control",
+    "argv": [
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/performance-two-file-profile-recheck/build/pointer-check",
+      "--load",
+      "--steps",
+      "0",
+      "--save",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/performance-two-file-profile-recheck/different-compact-profile-control.a",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/performance-two-file-profile-recheck/write-materialized957.a"
+    ],
+    "exit": 3,
+    "expected_exit": 3,
+    "log_sha256": "1ca827e06c2432f0deb3f555e391b2addddfacd4f5f86cb9c06c935a8bfbac53"
+  }
+]

@@ -562,3 +562,22 @@ parse-files: $(BUILD)/parse_files
 $(BUILD)/parse_files: $(ROOT)reader.c $(ROOT)reader.h $(ROOT)syntax.c $(ROOT)syntax.h $(ROOT)graph.c $(ROOT)graph.h $(TESTS)/parse_files.c
 	mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) -I$(ROOT) $(ROOT)reader.c $(ROOT)syntax.c $(ROOT)graph.c $(TESTS)/parse_files.c -o $@
+
+# Reentrant, escaped-state, fallback and callback cleanup lifetime controls.
+FRAME_RETIREMENT_TESTS := frame_retirement_test stateless_head_cleanup_test callback_failure_cleanup_test
+$(addprefix $(BUILD)/,$(FRAME_RETIREMENT_TESTS)): $(BUILD)/%: $(SOURCES) $(wildcard $(ROOT)*.h) $(TESTS)/%.c
+	mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(TESTS)/$*.c -o $@
+
+.PHONY: check-frame-retirement
+check: check-frame-retirement
+check-frame-retirement: $(addprefix $(BUILD)/,$(FRAME_RETIREMENT_TESTS)) $(BUILD)/readback_transport_bounds_test
+	$(BUILD)/frame_retirement_test
+	$(BUILD)/stateless_head_cleanup_test
+	$(BUILD)/callback_failure_cleanup_test
+	$(BUILD)/readback_transport_bounds_test
+
+# Readback entry order is private metadata; malformed ordinals refuse emission.
+$(BUILD)/readback_transport_bounds_test: $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(HEAD_MACHINE_IO) $(wildcard $(ROOT)*.h) $(TESTS)/readback_transport_bounds_test.c
+	mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(filter-out $(CLI_SOURCES),$(HEAD_MACHINE_IO)) $(TESTS)/readback_transport_bounds_test.c -o $@

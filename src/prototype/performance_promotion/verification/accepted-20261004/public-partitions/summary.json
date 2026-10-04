@@ -1,0 +1,6 @@
+{
+  "terminal": true,
+  "strict_exit": 1,
+  "original_three_failures_unwaived": true,
+  "images52_and_full40_TSV_equal": true
+}

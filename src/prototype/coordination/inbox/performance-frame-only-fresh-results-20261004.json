@@ -1,0 +1,80 @@
+{
+  "date_UTC": "2026-10-04T12:40:07.322357+00:00",
+  "provenance": "Fresh Root qualification of isolated approved two-file frame deletion; not waiver/adoption or a new owner task.",
+  "source120": "70ad568248f32621651342c0911dfa2a98839da8cf0d967fedd4b1c1d19ae1d7",
+  "selected_patch": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/performance-approved-frame-only/selected.patch",
+  "Root_evidence_directory": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/performance-approved-frame-only",
+  "accepted_regression": "Fresh strict check/head/host/execution0; lifetime/head/evalIO/IdentityIO SAN0; public52 byte images and full40 TSV exact accepted parent, strict3 retained. SAN Core/IADT/Synthesis/full SourceIO0; CLI SAN and six current completed fuels continuing.",
+  "raw_cut_outcome": {
+    "finished_UTC": "2026-10-04T12:37:04.477646+00:00",
+    "source120": "70ad568248f32621651342c0911dfa2a98839da8cf0d967fedd4b1c1d19ae1d7",
+    "expected_cut_ranges_from_unchanged_accepted_parent": {
+      "counts": {
+        "fold_spine_test": [
+          12,
+          16,
+          13,
+          14,
+          12
+        ],
+        "materialized_fields_test": [
+          29,
+          29,
+          7,
+          5,
+          7,
+          11,
+          9
+        ]
+      },
+      "totals": {
+        "fold_spine_test": [
+          11,
+          15,
+          12,
+          13,
+          11
+        ],
+        "materialized_fields_test": [
+          34,
+          35,
+          12,
+          8,
+          10,
+          14,
+          12
+        ]
+      },
+      "origin": "Unchanged accepted-parent units; all candidate same-flavor outputs equal before separate-process splits.",
+      "old_E25_ranges_unchanged_historical": {
+        "fold": [
+          12,
+          16,
+          13,
+          14,
+          12
+        ],
+        "materialized": [
+          20,
+          20,
+          7,
+          5,
+          7,
+          11,
+          9
+        ]
+      }
+    },
+    "commands": 1152,
+    "unexpected_exits": 0,
+    "paired_images": 164,
+    "paired_byte_failures_unwaived": 15,
+    "inert_images": 328,
+    "inert_byte_failures_unwaived": 29,
+    "wire_and_readback_implementation_unchanged": true,
+    "cost_or_full_byte_ready": false
+  },
+  "interpretation": "Two-file deletion isolates ordinal transport changes but does not establish full raw byte invariance: fifteen paired images and twenty-nine candidate inert rows fail/unwaived. No Root adoption claim yet. Current raw byte dependency/cause needs evidence and explicit agent disposition inside the human-approved deletion scope; do not waive/update assertions or discard reusable readback results.",
+  "request_to_original_owner": "Use ongoing causal assessment to identify whether these exact selected-byte failures are an essential ordering dependency, new behavior or pre-existing wire enumeration debt. Keep full c20655/cost6 frozen and no duplicate Root-trial heavy gate; provide precise minimal promotion boundary.",
+  "no_cost_grant_or_owner_resume": true
+}
