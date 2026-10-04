@@ -1,0 +1,11 @@
+aplink 1
+artifact provider.a
+abi c_scalar_v1
+target host-c11
+product source
+lowering scalar_direct_v1
+fallback reject
+export offset32 provider_offset32
+export offset64 provider_offset64
+export subtract32 provider_subtract32
+export subtract64 provider_subtract64

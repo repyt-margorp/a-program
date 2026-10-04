@@ -468,6 +468,28 @@ Native indexed/callable Acc/QuickSort, full #61, actual costs and accepted adopt
 remain open. Evidence and preserved setup failures are in the
 [C29 plan](../../../doc/2026-10-04-C-BACKEND-NATIVE-CALLBACK-PLAN.md).
 
+The standalone `native_callback_units/build.mk` target
+`check-c-native-callback-units` connects an admitted generated scalar arithmetic
+provider to that native consumer through a declarative C API and separately
+compiled descriptor factories/client. Provider functions return status plus an
+output pointer; adapters assert provider success before returning scalar values.
+Direct provider-function casts do not satisfy the descriptor signature. Scalar
+providers need no arena, including while a consumer arena is active. Factories
+return existing descriptors by value; this adds no A Program callable result or
+foreign failure protocol. API/context/loaded code outlive synchronous calls and
+are unused after unload. Pure-total source interpretation remains a precondition.
+
+The focused module gate covers16 source/object/archive/shared pairs in both header
+orders,32 linked+8 loaded-provider clients per phase. Each matches nine separate
+source/readback observations and checks121 Lists/width, two contexts, full mapped/
+combined values/right-fold results,93 shared finite Trees/context, signed extrema,
+arena rollback/depth/status and copied-array lifetime. Six compiler/linker refusals
+cover missing/duplicate adapters, duplicate providers and wrong widths/arity/
+provider signatures. SAN covers clients/adapters/source bodies only; other product
+bodies/backend/producer remain O2. Repeated combinations are not independent
+properties. No new Core checker, ABI or source authority. See the
+[C30 plan](../../../doc/2026-10-04-C-BACKEND-NATIVE-CALLBACK-MODULES-PLAN.md).
+
 ## Selected Native Predicates
 
 The separate `predicate_native_direct_v1` / `c_predicate_native_v1` profile
