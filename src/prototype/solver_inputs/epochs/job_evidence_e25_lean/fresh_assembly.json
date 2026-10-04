@@ -1,0 +1,10 @@
+{
+  "parent_task": "Exact private E23 source15671cba39e / full-qualified unpublished lean33 manifest a19b595a48a3da4bc7621a0aca834a1df7020bf8b6bb7d6f14197d10c9c77aed; based on private E22 / published E18. E19-E21/E24/current Main/E10 excluded. No publication/current joint/cost inferred.",
+  "parent_is_published": false,
+  "parent_source156": "71cba39eafe479372323d71c7a886211d097e9b858be8b21c3402937708ac5fe",
+  "candidate_source156_v2": "72a9972831afa0dbe89a6454700f1b611b4f7e0a7e4191a782dbae4ced9e06f3",
+  "applied_delta_v2": "6062c42172f7afa14d249bab51164f1b742436568964039d4459d07846b31887",
+  "all156_after_apply_exact": true,
+  "canonical_reverse_exact_private_parent_and_candidate_apply_raw_exact": true,
+  "shared_git_untouched": true
+}

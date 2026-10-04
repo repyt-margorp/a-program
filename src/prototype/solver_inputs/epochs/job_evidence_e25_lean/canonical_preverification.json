@@ -1,0 +1,21 @@
+{
+  "parent_task": "Exact private E23 source15671cba39e / full-qualified unpublished lean33 manifest a19b595a48a3da4bc7621a0aca834a1df7020bf8b6bb7d6f14197d10c9c77aed; based on private E22 / published E18. E19-E21/E24/current Main/E10 excluded. No publication/current joint/cost inferred.",
+  "parent_is_published": false,
+  "files": [
+    {
+      "source": "src/artifact/source.c",
+      "canonical": "src/prototype/solver_inputs/artifact_source.c.patch",
+      "parent_canonical_sha256": "908224194a591326266043af5ef6706a73a4cef0c9d9c3932750d258dcc7e963",
+      "candidate_canonical_sha256": "1de781c29e010b7d6edcbb93668f83fc7d7da553204b1faa88bcd55c22c916d3",
+      "reverse_exact_private_parent_and_apply_candidate_raw_exact": true
+    },
+    {
+      "source": "checkpoint_tests/source_checkpoint_test.c",
+      "canonical": "src/prototype/solver_inputs/checkpoint_test_patches/source_checkpoint_test.c.patch",
+      "parent_canonical_sha256": "fa1de4d98ec998f2565604a46d09577b0e67b497831d2dca56d48cc44bb5bd09",
+      "candidate_canonical_sha256": "1e5fa3c4092a39380b23d0317d82178da4910d1bc0299eff4442c54681183bc3",
+      "reverse_exact_private_parent_and_apply_candidate_raw_exact": true
+    }
+  ],
+  "AP_base_and_live_canonical_untouched": true
+}
