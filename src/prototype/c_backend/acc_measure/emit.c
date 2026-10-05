@@ -239,15 +239,15 @@ static int expression(struct emitter *e, const struct pg_term *term, const struc
 	}
 	return -1;
 }
-static int signature(struct emitter *e, const struct pg_occurrence *root, size_t result_family)
+static int classifier_signature(struct emitter *e, const struct pg_term *classifier, size_t result_family)
 {
 	const struct pg_term *domain,*codomain,*result; const struct pg_object *binder;
-	return pg_pi_view(root->classifier,&domain,&binder,&codomain) && aggregate(e,(struct pg_c_indexed_operand){domain,NULL},7)
+	return pg_pi_view(classifier,&domain,&binder,&codomain) && aggregate(e,(struct pg_c_indexed_operand){domain,NULL},7)
 		&& total(codomain,&result) && aggregate(e,(struct pg_c_indexed_operand){result,NULL},result_family);
 }
 static int emit_measure(struct emitter *e, const struct pg_typing *typing, const struct pg_occurrence *root)
 {
-	struct pg_c_indexed_operand selected; if (!signature(e,root,5) || selected_lambda(e->storage,root->core,&selected)) return -1;
+	struct pg_c_indexed_operand selected; if (!classifier_signature(e,root->classifier,5) || selected_lambda(e->storage,root->core,&selected)) return -1;
 	const struct pg_occurrence *fold=NULL; struct pg_elimination_inputs chosen={0};
 	for (const struct pg_dag_node *n=e->dag->first; n; n=n->next) {
 		const struct pg_occurrence *s=n->key; size_t captures; if (!s->induction || s->induction->count!=2
@@ -284,28 +284,63 @@ static int emit_measure(struct emitter *e, const struct pg_typing *typing, const
 	}
 	indent(e); fputs("} else { a->status = 2; }\ndone:\n\t--a->depth; return result;\n}\n",e->out); return 0;
 }
-static int emit_outer(struct emitter *e, const struct pg_c_acc_measure_sources *sources)
+static int comparator_signature(struct emitter *e, const struct pg_term *classifier,
+	const struct pg_term **list_function)
 {
-	struct pg_c_indexed_operand selected; if (!signature(e,sources->outer,7) || selected_lambda(e->storage,sources->outer->core,&selected)) return -1;
-	const struct pg_c_indexed_binding *le=selected.environment,*type=le ? le->parent : NULL;
+	const struct pg_term *domain,*codomain,*function,*left,*right,*result;
+	const struct pg_object *binder;
+	struct pg_c_indexed_operand arguments[16];
+	if (!pg_pi_view(classifier,&domain,&binder,list_function)
+		|| !pg_thunk_type_view(domain,&function)
+		|| !pg_pi_view(function,&left,&binder,&codomain)
+		|| !natural(e,(struct pg_c_indexed_operand){left,NULL})
+		|| !pg_pi_view(codomain,&right,&binder,&codomain)
+		|| !natural(e,(struct pg_c_indexed_operand){right,NULL})
+		|| !total(codomain,&result)
+		|| !family(e,(struct pg_c_indexed_operand){result,NULL},0,0,arguments)) return 0;
+	return classifier_signature(e,*list_function,7);
+}
+static int emit_outer(struct emitter *e, const struct pg_c_acc_measure_sources *sources, int parameter)
+{
+	struct pg_c_indexed_operand selected;
+	if (selected_lambda(e->storage,sources->outer->core,&selected)) return -1;
+	const struct pg_c_indexed_binding *type;
+	const struct pg_object *comparison_binder;
+	const struct pg_term *input;
+	if (parameter) {
+		const struct pg_term *list_function;
+		if (!comparator_signature(e,sources->outer->classifier,&list_function)) return -1;
+		type=selected.environment;
+		comparison_binder=selected.term->as.lambda.binder;
+		input=selected.term->as.lambda.body;
+		if (!input || input->kind!=PG_LAMBDA) return -1;
+	} else {
+		if (!classifier_signature(e,sources->outer->classifier,7)) return -1;
+		const struct pg_c_indexed_binding *le=selected.environment;
+		type=le ? le->parent : NULL;
+		if (!le) return -1;
+		struct pg_c_indexed_operand argument=pg_c_indexed_bound(le->value);
+		const struct pg_term *comparison=unary(argument.term,&pg_thunk_operation);
+		struct pg_c_indexed_operand compare_lambda;
+		if (!comparison || selected_lambda(e->storage,comparison,&compare_lambda) || compare_lambda.environment
+			|| pg_alpha_equal(compare_lambda.term,e->callees[3])!=1) return -1;
+		comparison_binder=le->binder;
+		input=selected.term;
+	}
 	if (!type || type->parent || !natural(e,type->value)) return -1;
-	struct pg_c_indexed_operand argument=pg_c_indexed_bound(le->value); const struct pg_term *comparison=unary(argument.term,&pg_thunk_operation);
-	struct pg_c_indexed_operand compare_lambda;
-	if (!comparison || selected_lambda(e->storage,comparison,&compare_lambda) || compare_lambda.environment
-		|| pg_alpha_equal(compare_lambda.term,e->callees[3])!=1) return -1;
-	struct binding env[]={{NULL,type->binder,named(VALUE_TYPE,"type")},{NULL,le->binder,named(VALUE_COMPARE,"le")},
-		{NULL,selected.term->as.lambda.binder,named(VALUE_LIST,"input")}}; env[1].parent=&env[0]; env[2].parent=&env[1];
+	struct binding env[]={{NULL,type->binder,named(VALUE_TYPE,"type")},{NULL,comparison_binder,named(VALUE_COMPARE,"le")},
+		{NULL,input->as.lambda.binder,named(VALUE_LIST,"input")}}; env[1].parent=&env[0]; env[2].parent=&env[1];
 	fputs("/* Generated actual quickSort measure/Match/accessibility/Acc application.\n\t* C33 storage/LT/successor-down transport and array copy-out remain manual. */\n"
 		"static const struct qs_list *go_outer(struct qs_arena *a, const struct qs_nat_type *type, struct qs_compare le, const struct qs_list *input)\n{\n"
 		"\tconst struct qs_list *result = NULL; if (!enter(a)) return NULL;\n"
 		"\tif (!index_check(a,type == &nat_type && le.call && input && input->element_type == type)) goto done;\n",e->out);
 	struct value body;
-	if (expression(e,selected.term->as.lambda.body,&env[2],0,NULL,0,&body) || body.kind!=VALUE_LIST
+	if (expression(e,input->as.lambda.body,&env[2],0,NULL,0,&body) || body.kind!=VALUE_LIST
 		|| e->calls[0]!=1 || e->calls[1]!=1 || e->calls[2]!=1) return -1;
 	indent(e); fprintf(e->out,"result = %s;\ndone:\n\t--a->depth; return result;\n}\n",body.name); return 0;
 }
-int pg_c_acc_measure_emit(FILE *out, struct pg_graph *storage, const struct pg_typing *typing,
-	const struct pg_c_acc_measure_sources *sources, const struct pg_c_indexed_entry *entries)
+static int emit(FILE *out, struct pg_graph *storage, const struct pg_typing *typing,
+	const struct pg_c_acc_measure_sources *sources, const struct pg_c_indexed_entry *entries, int parameter)
 {
 	if (!out || !storage || !typing || !sources || !entries || !sources->measure || !sources->measure_reference
 		|| !sources->outer || !sources->outer_reference || !sources->measure_generic || !sources->accessibility || !sources->sort_generic || !sources->comparison) return -1;
@@ -319,10 +354,22 @@ int pg_c_acc_measure_emit(FILE *out, struct pg_graph *storage, const struct pg_t
 	const struct pg_occurrence *callees[]={sources->measure_generic,sources->accessibility,sources->sort_generic,sources->comparison};
 	for (size_t i=0; i<4; ++i) { struct pg_c_indexed_operand selected; if (selected_lambda(storage,callees[i]->core,&selected) || selected.environment) goto done; e.callees[i]=selected.term; }
 	if (pg_dag_add(&dag,sources->measure) || pg_dag_add(&dag,sources->outer) || emit_measure(&e,typing,sources->measure)
-		|| emit_outer(&e,sources) || ferror(stage) || fseek(stage,0,SEEK_SET)) goto done;
+		|| emit_outer(&e,sources,parameter) || ferror(stage) || fseek(stage,0,SEEK_SET)) goto done;
 	status=0; char buffer[4096]; size_t n;
 	while ((n=fread(buffer,1,sizeof(buffer),stage))) if (fwrite(buffer,1,n,out)!=n) { status=-1; break; }
 	if (ferror(stage) || ferror(out)) status=-1;
 done:
 	pg_dag_destroy(&dag); if (fclose(stage)) status=-1; return status;
+}
+
+int pg_c_acc_measure_emit(FILE *out, struct pg_graph *storage, const struct pg_typing *typing,
+	const struct pg_c_acc_measure_sources *sources, const struct pg_c_indexed_entry *entries)
+{
+	return emit(out,storage,typing,sources,entries,0);
+}
+
+int pg_c_acc_measure_parameter_emit(FILE *out, struct pg_graph *storage, const struct pg_typing *typing,
+	const struct pg_c_acc_measure_sources *sources, const struct pg_c_indexed_entry *entries)
+{
+	return emit(out,storage,typing,sources,entries,1);
 }

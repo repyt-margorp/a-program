@@ -103,8 +103,9 @@ int main(int argc, char **argv)
 		plan.artifact = argv[index]; plan.names = &single_name; plan.exports = &single;
 	}
 	int status = 2;
-	if (plan.lowering == PG_C_ACC_CREATION_CANDIDATE) {
-		fputs("C export: fixed Acc candidate requires acc_link/compose.py; native Acc remains unsupported\n", stderr);
+	if (plan.lowering == PG_C_ACC_CREATION_CANDIDATE || plan.lowering == PG_C_ACC_COMPARATOR_CANDIDATE) {
+		fprintf(stderr,"C export: fixed Acc candidate requires %s/compose.py; native Acc remains unsupported\n",
+			plan.lowering == PG_C_ACC_CREATION_CANDIDATE ? "acc_link" : "acc_comparator");
 		status = 4;
 		goto cleanup;
 	}

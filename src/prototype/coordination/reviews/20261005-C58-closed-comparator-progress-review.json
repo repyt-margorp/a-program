@@ -1,0 +1,347 @@
+{
+  "date_UTC": "2026-10-05T03:43:35.398904+00:00",
+  "notice_SHA": "5afb723350b88d623b42f5c8a51326e654a63b81ccbc5ba344212cf5a36419a3",
+  "snapshot_pins": {
+    "doc/2026-10-05-C-BACKEND-ACC-CLOSED-CAPTURE-PLAN.md": {
+      "SHA": "28830ea8b3fb15c4b8321adf9011d80cadf4752ceb42150aee4ba779d522303c",
+      "bytes": 3760
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/commands.json": {
+      "SHA": "942b9bfd90ef2b7f663bb0f732a55ed8634b8084fbb805d9330ca9433602f8ff",
+      "bytes": 10151
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/descending_sort-bodies/accessibility.inc": {
+      "SHA": "ccdd139cc3e9414a398fb12bb7073a652d91d47f9cb37f84c3319d86310f55b9",
+      "bytes": 865
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/descending_sort-bodies/actions.inc": {
+      "SHA": "1688e9e3618e8c89edef8e5286180df715b67aaec7fa932e0b4525704c129180",
+      "bytes": 2301
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/descending_sort-bodies/append.inc": {
+      "SHA": "ffd37ec2ed3ff967b588757b430b3a83042b4bfd737414141a0d6dffffefa6ac",
+      "bytes": 2116
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/descending_sort-bodies/capture.inc": {
+      "SHA": "34e6d7a3e252dfed0cacf46bcb9449b21a94a5d5b98201ecf57c507754bc42de",
+      "bytes": 318
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/descending_sort-bodies/clause.inc": {
+      "SHA": "cd1a7d70441222995b12ca2354ae6aeda80eaa2f99cd296cfeb5ef451405804c",
+      "bytes": 3416
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/descending_sort-bodies/comparison.inc": {
+      "SHA": "6b63a59d024eec5a46f7c436ed300ecab72283e7a5e10fc565e23ffef2ba69c4",
+      "bytes": 1254
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/descending_sort-bodies/measure.inc": {
+      "SHA": "60d51b65f7cedf55ea25d5e44251695ffb7adc98b35445bf63e1547237755803",
+      "bytes": 2353
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/descending_sort-bodies/partition.inc": {
+      "SHA": "b8238b022d1613d4cd8dffd4692f68d0e6668bf8206f3324588765bc25c2de31",
+      "bytes": 4162
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/descending_sort-bodies/transport.inc": {
+      "SHA": "f8954c46bf74754207074cb92c16c3cc8eb5207d99cf6a46920390181300eac8",
+      "bytes": 3168
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/descending_sort-client-build.err": {
+      "SHA": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/descending_sort-client-build.out": {
+      "SHA": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/descending_sort-client-direction-build.err": {
+      "SHA": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/descending_sort-client-direction-build.out": {
+      "SHA": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/descending_sort-client-direction-run.err": {
+      "SHA": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/descending_sort-client-direction-run.out": {
+      "SHA": "40bfaa7f00a53943d220fc0cccf25b68cea9c8b49297b08337fbec05ab9215a8",
+      "bytes": 11
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/descending_sort-client-run.err": {
+      "SHA": "88859e135c92d36f09fe2f2d24220ce00471a794106c1f72855627d178c5c3e6",
+      "bytes": 159
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/descending_sort-client-run.out": {
+      "SHA": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/descending_sort-emission.err": {
+      "SHA": "d8d921bec4e4c116825316a1d6b9bfa0999e4f72bd8a5fbf4a6e99024838ec7f",
+      "bytes": 92
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/descending_sort-emission.out": {
+      "SHA": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/descending_sort-product/component.c": {
+      "SHA": "5152a32a86ba1160fc2570d7dd3839e0597f8301a1d9cfd2b643ca518e9f9188",
+      "bytes": 48697
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/descending_sort-product/component.h": {
+      "SHA": "246364a170ff3443c5e89a15e033ecaf3e230ea657ee8a670b0e4582cf78c044",
+      "bytes": 804
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/descending_sort-product/provenance.json": {
+      "SHA": "798d7435bbb639ebcaa30b9dfcc476255582a6622f67b3d4aa98ffb9025970ba",
+      "bytes": 6072
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/descending_sort-resource-direction-build.err": {
+      "SHA": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/descending_sort-resource-direction-build.out": {
+      "SHA": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/descending_sort-resource-direction-run.err": {
+      "SHA": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/descending_sort-resource-direction-run.out": {
+      "SHA": "8e6ee5af564788a393178dfd5b0e17e3e3364b5d28737cd2b59b3f6b08039053",
+      "bytes": 21
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/native-O2-build-header-corrected.err": {
+      "SHA": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/native-O2-build-header-corrected.out": {
+      "SHA": "03b7e4d286a297f5d19952cf1c4686d1ea167bfc28009498e67f96a73133a5e0",
+      "bytes": 8318
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/native-O2-build.err": {
+      "SHA": "3242a334290ff183cb8c33b372b77686adc83df800a63c087ce194aebadc10a0",
+      "bytes": 13733
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/native-O2-build.out": {
+      "SHA": "03b7e4d286a297f5d19952cf1c4686d1ea167bfc28009498e67f96a73133a5e0",
+      "bytes": 8318
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/outer_fn-bodies/accessibility.inc": {
+      "SHA": "ccdd139cc3e9414a398fb12bb7073a652d91d47f9cb37f84c3319d86310f55b9",
+      "bytes": 865
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/outer_fn-bodies/actions.inc": {
+      "SHA": "1688e9e3618e8c89edef8e5286180df715b67aaec7fa932e0b4525704c129180",
+      "bytes": 2301
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/outer_fn-bodies/append.inc": {
+      "SHA": "ffd37ec2ed3ff967b588757b430b3a83042b4bfd737414141a0d6dffffefa6ac",
+      "bytes": 2116
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/outer_fn-bodies/capture.inc": {
+      "SHA": "2cd87703c026e3ebe388b79c8dd64c4426e3234aa3dbc25e9c249cf4291eb2ad",
+      "bytes": 318
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/outer_fn-bodies/clause.inc": {
+      "SHA": "cd1a7d70441222995b12ca2354ae6aeda80eaa2f99cd296cfeb5ef451405804c",
+      "bytes": 3416
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/outer_fn-bodies/comparison.inc": {
+      "SHA": "6b63a59d024eec5a46f7c436ed300ecab72283e7a5e10fc565e23ffef2ba69c4",
+      "bytes": 1254
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/outer_fn-bodies/measure.inc": {
+      "SHA": "60d51b65f7cedf55ea25d5e44251695ffb7adc98b35445bf63e1547237755803",
+      "bytes": 2353
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/outer_fn-bodies/partition.inc": {
+      "SHA": "b8238b022d1613d4cd8dffd4692f68d0e6668bf8206f3324588765bc25c2de31",
+      "bytes": 4162
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/outer_fn-bodies/transport.inc": {
+      "SHA": "f8954c46bf74754207074cb92c16c3cc8eb5207d99cf6a46920390181300eac8",
+      "bytes": 3168
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/outer_fn-client-direction-build.err": {
+      "SHA": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/outer_fn-client-direction-build.out": {
+      "SHA": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/outer_fn-client-direction-run.err": {
+      "SHA": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/outer_fn-client-direction-run.out": {
+      "SHA": "c4bc2044ebe70082802ae168344ee3095312257b2ca4a36efd3abc5e0a4ca513",
+      "bytes": 11
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/outer_fn-emission.err": {
+      "SHA": "d8d921bec4e4c116825316a1d6b9bfa0999e4f72bd8a5fbf4a6e99024838ec7f",
+      "bytes": 92
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/outer_fn-emission.out": {
+      "SHA": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/outer_fn-product/component.c": {
+      "SHA": "8e31292dc062497abd6a88a7fa9cf0a4c6f2751d11b08fa6da98621dca241257",
+      "bytes": 48697
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/outer_fn-product/component.h": {
+      "SHA": "246364a170ff3443c5e89a15e033ecaf3e230ea657ee8a670b0e4582cf78c044",
+      "bytes": 804
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/outer_fn-product/provenance.json": {
+      "SHA": "d0423a7458d521e5ee683351d384d608269f7f63d402cf5afe92d27d2e033829",
+      "bytes": 6072
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/outer_fn-resource-direction-build.err": {
+      "SHA": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/outer_fn-resource-direction-build.out": {
+      "SHA": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/outer_fn-resource-direction-run.err": {
+      "SHA": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "src/prototype/c_backend/.evidence/epoch58-acc-closed-capture-20261005/outer_fn-resource-direction-run.out": {
+      "SHA": "5c790993e7833e11ac436301618fd3b77ece09e4d0b762e1bfc85c68ea8bba87",
+      "bytes": 21
+    },
+    "src/prototype/c_backend/acc_closed_capture/actual.aplink": {
+      "SHA": "4f11bdd193006d5a42b1bc1d490ec1e010dcd62ac3a2a8f53e0d1eeff75a48a2",
+      "bytes": 192
+    },
+    "src/prototype/c_backend/acc_closed_capture/build.mk": {
+      "SHA": "ed1ac1c507845dba7ea68b736cad67c790a8973a7a094aac192e5fcb60113497",
+      "bytes": 1394
+    },
+    "src/prototype/c_backend/acc_closed_capture/client.c": {
+      "SHA": "af352d6ed1776f225db27a202e2fe50c0f23be2781f81926db7f8d1cf2edde3c",
+      "bytes": 631
+    },
+    "src/prototype/c_backend/acc_closed_capture/compose.py": {
+      "SHA": "9a648a3e4bac2b8bd6a67b452d7a58656e17911e72305a1b23c4fd7b51987357",
+      "bytes": 4386
+    },
+    "src/prototype/c_backend/acc_closed_capture/emit.c": {
+      "SHA": "17f6d23b3b92719a9a455d1f862540ed9e4db97da6d957f65c5edd9ee9ab263b",
+      "bytes": 6435
+    },
+    "src/prototype/c_backend/acc_closed_capture/emit.h": {
+      "SHA": "8b85c8615132f546876160875a0c6f0f86ea0b17ac90955d855f338016c8d004",
+      "bytes": 498
+    },
+    "src/prototype/c_backend/acc_closed_capture/extra.p": {
+      "SHA": "69d66f894bc86d965fe4af346533abd3cdfcecaa342babd6e4646d7fbd75feb8",
+      "bytes": 561
+    },
+    "src/prototype/c_backend/acc_closed_capture/main.c": {
+      "SHA": "fc0d685e9efeff29a6c85147f016794a719419dd9aa8fb07ac628d4e82eb59dd",
+      "bytes": 7648
+    },
+    "src/prototype/c_backend/acc_closed_capture/pack.py": {
+      "SHA": "dadc08985f93dc6ad234378564a9d5c7281920cb66896cd60f8b7f5bfd9a2b0c",
+      "bytes": 3037
+    },
+    "src/prototype/c_backend/acc_closed_capture/plan.c": {
+      "SHA": "3d765d3d8e6f6c5903f5d8c0ae04596ca52ac0a975ccf0407dfdc60c359f3451",
+      "bytes": 2280
+    },
+    "src/prototype/c_backend/acc_closed_capture/resource_client.c": {
+      "SHA": "68ba6a6d1de204b6272f86d2866d7d66a610a4d6c27191d46790ae551079070a",
+      "bytes": 3038
+    },
+    "src/prototype/coordination/outbox/c-backend-c58-action-20261005.txt": {
+      "SHA": "5afb723350b88d623b42f5c8a51326e654a63b81ccbc5ba344212cf5a36419a3",
+      "bytes": 1905
+    }
+  },
+  "owner14_records": [
+    [
+      "native-O2-build",
+      2
+    ],
+    [
+      "native-O2-build-header-corrected",
+      0
+    ],
+    [
+      "descending_sort-emission",
+      0
+    ],
+    [
+      "outer_fn-emission",
+      0
+    ],
+    [
+      "descending_sort-client-build",
+      0
+    ],
+    [
+      "descending_sort-client-run",
+      -6
+    ],
+    [
+      "descending_sort-client-direction-build",
+      0
+    ],
+    [
+      "descending_sort-client-direction-run",
+      0
+    ],
+    [
+      "descending_sort-resource-direction-build",
+      0
+    ],
+    [
+      "descending_sort-resource-direction-run",
+      0
+    ],
+    [
+      "outer_fn-client-direction-build",
+      0
+    ],
+    [
+      "outer_fn-client-direction-run",
+      0
+    ],
+    [
+      "outer_fn-resource-direction-build",
+      0
+    ],
+    [
+      "outer_fn-resource-direction-run",
+      0
+    ]
+  ],
+  "owner_initial_build2_and_wrong_direction_client_minus6_retained": true,
+  "owner_corrected_build_and_two_body_emissions0": true,
+  "owner_two_direction_client_resource_build_run0_exact_outputs": true,
+  "seven_algorithm_bodies_full_creation_recipe_exact_C57": true,
+  "capture_source_operands": "descending right,left; original left,right",
+  "static_review": "Existing carrier/application reader uses bounded source projection. Closed classifier is ordinary pure-total List Nat to List Nat. Exact selected remaining lambda, comparator/type binder association to actual open QuickSort parameter required; captured comparator only known reference or two-bound-Nat argument permutation. Emits tiny gc_compare operand adapter, no alternative sorter. Headers declarative; no source/checker/producer/effect/schema authority.",
+  "Root_runtime_replay": false,
+  "C58_exact_READY_full_suite_publication_adoption": false,
+  "C57_frozen_archive_unchanged": true,
+  "Assessment": "Retain bounded private progress and original failures. Correct direction-aware clients are legitimate new closed-entry controls; full source/object/archive/SAN/refusal/resource/input-publication equivalence and immutable READY remain owner work. No current cross-owner blocker established, original owner continues independently.",
+  "accepted_Goal_owner_model_timer_cost_actions": false,
+  "delivery_not_consumption": true,
+  "Main_delivery": "Readonly progress evidence only; C58 implementation remains private.",
+  "raw_path": "src/prototype/coordination/verification/c58-progress-20261005",
+  "packed": {
+    "SHA": "44e6e53a9e6d1addd1008bd59a63d720fb427562e856fbe7fb64fcb45bdd8cac",
+    "members": 68
+  },
+  "raw_manifest_SHA": "5249b15a0c834984d006976132f740e789d62630a84306c7c9f6c0f74cb39569"
+}

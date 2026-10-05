@@ -1,7 +1,7 @@
 # Parallel Development: Inquiry Desk, Merge and Workers
 
 Date: 2026-10-03
-Status: C56 labeled Acc candidate LinkerScript prototype published/current native126+legacy120+query129 O2/full affected SAN67. R2 current review evidence delivered; implementation/header/general continuation/strict3/full SE/net remain open. Original Goals/timer unchanged.
+Status: C57 fixed Acc comparator prototype published/current native126+legacy120+query129 O2/full affected SAN85+67. R2/application remain private; strict3/header/general continuation/full SE/net unfinished. Original Goals/timer unchanged.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `fd45c42`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -17,15 +17,45 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | ID | Problem / owner | Related | Status |
 | --- | --- | --- | --- |
 | 1 | Inquiry desk -> `merge`: reporting vs coordination/integration | All lanes | Desk answers the user; only Merge integrates after verified handoff |
-| 2 | `c-backend`: downstream C design | #61; shared policy #47 | C56 exact15/task a99fbcbf/Root21/six O2-SAN67/prototype integrated; labeled candidate LinkerScript. General native/full Scope/manual storage/net remain |
+| 2 | `c-backend`: downstream C design | #61; shared policy #47 | C57 exact25/task 78652ca5/Root31/twelve O2-SAN85+67/prototype integrated; actual borrowed comparator. Caller contract/manual storage/general native/full Scope/net remain |
 | 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Approved current frame deletion accepted; original363 plus adopted4 verified separately. Actual matched peakRSS/time pending safe all-owner window; peripheral MEM10/spine/empty arrays parked |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
-| 5 | `job-evidence`: typed ownership/deletion/resume | SE1-SE5, AP0 | R2 exact37/runtime129/input671/Root34/current C55-61/C56-67 verified; review-only delivery. Strict3/header/general continuation/full SE/net remain |
+| 5 | `job-evidence`: typed ownership/deletion/resume | SE1-SE5, AP0 | R2 exact37/runtime129 review-only; C55-61/C56-67/C57-85+67 consumers verified. Application cold cut1 fails; strict3/header/general continuation/full SE/net remain |
 | 6 | `verification-audit`: independent read-mostly suite/debt inventory | #59 / PR #60, #51 | Bounded static inventory/pilot complete; measured cost deferred, full #59 remains open |
 | 7 | `test-suite`: implement coverage-preserving test reductions | #59 / PR #60 | Bounded Goal complete; exact7 taskbc16df9 pushed/remote verified, Root raw/assembly review complete, prototype Main36a27be integrated |
 | 8 | `issue-audit`: evidence-backed GitHub disposition | All open Issues/PRs | Bounded Goal complete; verified dispositions, task8bb5018/Mainb461ace; #61 retains C residuals |
 
 ### Current Delivery Status
+
+2026-10-05, [later C58 closed-comparator progress](../src/prototype/coordination/reviews/20261005-C58-closed-comparator-progress-review.json):
+ACTION5afb7233 has66 exact captured pins/owner14 records; initial missing-header
+build2 and descending product with old ascending-only client abort-6 retained.
+Corrected helper/body emissions and both direction-aware client/resource build/
+run0 hash-audited; unchanged seven algorithm bodies/full creation recipe, tiny
+source-derived known-comparator operand adapter inspected. Root static progress
+review only; full O2-SAN/product/refusal/publication READY remains original owner
+work. C58 implementation stays private and immutable C57 is unchanged. No new
+source/checker/schema/ABI/adoption/cost/Goal approval inferred.
+
+2026-10-05, [C57 current comparator review](../src/prototype/coordination/reviews/20261005-c57-current-Acc-comparator-review.json):
+exact25 task `78652ca5` follows C56a99fbcbf. Frozen raw2526/explicit1619 direct-inherited
+file references/content514/all25 prior archive members exact. Root31 terminal/reaped/
+uncensored serial commands: native126/accepted120/private query129, each O2/full
+affected SAN new85+parent67 with original outcomes; all60 product triplets and eight
+fresh emitted-body/creation receipt maps exact. Three original LinkerScript/IO19
+gates pass using exact C56 materialized inputs. Source ascending/descending matches;
+682 finite C permutation/capture/order observations are not independent source
+oracles. All target helpers/current parent emitters rebuilt; O2 pointers/Core reused.
+Ordinary source admission reads the quoted pure-total Nat/Nat/Bool parameter and
+binds its actual lambda. Synchronous borrowed descriptor passes through unchanged
+partition/Fold/Acc-down recursion;1053-line C54 prefix/full3168-byte recipe exact.
+Both labeled candidate profiles refuse4 in ordinary main/direct publication.
+Caller source-function interpretation/provider-success/code-context read lifetime,
+foreign effects/work limits, fixed body/role qualifiers/manual storage/full Scope/
+source equivalence/general native/full61/net remain. Owner original setup4/initial
+56-row executable-entry2 and Root metadata filename setup error are retained; no
+runtime failures or weakened expectations. R2/application implementation remains
+private and strict3 unwaived; original Goals/owners/model/timer/cost unchanged.
 
 2026-10-05, [later C57/application progress review](../src/prototype/coordination/reviews/20261005-C57-application-owner-dependency-review.json):
 33 evidence pins exact, no Root runtime replay. C57 borrowed Nat/Nat/Bool comparator
@@ -2056,6 +2086,8 @@ public resume failures are in the
 Accepted `src/evidence.*`, `src/iadt.*` and their tests retain unrelated edits.
 
 ### Assessment
+
+2026-10-05 agent decision: integrate only frozen C57 prototype after twelve current new85/parent67 O2-SAN phases and affected original gates. Borrowed callback contract/manual roles/full Scope/source equivalence/general native/net limits stay explicit; R2/application implementation, strict3/full SE/Goal criteria remain unfinished. Worker READY is evidence, not new human approval.
 
 2026-10-05 agent progress disposition: keep C57 comparator and application130 separate/private. Record cold-Program write failure as a Source-closure dependency within Job scope; route exact evidence without reviving Performance or granting a cost/evaluator/readback change. No accepted bug/general continuation/adoption claim.
 
