@@ -57,7 +57,7 @@ def compose(args):
 	image_before = digest(image)
 	driver_hash = digest(driver)
 	commands = []
-	package = runpy.run_path(str(pathlib.Path(__file__).resolve().parent.parent / "acc_frame/pack.py"))["package"]
+	package = runpy.run_path(str(pathlib.Path(__file__).resolve().parent / "recipe_pack.py"))["package"]
 	with tempfile.TemporaryDirectory(prefix=".acc-command-", dir=output.parent) as temporary:
 		stage = pathlib.Path(temporary)
 		bodies = stage / "bodies"
@@ -78,7 +78,7 @@ def compose(args):
 			"product": args.product, "commands": commands,
 			"generated_inputs": {p.name: digest(p) for p in sorted(bodies.iterdir())},
 			"outputs": {p.name: digest(p) for p in sorted(product.iterdir())},
-			"limits": ["manual role/action/storage/array interpretation; complete checked Scope unproved",
+			"limits": ["source-derived down/domain/result/direction recipe; manual role/storage/array interpretation; complete checked Scope unproved",
 				"Nat32/depth256/node65536/borrowed immutable lifetime/nonoverlap/transactional output",
 				"ordinary native Acc refusal remains; no producer/schema/checker/erasure/ABI extension"]}
 		(product / "product.json").write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n")
