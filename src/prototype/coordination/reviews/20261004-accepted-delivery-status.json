@@ -108,5 +108,9 @@
   "C53_task_head": "3b97c0feb59f19945ee000d0163b242334e4289e",
   "C54_task_head": "0a0c391917e771a8d5fcd00f325513aa5f077191",
   "latest_progress_review": "20261005-c55-product-action-progress-review.json",
-  "latest_progress_date_UTC": "2026-10-05T01:40:25.495902+00:00"
+  "latest_progress_date_UTC": "2026-10-05T01:40:25.495902+00:00",
+  "latest_scheduled_review": "20261005-timed-0144-worker-review.json",
+  "latest_scheduled_due_UTC": "2026-10-05T01:44:22.084Z",
+  "latest_scheduled_completed_UTC": "2026-10-05T01:51:04.819625+00:00",
+  "next_scheduled_due_UTC": "2026-10-05T07:44:22.084Z"
 }
