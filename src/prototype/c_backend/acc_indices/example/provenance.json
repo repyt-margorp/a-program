@@ -1,0 +1,139 @@
+{
+  "scope": "C53 fixed actual Acc/LT constructor index candidate; not general native lowering",
+  "manual_inputs": {
+    "acc_quicksort_mockup/mockup.h": "0fdaeb6687be5b51ce865caf1698619f99d16c1c0cffc3f38a80fca0967ed0aa",
+    "acc_quicksort_mockup/mockup.c": "762f264ccad935d32a5fd2ad41958bc9cbd6882c98b829b8dae0ccacb7041cfe",
+    "acc_actions/runtime.c": "386af9b1f04b714a32ca86668298e4e0f2c922a2e8850cc2d1a5dbcb9502c923",
+    "acc_capture/support.c": "f04a4095824c283e3f637688eace944600b079116e215122bee18e9ba2ad5e41"
+  },
+  "source_body_inputs": {
+    "actions.inc": "1688e9e3618e8c89edef8e5286180df715b67aaec7fa932e0b4525704c129180",
+    "accessibility.inc": "ccdd139cc3e9414a398fb12bb7073a652d91d47f9cb37f84c3319d86310f55b9",
+    "comparison.inc": "6b63a59d024eec5a46f7c436ed300ecab72283e7a5e10fc565e23ffef2ba69c4",
+    "partition.inc": "b8238b022d1613d4cd8dffd4692f68d0e6668bf8206f3324588765bc25c2de31",
+    "append.inc": "ffd37ec2ed3ff967b588757b430b3a83042b4bfd737414141a0d6dffffefa6ac",
+    "clause.inc": "cd1a7d70441222995b12ca2354ae6aeda80eaa2f99cd296cfeb5ef451405804c",
+    "measure.inc": "60d51b65f7cedf55ea25d5e44251695ffb7adc98b35445bf63e1547237755803"
+  },
+  "sections": [
+    {
+      "name": "preamble",
+      "extent": "target packaging",
+      "offset": 258,
+      "bytes": 43,
+      "sha256": "0e88cd9effed72f4613a1ca26ec90a7d6942f4527befec8b697dd77e2bad708f"
+    },
+    {
+      "name": "private representations",
+      "extent": "manual target layout",
+      "offset": 355,
+      "bytes": 1725,
+      "sha256": "16a135edab1458b3c6546b3926aae879d7f835d0c0485b1faa2743b716290268"
+    },
+    {
+      "name": "storage and Nat/LT primitives",
+      "extent": "manual target primitives; zero-down foreign refusal",
+      "offset": 2171,
+      "bytes": 4770,
+      "sha256": "fbe9eff034d2f709628cf5b81df25cbf8b8105d5ea8bcac44c1abb00ac96a15f"
+    },
+    {
+      "name": "scoped actions",
+      "extent": "source-derived maps/endpoints/frame/down/directions/LT constructor indices; finite manual target storage",
+      "offset": 7010,
+      "bytes": 20155,
+      "sha256": "33d114d6c49befe5d8d7f6e55b477f2f62626c0ef6bdeb9d9e8c57a17809c54b"
+    },
+    {
+      "name": "successor down and captures",
+      "extent": "actual source expression emission C43/C44",
+      "offset": 27244,
+      "bytes": 2301,
+      "sha256": "1688e9e3618e8c89edef8e5286180df715b67aaec7fa932e0b4525704c129180"
+    },
+    {
+      "name": "successor adapter",
+      "extent": "target composition",
+      "offset": 29591,
+      "bytes": 64,
+      "sha256": "0a46c210ed14b68498124240dae5a27aad4b4e1fa00d8cb26e9c7319d2722003"
+    },
+    {
+      "name": "Nat accessibility",
+      "extent": "actual source expression emission C39",
+      "offset": 29720,
+      "bytes": 865,
+      "sha256": "ccdd139cc3e9414a398fb12bb7073a652d91d47f9cb37f84c3319d86310f55b9"
+    },
+    {
+      "name": "successor adapter end",
+      "extent": "target composition",
+      "offset": 30635,
+      "bytes": 26,
+      "sha256": "cddf670472630d962290cbd9b5253a22f0132ac2e86cdf9bb9a57d6a890ccdb5"
+    },
+    {
+      "name": "comparison",
+      "extent": "actual source expression emission C41",
+      "offset": 30719,
+      "bytes": 1254,
+      "sha256": "6b63a59d024eec5a46f7c436ed300ecab72283e7a5e10fc565e23ffef2ba69c4"
+    },
+    {
+      "name": "partition",
+      "extent": "actual source expression emission C37",
+      "offset": 32030,
+      "bytes": 4162,
+      "sha256": "b8238b022d1613d4cd8dffd4692f68d0e6668bf8206f3324588765bc25c2de31"
+    },
+    {
+      "name": "append",
+      "extent": "actual source expression emission C38",
+      "offset": 36246,
+      "bytes": 2116,
+      "sha256": "ffd37ec2ed3ff967b588757b430b3a83042b4bfd737414141a0d6dffffefa6ac"
+    },
+    {
+      "name": "partition/append adapters",
+      "extent": "target composition",
+      "offset": 38416,
+      "bytes": 95,
+      "sha256": "d58a81f3a7d7db76f90fa1d6614c68ce6a629de611c1d821bb5110f41dc4147f"
+    },
+    {
+      "name": "Acc QuickSort callable Fold",
+      "extent": "actual source expression emission C36",
+      "offset": 38586,
+      "bytes": 3416,
+      "sha256": "cd1a7d70441222995b12ca2354ae6aeda80eaa2f99cd296cfeb5ef451405804c"
+    },
+    {
+      "name": "adapters end",
+      "extent": "target composition",
+      "offset": 42043,
+      "bytes": 34,
+      "sha256": "7d989dcb56f2e684bb94c5281c4ce7f225fc9a487b4cbd567940158714405ee3"
+    },
+    {
+      "name": "measure and outer QuickSort",
+      "extent": "actual source expression emission C40",
+      "offset": 42152,
+      "bytes": 2353,
+      "sha256": "60d51b65f7cedf55ea25d5e44251695ffb7adc98b35445bf63e1547237755803"
+    },
+    {
+      "name": "array boundary",
+      "extent": "manual target staging/copy-out/lifetime",
+      "offset": 44569,
+      "bytes": 1075,
+      "sha256": "6e1a4693af055a4ec9518beb244b09e7b6d971bb85529f484e6bb36f1bcb5e9e"
+    }
+  ],
+  "component.c": "b3cfdfe9bb7e61c1b1b98e4c5315044215e8fbce90ce3be594b371a7fc6df557",
+  "component.h": "246364a170ff3443c5e89a15e033ecaf3e230ea657ee8a670b0e4582cf78c044",
+  "transport_descriptor": "96dd3c3e016cdf2594d02b97a6d6f07e09a2e46561f4e0a7c32b69e2211ff173",
+  "target_runtime_input": "6ab83602214bd0c7fcf49c804761f7806d3f5fe22117cd16b92598f6748aca20",
+  "sealed_C45_component": "49d3a0797ba60fbf83d0dd53bef9262e219f194387c68f293419b0243d8619ee",
+  "sealed_C49_component": "53f01aa8932efcd57f9395183d77402fd6779cb29f49a04dc2260a5dfb87089d",
+  "sealed_C51_component": "1da176b52c9dabb6a53e244dd77fb4172221d46b13052e231e32d536cf834f3d"
+}
