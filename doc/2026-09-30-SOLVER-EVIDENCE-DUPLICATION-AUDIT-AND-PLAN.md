@@ -1,7 +1,7 @@
 # Solver and Evidence Duplication Audit
 
 Date: 2026-09-30
-Status: R1/query private; C53 chosen native126+legacy120 consumer O2/full affected SAN61 each verified/prototype published. R1 header/query current guard-link/broad/public/strict3/full SE/net remain open in this sole list.
+Status: R1/query private; C54 chosen native126+legacy120 constructor creation consumer O2/full affected SAN61 each verified/prototype published. Header/current query broad/public/strict3/full SE/net remain open in this sole list.
 Parent: [artifact plan, AP0](2026-09-28-ARTIFACT-SEMANTIC-PERSISTENCE-REFACTOR-PLAN.md#ap0-simplify-before-extending-persistence).
 This is the active prerequisite work list, not another artifact format proposal.
 
@@ -319,6 +319,14 @@ identical TSVs in O2 and ASan/UBSan builds, including repeated samples without
 additional fuel. No full acceptance suite was rerun for this audit-only change.
 
 ## Assessment
+
+2026-10-05, [C54 consumer qualification](../src/prototype/coordination/reviews/20261005-c54-current-constructor-creation-review.json)
+records Root8/four native126-legacy120 O2/full affected SAN61 gates on exact
+qualified C53 images/parent products. Source-selected immediate LT prior/result
+indices drive creation before allocation; borrowed whole graph/manual storage/
+roles/full source Scope remain open. This consumer epoch does not publish native
+R1/query implementation or qualify current query broad/public/strict3/full SE/net.
+Saved-image command connection is the next distinct bounded C obligation.
 
 2026-10-05, [C53 consumer qualification](../src/prototype/coordination/reviews/20261005-c53-current-constructor-index-review.json)
 records Root10/four native126-legacy120 O2/full affected SAN61 gates and fresh
