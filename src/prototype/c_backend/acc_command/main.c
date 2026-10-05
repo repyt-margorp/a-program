@@ -1,5 +1,6 @@
 #define _POSIX_C_SOURCE 200809L
-#include "../acc_frame/emit.h"
+#include "../acc_recipe/emit.h"
+#include "../source_observer/observe.h"
 #include "../acc_accessibility/emit.h"
 #include "../acc_comparison/emit.h"
 #include "../acc_partition/emit.h"
@@ -82,7 +83,7 @@ static int emit_body(size_t part, FILE *out, struct pg_graph *storage,
 			sources[10],sources[1],sources[11],sources[2]};
 		return pg_c_acc_measure_emit(out,storage,typing,&view,entries);
 	}
-	case 7: return pg_c_acc_frame_emit(out,typing,sources[0],reference,entries);
+	case 7: return pg_c_acc_recipe_emit(out,storage,typing,sources[0],reference,entries);
 	}
 	return -1;
 }
@@ -106,10 +107,10 @@ int main(int argc, char **argv)
 	for (size_t i=0; i<8; ++i) if (!(types[i]=select_subject(program,roots[0],type_names[i],budget,&status))) goto done;
 	for (size_t i=0; i<12; ++i) if (!(sources[i]=select_subject(program,roots[0],source_names[i],budget,&status))) goto done;
 	if (!(reference=select_subject(program,roots[0],"succ_access",budget,&status))) goto done;
-	size_t terms=program->graph.terms.count,objects=program->graph.objects.count,
-		proofs=program->typing.proofs.count,occurrences=program->typing.occurrences.count,
-		maps=program->typing.context_maps.count,contexts=program->typing.contexts.count;
-	struct pg_graph storage; if (pg_graph_init(&storage)) goto done;
+	struct pg_c_source_snapshot *snapshot=pg_c_source_snapshot_create(&program->graph,&program->typing);
+	if (!snapshot) goto done;
+	struct pg_graph storage;
+	if (pg_graph_init(&storage)) { pg_c_source_snapshot_destroy(snapshot); goto done; }
 	struct pg_c_indexed_entry entries[]={{.name="bool"},{.name="nat"},{.name="lt"},{.name="acc"},
 		{.name="sized"},{.name="measured"},{.name="partition"},{.name="list"}}; emitting=1;
 	for (size_t i=0; i<8; ++i) if (pg_c_indexed_view_read(&storage,types[i]->core,&entries[i].view)) { status=4; goto emitted; }
@@ -124,9 +125,8 @@ int main(int argc, char **argv)
 	}
 	status=0;
 emitted:
-	assert(program->graph.terms.count==terms && program->graph.objects.count==objects);
-	assert(program->typing.proofs.count==proofs && program->typing.occurrences.count==occurrences);
-	assert(program->typing.context_maps.count==maps && program->typing.contexts.count==contexts);
+	assert(pg_c_source_snapshot_unchanged(snapshot));
+	pg_c_source_snapshot_destroy(snapshot);
 	emitting=0; pg_graph_destroy(&storage);
 done:
 	for (size_t i=0; i<8; ++i) { if (status && (created&(1u<<i))) unlink(paths[i]); free(paths[i]); }

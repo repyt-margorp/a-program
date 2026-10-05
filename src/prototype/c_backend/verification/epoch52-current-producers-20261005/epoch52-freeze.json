@@ -1,0 +1,110 @@
+{
+  "Goal_complete": false,
+  "Main_integration": "pending Merge only",
+  "accepted_promotion": false,
+  "archive": "src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/epoch52-submitted-snapshot.tar",
+  "archive_sha256": "228335ddac506344b32bb982a53bd764a31692a5ce0651231c7277a3620d6887",
+  "branch": "parallel/c-backend-20261003",
+  "commit_message": "prototype: preserve native source owners in Acc products",
+  "delegated_parent": "bb5bd0a35623e81c219d1144dead6036f93391e2",
+  "epoch": 52,
+  "files": [
+    {
+      "mode": "0o664",
+      "path": "doc/2026-10-03-C-BACKEND-GOAL.md",
+      "sha256": "4bc054469f87ac00b3783d9aafcfac7e10df8184cfa1e9cb41685c4bc39628cc"
+    },
+    {
+      "mode": "0o664",
+      "path": "doc/2026-10-04-C-BACKEND-EPOCH52-HANDOFF.md",
+      "sha256": "06715c3ae59aa30c1f675db008a98e6b745591ece94476f93ae1f256910482c4"
+    },
+    {
+      "mode": "0o664",
+      "path": "doc/2026-10-04-C-BACKEND-NATIVE-OWNER-PLAN.md",
+      "sha256": "a38e59121a0b1f3201adfe15feeabcec9cf53f7bc6e48c1392663480ca56476a"
+    },
+    {
+      "mode": "0o664",
+      "path": "src/prototype/c_backend/acc_command/README.md",
+      "sha256": "b9c94472f4fd34030e4ec4f259edc5286d77bb3c09d84ae8bd2f1d84785136d0"
+    },
+    {
+      "mode": "0o664",
+      "path": "src/prototype/c_backend/acc_command/build.mk",
+      "sha256": "5bc6b988a77cbdf3d0132dd4cddc34b2878e9fe4c482deba2d2b0ee5c3723c8b"
+    },
+    {
+      "mode": "0o664",
+      "path": "src/prototype/c_backend/acc_command/check.py",
+      "sha256": "3cb27782dea79743f7dbdd04b20b83a53a1af38abb095345785e1351ab27095a"
+    },
+    {
+      "mode": "0o664",
+      "path": "src/prototype/c_backend/acc_command/compose.py",
+      "sha256": "4af589e5cebd156a7a4d7cf6a62489b722f3de6799759861c2ebd11bb9dd449c"
+    },
+    {
+      "mode": "0o664",
+      "path": "src/prototype/c_backend/acc_command/main.c",
+      "sha256": "61cca7d8017bfbd4c01795afd99b526dc8f66ea4865b3274637abd202241af6b"
+    },
+    {
+      "mode": "0o664",
+      "path": "src/prototype/c_backend/acc_command/recipe_pack.py",
+      "sha256": "76786409b837e59904f4bde565ba540f383f3d6984378aff84cc0b63bfb71a29"
+    },
+    {
+      "mode": "0o664",
+      "path": "src/prototype/c_backend/acc_recipe/build.mk",
+      "sha256": "a1fae79bc2000cd82ce0e31aa6abd92eacf9049d595bf49c861fd8ce6ed9cb04"
+    },
+    {
+      "mode": "0o664",
+      "path": "src/prototype/c_backend/acc_recipe/emit_test.c",
+      "sha256": "2f6090d2a424dd2510de0749f8ef9c49833ad87560bb2415ed5dd2d094d38ecb"
+    },
+    {
+      "mode": "0o664",
+      "path": "src/prototype/c_backend/source_observer/README.md",
+      "sha256": "910c741c34ebb5eb5c5c0ca926cd6076d01c3b93b3807f05e6efe995b357e731"
+    },
+    {
+      "mode": "0o664",
+      "path": "src/prototype/c_backend/source_observer/build.mk",
+      "sha256": "c90eea7e26a57620f638a04089e685a25a792bdd7ed20b71c8a96ee569211d07"
+    },
+    {
+      "mode": "0o664",
+      "path": "src/prototype/c_backend/source_observer/observe.c",
+      "sha256": "00a7151b58e4a8a0e9b0adf7a1ccaa5635f37f8b32a685e646dabf0b790052e2"
+    },
+    {
+      "mode": "0o664",
+      "path": "src/prototype/c_backend/source_observer/observe.h",
+      "sha256": "ec5d7f1c26fd7a09e90310e868c474dae5a277cbe9d23a52eb7a143061a483fe"
+    },
+    {
+      "mode": "0o664",
+      "path": "src/prototype/c_backend/source_observer/observe_test.c",
+      "sha256": "fb577e12cad38f15154602deaee9b3785df18f3ede289fbeebd1bfe855227a5e"
+    }
+  ],
+  "files_count": 16,
+  "final_inputs_sha256": "d016052d71ac2e95fd4f7ca0d98cfea4b62c4b8c409aed7e7861c7fb58ab4ae2",
+  "frozen_UTC": "2026-10-05T00:12:28.207251+00:00",
+  "general_native_Acc": false,
+  "handoff_sha256": "06715c3ae59aa30c1f675db008a98e6b745591ece94476f93ae1f256910482c4",
+  "independent_current_review": "pending Merge",
+  "input_count": 392,
+  "manifest": "src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/epoch52-files.sha256",
+  "manifest_sha256": "54283d0ab2ae584dbf1ce9c1229b1111d0f3d8509d7afba959a27d09a9045101",
+  "raw_file_count": 1233,
+  "raw_manifest": "src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/epoch52-runs.sha256",
+  "raw_manifest_sha256": "02f2de89e471c6a0adf8d3cefd1b6ca97ca5c9ce59f85cc80c80cb2d3b57a79e",
+  "shared_index_sha256": "848aae6bed8ddf19f70473244f94f8ca144b4bbe3ca7a427b2f44e2a5e842325",
+  "style_sha256": "d614c3c197134a3997985e34c801b530be971b1af0b40c845ed25fc6a2f5365f",
+  "task_publication": "pending delegated Merge",
+  "verification_sha256": "ae33c92fe0f4a6df1cd7293a672ea41b537027f06edfb27e7d3ee189ec3efa20",
+  "worker_HEAD": "cc3cba3495b81628e0a68ec8b45aee4f5447d188"
+}

@@ -1,0 +1,429 @@
+[
+  {
+    "label": "native-pointer-build",
+    "argv": [
+      "make",
+      "-j1",
+      "-f",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/native/tree/src/Makefile",
+      "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-native-pointer",
+      "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+      "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-native-pointer/pointer-check"
+    ],
+    "cwd": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/native/tree",
+    "environment": {
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/tmp",
+      "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+      "AR": "/usr/bin/ar"
+    },
+    "expected_exit": 0
+  },
+  {
+    "label": "native-fresh-image",
+    "argv": [
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-native-pointer/pointer-check",
+      "--legacy-intrinsic-dot",
+      "--imports",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/native/tree/tests/fixtures/sorted-proof-provider.p",
+      "--steps",
+      "5000000",
+      "--save-materialized",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/native-actual.a",
+      "src/prototype/c_backend/acc_actions/fixture.p"
+    ],
+    "cwd": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/native/tree",
+    "environment": {
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/tmp",
+      "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+      "AR": "/usr/bin/ar"
+    },
+    "expected_exit": 0
+  },
+  {
+    "label": "native-O2-acc_command-build",
+    "argv": [
+      "make",
+      "-j1",
+      "-f",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/native/tree/src/prototype/c_backend/acc_command/build.mk",
+      "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/native/tree",
+      "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-native-O2",
+      "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+      "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-native-O2/c-acc-image",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-native-O2/c-acc-image-fault"
+    ],
+    "cwd": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/native/tree",
+    "environment": {
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/tmp",
+      "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+      "AR": "/usr/bin/ar",
+      "CLIENT_CFLAGS": "-std=c11 -Wall -Wextra -Werror -O2"
+    },
+    "expected_exit": 0
+  },
+  {
+    "label": "native-O2-acc_recipe-build",
+    "argv": [
+      "make",
+      "-j1",
+      "-f",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/native/tree/src/prototype/c_backend/acc_recipe/build.mk",
+      "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/native/tree",
+      "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-native-O2",
+      "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+      "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-native-O2/c_acc_recipe_emit"
+    ],
+    "cwd": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/native/tree",
+    "environment": {
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/tmp",
+      "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+      "AR": "/usr/bin/ar",
+      "CLIENT_CFLAGS": "-std=c11 -Wall -Wextra -Werror -O2"
+    },
+    "expected_exit": 0
+  },
+  {
+    "label": "native-O2-source_observer-build",
+    "argv": [
+      "make",
+      "-j1",
+      "-f",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/native/tree/src/prototype/c_backend/source_observer/build.mk",
+      "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/native/tree",
+      "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-native-O2",
+      "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+      "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-native-O2/c_source_observer_test"
+    ],
+    "cwd": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/native/tree",
+    "environment": {
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/tmp",
+      "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+      "AR": "/usr/bin/ar",
+      "CLIENT_CFLAGS": "-std=c11 -Wall -Wextra -Werror -O2"
+    },
+    "expected_exit": 0
+  },
+  {
+    "label": "native-O2-gate",
+    "argv": [
+      "python3",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/native/tree/src/prototype/c_backend/acc_command/check.py",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-native-O2/c-acc-image",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-native-O2/c-acc-image-fault",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/native-actual.a",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-native-pointer/pointer-check",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/reused-Core-cases.c",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/native-O2-gate",
+      "--recipe-helper",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-native-O2/c_acc_recipe_emit",
+      "--observer-test",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-native-O2/c_source_observer_test",
+      "--native-owners"
+    ],
+    "cwd": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/native/tree",
+    "environment": {
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/tmp",
+      "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+      "AR": "/usr/bin/ar",
+      "CLIENT_CFLAGS": "-std=c11 -Wall -Wextra -Werror -O2"
+    },
+    "expected_exit": 0
+  },
+  {
+    "label": "native-SAN-acc_command-build",
+    "argv": [
+      "make",
+      "-j1",
+      "-f",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/native/tree/src/prototype/c_backend/acc_command/build.mk",
+      "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/native/tree",
+      "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-native-SAN",
+      "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+      "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-native-SAN/c-acc-image",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-native-SAN/c-acc-image-fault"
+    ],
+    "cwd": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/native/tree",
+    "environment": {
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/tmp",
+      "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+      "AR": "/usr/bin/ar",
+      "CLIENT_CFLAGS": "-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+      "ASAN_OPTIONS": "detect_leaks=1:halt_on_error=1",
+      "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+    },
+    "expected_exit": 0
+  },
+  {
+    "label": "native-SAN-acc_recipe-build",
+    "argv": [
+      "make",
+      "-j1",
+      "-f",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/native/tree/src/prototype/c_backend/acc_recipe/build.mk",
+      "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/native/tree",
+      "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-native-SAN",
+      "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+      "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-native-SAN/c_acc_recipe_emit"
+    ],
+    "cwd": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/native/tree",
+    "environment": {
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/tmp",
+      "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+      "AR": "/usr/bin/ar",
+      "CLIENT_CFLAGS": "-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+      "ASAN_OPTIONS": "detect_leaks=1:halt_on_error=1",
+      "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+    },
+    "expected_exit": 0
+  },
+  {
+    "label": "native-SAN-source_observer-build",
+    "argv": [
+      "make",
+      "-j1",
+      "-f",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/native/tree/src/prototype/c_backend/source_observer/build.mk",
+      "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/native/tree",
+      "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-native-SAN",
+      "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+      "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-native-SAN/c_source_observer_test"
+    ],
+    "cwd": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/native/tree",
+    "environment": {
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/tmp",
+      "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+      "AR": "/usr/bin/ar",
+      "CLIENT_CFLAGS": "-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+      "ASAN_OPTIONS": "detect_leaks=1:halt_on_error=1",
+      "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+    },
+    "expected_exit": 0
+  },
+  {
+    "label": "native-SAN-gate",
+    "argv": [
+      "python3",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/native/tree/src/prototype/c_backend/acc_command/check.py",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-native-SAN/c-acc-image",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-native-SAN/c-acc-image-fault",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/native-actual.a",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-native-pointer/pointer-check",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/reused-Core-cases.c",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/native-SAN-gate",
+      "--recipe-helper",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-native-SAN/c_acc_recipe_emit",
+      "--observer-test",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-native-SAN/c_source_observer_test",
+      "--native-owners"
+    ],
+    "cwd": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/native/tree",
+    "environment": {
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/tmp",
+      "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+      "AR": "/usr/bin/ar",
+      "CLIENT_CFLAGS": "-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+      "ASAN_OPTIONS": "detect_leaks=1:halt_on_error=1",
+      "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+    },
+    "expected_exit": 0
+  },
+  {
+    "label": "legacy-O2-acc_command-build",
+    "argv": [
+      "make",
+      "-j1",
+      "-f",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/legacy/tree/src/prototype/c_backend/acc_command/build.mk",
+      "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/legacy/tree",
+      "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-legacy-O2",
+      "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+      "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-legacy-O2/c-acc-image",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-legacy-O2/c-acc-image-fault"
+    ],
+    "cwd": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/legacy/tree",
+    "environment": {
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/tmp",
+      "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+      "AR": "/usr/bin/ar",
+      "CLIENT_CFLAGS": "-std=c11 -Wall -Wextra -Werror -O2"
+    },
+    "expected_exit": 0
+  },
+  {
+    "label": "legacy-O2-acc_recipe-build",
+    "argv": [
+      "make",
+      "-j1",
+      "-f",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/legacy/tree/src/prototype/c_backend/acc_recipe/build.mk",
+      "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/legacy/tree",
+      "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-legacy-O2",
+      "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+      "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-legacy-O2/c_acc_recipe_emit"
+    ],
+    "cwd": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/legacy/tree",
+    "environment": {
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/tmp",
+      "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+      "AR": "/usr/bin/ar",
+      "CLIENT_CFLAGS": "-std=c11 -Wall -Wextra -Werror -O2"
+    },
+    "expected_exit": 0
+  },
+  {
+    "label": "legacy-O2-source_observer-build",
+    "argv": [
+      "make",
+      "-j1",
+      "-f",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/legacy/tree/src/prototype/c_backend/source_observer/build.mk",
+      "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/legacy/tree",
+      "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-legacy-O2",
+      "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+      "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-legacy-O2/c_source_observer_test"
+    ],
+    "cwd": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/legacy/tree",
+    "environment": {
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/tmp",
+      "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+      "AR": "/usr/bin/ar",
+      "CLIENT_CFLAGS": "-std=c11 -Wall -Wextra -Werror -O2"
+    },
+    "expected_exit": 0
+  },
+  {
+    "label": "legacy-O2-gate",
+    "argv": [
+      "python3",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/legacy/tree/src/prototype/c_backend/acc_command/check.py",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-legacy-O2/c-acc-image",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-legacy-O2/c-acc-image-fault",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/legacy-actual.a",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/pointer-check",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/reused-Core-cases.c",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/legacy-O2-gate",
+      "--recipe-helper",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-legacy-O2/c_acc_recipe_emit",
+      "--observer-test",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-legacy-O2/c_source_observer_test"
+    ],
+    "cwd": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/legacy/tree",
+    "environment": {
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/tmp",
+      "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+      "AR": "/usr/bin/ar",
+      "CLIENT_CFLAGS": "-std=c11 -Wall -Wextra -Werror -O2"
+    },
+    "expected_exit": 0
+  },
+  {
+    "label": "legacy-SAN-acc_command-build",
+    "argv": [
+      "make",
+      "-j1",
+      "-f",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/legacy/tree/src/prototype/c_backend/acc_command/build.mk",
+      "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/legacy/tree",
+      "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-legacy-SAN",
+      "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+      "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-legacy-SAN/c-acc-image",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-legacy-SAN/c-acc-image-fault"
+    ],
+    "cwd": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/legacy/tree",
+    "environment": {
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/tmp",
+      "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+      "AR": "/usr/bin/ar",
+      "CLIENT_CFLAGS": "-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+      "ASAN_OPTIONS": "detect_leaks=1:halt_on_error=1",
+      "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+    },
+    "expected_exit": 0
+  },
+  {
+    "label": "legacy-SAN-acc_recipe-build",
+    "argv": [
+      "make",
+      "-j1",
+      "-f",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/legacy/tree/src/prototype/c_backend/acc_recipe/build.mk",
+      "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/legacy/tree",
+      "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-legacy-SAN",
+      "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+      "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-legacy-SAN/c_acc_recipe_emit"
+    ],
+    "cwd": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/legacy/tree",
+    "environment": {
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/tmp",
+      "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+      "AR": "/usr/bin/ar",
+      "CLIENT_CFLAGS": "-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+      "ASAN_OPTIONS": "detect_leaks=1:halt_on_error=1",
+      "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+    },
+    "expected_exit": 0
+  },
+  {
+    "label": "legacy-SAN-source_observer-build",
+    "argv": [
+      "make",
+      "-j1",
+      "-f",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/legacy/tree/src/prototype/c_backend/source_observer/build.mk",
+      "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/legacy/tree",
+      "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-legacy-SAN",
+      "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+      "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-legacy-SAN/c_source_observer_test"
+    ],
+    "cwd": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/legacy/tree",
+    "environment": {
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/tmp",
+      "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+      "AR": "/usr/bin/ar",
+      "CLIENT_CFLAGS": "-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+      "ASAN_OPTIONS": "detect_leaks=1:halt_on_error=1",
+      "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+    },
+    "expected_exit": 0
+  },
+  {
+    "label": "legacy-SAN-gate",
+    "argv": [
+      "python3",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/legacy/tree/src/prototype/c_backend/acc_command/check.py",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-legacy-SAN/c-acc-image",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-legacy-SAN/c-acc-image-fault",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/legacy-actual.a",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/pointer-check",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/reused-Core-cases.c",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/legacy-SAN-gate",
+      "--recipe-helper",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-legacy-SAN/c_acc_recipe_emit",
+      "--observer-test",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/build-legacy-SAN/c_source_observer_test"
+    ],
+    "cwd": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/legacy/tree",
+    "environment": {
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c52-current-producers/tmp",
+      "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+      "AR": "/usr/bin/ar",
+      "CLIENT_CFLAGS": "-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+      "ASAN_OPTIONS": "detect_leaks=1:halt_on_error=1",
+      "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+    },
+    "expected_exit": 0
+  }
+]

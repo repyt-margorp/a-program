@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/native-O2/pointer-check",
+    "--legacy-intrinsic-dot",
+    "--imports",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/native-r1-current-review/tree/tests/fixtures/sorted-proof-provider.p",
+    "--steps",
+    "5000000",
+    "--save-materialized",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/native-actual.a",
+    "src/prototype/c_backend/acc_actions/fixture.p"
+  ],
+  "exit": 0,
+  "time": "2026-10-04T23:51:38.190988+00:00"
+}

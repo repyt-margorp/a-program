@@ -1,0 +1,68 @@
+import datetime
+import hashlib
+import json
+import pathlib
+import subprocess
+import tarfile
+
+storage = pathlib.Path(__file__).resolve().parent
+clone = storage / 'c32-c40-ordered-isolated-git'
+worker = pathlib.Path('/home/repyt/workspace/a-program-workers/c-backend')
+evidence = worker / 'src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004'
+parent = 'bb5bd0a35623e81c219d1144dead6036f93391e2'
+branch = 'parallel/c-backend-20261003'
+sha = lambda content: hashlib.sha256(content).hexdigest()
+
+def git(*args, cwd=clone):
+    return subprocess.check_output(['git', '--no-optional-locks', *args], cwd=cwd).decode().strip()
+
+def worker_guard():
+    index = pathlib.Path(git('rev-parse', '--git-path', 'index', cwd=worker))
+    if not index.is_absolute():
+        index = worker / index
+    return {'HEAD': git('rev-parse', 'HEAD', cwd=worker), 'branch_ref': git('rev-parse', 'refs/heads/' + branch, cwd=worker), 'index_SHA': sha(index.read_bytes())}
+
+qualified = json.loads((storage / 'c52-current-producers/Root-results.json').read_text())
+assert qualified['complete'] and len(qualified['commands']) == 18 and qualified['all_commands_terminal_reaped'] and qualified['all_before_inputs_unchanged']
+assert all(row['expected_rows'] == 55 for row in qualified['phases'].values())
+before = worker_guard()
+assert before == json.loads((storage / 'c40-original-worker-Git-protection.json').read_text())
+assert git('rev-parse', 'HEAD') == parent
+assert git('branch', '--show-current') in ['', branch]
+assert not git('status', '--porcelain')
+assert git('ls-remote', 'origin', 'refs/heads/' + branch).split()[0] == parent
+static = json.loads((evidence / 'epoch52-freeze.json').read_text())
+assert parent == json.loads((storage / 'c51-task-publication-proof.json').read_text())['commit']
+assert static['delegated_parent'] == parent
+files = {row['path']: row['sha256'] for row in static['files']}
+assert len(files) == 16
+archive = evidence / 'epoch52-submitted-snapshot.tar'
+assert sha(archive.read_bytes()) == static['archive_sha256']
+with tarfile.open(archive) as package:
+    members = {m.name.removeprefix('./'): m for m in package.getmembers() if m.isfile()}
+    assert set(members) == set(files)
+    for name, digest in files.items():
+        assert '..' not in pathlib.PurePosixPath(name).parts and not name.startswith('/')
+        content = package.extractfile(members[name]).read()
+        assert sha(content) == digest, name
+        target = clone / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(content)
+        target.chmod(members[name].mode)
+subprocess.run(['git', 'add', '--', *files], cwd=clone, check=True)
+staged = git('diff', '--cached', '--name-only').splitlines()
+assert set(staged) == set(files)
+subprocess.run(['git', 'diff', '--cached', '--check'], cwd=clone, check=True)
+subprocess.run(['git', 'commit', '-m', static['commit_message']], cwd=clone, check=True, stdout=subprocess.PIPE)
+head = git('rev-parse', 'HEAD')
+assert git('rev-parse', 'HEAD^') == parent
+for name, digest in files.items():
+    content = subprocess.check_output(['git', 'show', head + ':' + name], cwd=clone)
+    assert sha(content) == digest
+subprocess.run(['git', 'push', 'origin', 'HEAD:refs/heads/' + branch], cwd=clone, check=True)
+remote = git('ls-remote', 'origin', 'refs/heads/' + branch).split()[0]
+assert remote == head
+assert worker_guard() == before
+proof = {'date_UTC': datetime.datetime.now(datetime.timezone.utc).isoformat(), 'epoch': 'C52', 'branch': branch, 'parent': parent, 'commit': head, 'remote_exact': remote, 'exact_snapshot_files': 16, 'all_committed_snapshot_blobs_exact': True, 'original_C_HEAD_ref_index_unchanged': True, 'original_C_guard': before, 'frozen_files': files, 'archive_SHA': static['archive_sha256'], 'manifest_SHA': static['manifest_sha256'], 'qualification': json.loads((storage / 'c52-current-producers/Root-results.json').read_text()), 'accepted_code_changes': False, 'Goal_or_owner_actions': False, 'cost_samples': 0}
+(storage / 'c52-task-publication-proof.json').write_text(json.dumps(proof, indent=2) + '\n')
+print(json.dumps({k:v for k,v in proof.items() if k not in ['frozen_files', 'qualification']}, indent=2))

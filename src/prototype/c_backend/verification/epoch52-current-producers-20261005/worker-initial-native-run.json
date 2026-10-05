@@ -1,0 +1,11 @@
+{
+  "argv": [
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/native-O2/c-acc-image",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/actual-materialized.a",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/initial-native-run",
+    "succ_access",
+    "5000000"
+  ],
+  "exit": 2,
+  "time": "2026-10-04T23:50:21.458790+00:00"
+}

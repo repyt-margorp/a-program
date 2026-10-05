@@ -1,0 +1,12 @@
+{
+  "argv": [
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch53-constructor-indices-20261005/O2/c_acc_index_emit",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/native-actual.a",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch53-constructor-indices-20261005/initial-transport.inc",
+    "succ_access"
+  ],
+  "exit": 0,
+  "start": "2026-10-05T00:22:17.181588+00:00",
+  "finish": "2026-10-05T00:22:17.231187+00:00",
+  "binary_sha256": "6a2b06027e94616c4d8e09e2da4169487eb87143077b06501dcd5642afe94dbe"
+}

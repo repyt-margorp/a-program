@@ -1,0 +1,51 @@
+{
+  "date_UTC": "2026-10-05T00:20:35.373367+00:00",
+  "c-backend": {
+    "pane": "%0",
+    "SHA": "9d147e789b7cc24286f6bc67e07b24f1d7cf0a9840b87cba62cb0e9deaad0a41",
+    "status_lines": []
+  },
+  "job-evidence": {
+    "pane": "%4",
+    "SHA": "14f49f2384e79b4bce06ea9f39e0f5b0c2a155e0647b675af1fe02c56ee312c6",
+    "status_lines": [
+      "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-progr\u2026 Pursuing goal (1d 10h 38m)    \u26a0 1 warning \u00b7 f2 to view"
+    ]
+  },
+  "performance": {
+    "pane": "%1",
+    "SHA": "9e45dcf1cee5b7fd2c308fbcbf05d8d36e18c8bed2aeb1c18ae0f28bdf78408a",
+    "status_lines": [
+      "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-prog\u2026 Goal stalled (/goal resume)    \u26a0 1 warning \u00b7 f2 to view"
+    ]
+  },
+  "verification-audit": {
+    "pane": "%10",
+    "SHA": "9fad3dc93a96f12557d844cad6fa871f47fba14ccd718f4632d5b0225434c65d",
+    "status_lines": [
+      "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/verification-audit \u00b7 Hand off static inventory              Goal achieved (50m)    \u26a0 1 warning \u00b7 f2 to view"
+    ]
+  },
+  "sort-library": {
+    "pane": "%11",
+    "SHA": "8e209cf3b41c094897fd0f1780e54f7e951fe51763ee344e4002aa60e6c5f73f",
+    "status_lines": [
+      "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/sort-library \u00b7 Start authorized sort worker                 Goal achieved (24m)    \u26a0 1 warning \u00b7 f2 to view"
+    ]
+  },
+  "test-suite": {
+    "pane": "%12",
+    "SHA": "45c5f5be0f5b1341a8700ff85d804cd6080b39652cb65c23c3bc9b654d69bef6",
+    "status_lines": [
+      "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/test-suite \u00b7 Simplify and deduplicate tests                 Goal achieved (37m)    \u26a0 1 warning \u00b7 f2 to view"
+    ]
+  },
+  "issue-audit": {
+    "pane": "%14",
+    "SHA": "13cbaff8a40ed4057ff38691f1422d3fb680494ce45218674e3157e276388f9c",
+    "status_lines": [
+      "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/issue-audit \u00b7 Record audit ownership receipt                Goal achieved (23m)    \u26a0 1 warning \u00b7 f2 to view"
+    ]
+  },
+  "watchers": "1585465 node\n1674731 node\n"
+}

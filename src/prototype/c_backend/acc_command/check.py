@@ -18,15 +18,21 @@ def main():
 	parser = argparse.ArgumentParser(description="Focused serial fixed-Acc command/product qualification.")
 	for name in ("driver", "fault_driver", "image", "pointer", "core_cases", "output"):
 		parser.add_argument(name, type=pathlib.Path)
+	parser.add_argument("--recipe-helper", type=pathlib.Path, required=True)
+	parser.add_argument("--observer-test", type=pathlib.Path, required=True)
+	parser.add_argument("--native-owners", action="store_true")
 	args = parser.parse_args()
 	here = pathlib.Path(__file__).resolve().parent
 	out = args.output.absolute()
 	out.mkdir()
 	rows = []
 	inputs = [args.driver, args.fault_driver, args.image, args.pointer, args.core_cases,
-		here / "compose.py", here / "check.py", here / "main.c", here / "fault.c", here / "build.mk",
+		args.recipe_helper, args.observer_test,
+		here / "compose.py", here / "recipe_pack.py", here / "check.py", here / "main.c", here / "fault.c", here / "build.mk",
 		here.parent / "acc_products/client.c", here.parent / "acc_products/resource_client.c",
-		here.parent / "acc_frame/map_client.c"]
+		here.parent / "acc_recipe/map_client.c",
+		here.parent / "source_observer/observe.c", here.parent / "source_observer/observe.h",
+		here.parent / "acc_recipe/emit.c", here.parent / "acc_recipe/runtime.c", here.parent / "acc_recipe/pack.py"]
 	before = {str(p.resolve()): digest(p) for p in inputs}
 	cc = os.environ.get("CC", "cc")
 	flags = shlex.split(os.environ.get("CLIENT_CFLAGS", "-O2"))
@@ -58,6 +64,20 @@ def main():
 		assert not list(out.glob(".acc-command-*"))
 
 	try:
+		run("source_observer", 0, [args.observer_test, *(["--native"] if args.native_owners else [])])
+		for label, expected, selection, options in (
+			("recipe", 0, "succ_access", []), ("recipe_alias", 0, "exact_successor", []),
+			("recipe_changed", 4, "changed_successor", []),
+			("recipe_prior", 4, "changed_successor", ["prior"]),
+			("recipe_wrong_family", 4, "succ_access", ["wrong_family"]),
+			("recipe_wrong_acc", 4, "succ_access", ["wrong_acc"]),
+			("recipe_wrong_lt", 4, "succ_access", ["wrong_lt"]),
+			("recipe_wrong_domain", 4, "succ_access", ["wrong_domain"]),
+			("recipe_wrong_relation", 4, "succ_access", ["wrong_relation"]),
+			("recipe_missing_parameters", 4, "succ_access", ["missing_parameters"])):
+			run(label, expected, [args.recipe_helper, args.image, out / (label + ".inc"), selection, *options])
+		assert (out / "recipe.inc").read_bytes() == (out / "recipe_alias.inc").read_bytes()
+		assert digest(out / "recipe.inc") == "591fa73f5abcd1b5257e7ee3c271672452fa63c93c9b888aa9d1063445c8e6d0"
 		run("source_reference", 0, [args.pointer, "--load", "--steps", "5000000", "--run", "reference", args.image])
 		# This is an adaptation of retained Core-generated cases, not a new source oracle.
 		core = args.core_cases.read_text().replace('"mockup.h"', '"component.h"').replace("qs_mockup_sort", "gs_sort")
@@ -75,14 +95,14 @@ def main():
 				run(product + "_" + label, 0, [binary])
 			assert (out / (product + "_client.out")).read_bytes() == (out / "source_reference.out").read_bytes()
 			for name in ("component.c", "component.h", "provenance.json"):
-				assert (directory / name).read_bytes() == (here.parent / "acc_frame/example" / name).read_bytes()
+				assert (directory / name).read_bytes() == (here.parent / "acc_recipe/example" / name).read_bytes()
 			receipt = json.loads((directory / "product.json").read_text())
 			assert receipt["artifact_sha256"] == digest(args.image)
 			assert receipt["driver_sha256"] == digest(args.driver)
 			assert len(receipt["generated_inputs"]) == 8 and all(c["exit"] == 0 for c in receipt["commands"])
 			assert all(digest(directory / name) == value for name, value in receipt["outputs"].items())
 		directory = out / "source"
-		run("map_build", 0, [*compile_prefix, "-I" + str(directory), here.parent / "acc_frame/map_client.c", "-o", out / "map_client"])
+		run("map_build", 0, [*compile_prefix, "-I" + str(directory), here.parent / "acc_recipe/map_client.c", "-o", out / "map_client"])
 		run("map_client", 0, [out / "map_client"])
 		run("public_symbols", 0, ["nm", "-g", "--defined-only", out / "object/component.o"])
 		symbols = (out / "public_symbols.out").read_text().splitlines()
@@ -136,9 +156,20 @@ def main():
 		assert (staged / "component.c").read_bytes() == b"new code\n"
 		assert not list((out / "empty-prior").iterdir())
 		assert not list(out.glob(".acc-command-*"))
+		bad_recipe = out / "unqualified.inc"
+		bad_recipe.write_bytes((out / "recipe.inc").read_bytes() + b"\n")
+		package = runpy.run_path(str(here / "recipe_pack.py"))["package"]
+		try:
+			package(out / "alias" / "unused", bad_recipe, out / "unqualified-product")
+		except ValueError as error:
+			assert str(error) == "unqualified actual Acc down/action recipe"
+		else:
+			raise AssertionError("unqualified recipe accepted")
+		assert not (out / "unqualified-product").exists()
 		assert before == {str(p.resolve()): digest(p) for p in inputs}
 		(out / "verification.json").write_text(json.dumps({"commands": len(rows), "all_expected": True,
-			"input_hashes": before, "flags": flags, "late_no_replace": True, "input_bytes_unchanged": True,
+			"input_hashes": before, "flags": flags, "late_no_replace": True,
+			"unqualified_recipe_refused_before_body_reads": True, "input_bytes_unchanged": True,
 			"scope": "fixed actual Acc saved-image command, finite focused controls; no general native/adoption/cost"}, indent=2) + "\n")
 		return 0
 	finally:

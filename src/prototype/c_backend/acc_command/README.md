@@ -1,18 +1,21 @@
 # Actual Acc saved-image C product command
 
 This command regenerates the seven actual-source Acc QuickSort bodies and the
-source map/endpoint/frame descriptor from an admitted materialized `.a` image.
+source map/endpoint/frame/down-action recipe from an admitted materialized `.a` image.
 It packages the reviewed fixed candidate as ordinary C source, an object, or an
 archive. The algorithm retains actual Acc/down recursion, indices, partition,
 append, comparison and captured parameters; it does not substitute a C sorter.
-The [readable reviewed module](../acc_frame/example/component.c) and
-[declarative header](../acc_frame/example/component.h) are exactly the command's
+The [readable reviewed module](../acc_recipe/example/component.c) and
+[declarative header](../acc_recipe/example/component.h) are exactly the command's
 generated C/header. The [actual admitted fixture](../acc_actions/fixture.p) names
 the source selections; source algorithm and private target representation remain
 distinct in the section provenance.
 
 It is a bounded candidate command. The unchanged packer requires the qualified
-body/table bytes and retains manual target role/action/storage interpretation.
+body/recipe bytes and retains manual target role/storage/closure interpretation.
+Actual source constructor fields, down-domain/result indices and field directions
+drive the bounded action recipe. The command builds an intermediate parent from
+its own fresh bodies; historical output modules are byte qualifiers only.
 It does not change Native LinkerScript admission, implement arbitrary artifact
 lowering, invent source erasure, or prove complete checked Scope/source semantics.
 The ordinary native Acc refusal remains separate.
@@ -30,6 +33,12 @@ Use the qualified actual materialized image, not an inputs-only image. The drive
 selects the fixture's existing types and source exports through public admission,
 using a separate five-million-step budget per selector. It loads the image once;
 source graph/typing owners and source advancement stay inert during emission.
+The [source observer](../source_observer/README.md) checks owner membership and
+native admission payloads as well as counts, retaining the legacy count guard
+without requiring the removed receipt store. Native and legacy image formats are
+qualified separately; no compatibility claim is made for an old image rejected
+by a newer producer. The unchanged fixture uses `--legacy-intrinsic-dot` when
+building a fresh image because its provider still contains that syntax.
 Public admission itself may advance. The staging directory supplies anonymous
 disk temporary streams; set compiler `TMPDIR` to owned disk storage as needed.
 
@@ -62,7 +71,9 @@ lifetimes, nonoverlap and transactional output/status1–6. Finite sanitizer run
 do not prove arbitrary pointer safety or source equivalence.
 
 Focused qualification uses `check.py DRIVER FAULT_DRIVER IMAGE POINTER
-CORE_CASES NEW_OUTPUT`. Build `c-acc-image-fault` only for these output-open,
+CORE_CASES NEW_OUTPUT --recipe-helper HELPER --observer-test OBSERVER`.
+Use `--native-owners` for the native admission-only owner-payload control.
+Build `c-acc-image-fault` only for these output-open,
 copy-write, close and temporary-stream injection controls. `CLIENT_CFLAGS` selects
 O2 or whole-generated-source/client sanitizer compilation; matching instrumented
 drivers are built separately. Core cases are retained producer-oracle outputs,

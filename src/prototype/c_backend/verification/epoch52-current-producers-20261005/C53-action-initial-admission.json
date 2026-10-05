@@ -1,0 +1,19 @@
+{
+  "argv": [
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/native-O2/pointer-check",
+    "--legacy-intrinsic-dot",
+    "--imports",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/native-r1-current-review/tree/tests/fixtures/sorted-proof-provider.p",
+    "--steps",
+    "5000000",
+    "--save-materialized",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch53-constructor-indices-20261005/indices.a",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch53-constructor-indices-20261005/combined-fixture.p"
+  ],
+  "exit": 0,
+  "time": "2026-10-05T00:26:34.399637+00:00",
+  "base_fixture_sha256": "b56903d53891ce567c9e037e11929425956fcbd8fe3161d28ea5a9ceb0f95364",
+  "extra_fixture_sha256": "629f622a08e90b9cebdba1f53467ff0dc13c2bac48ffecda94cc7d8fbbfb1a95",
+  "combined_sha256": "0a809f6fe57494ad6426f3f54dc35a9bc40e8857fb357a3b98f66b05fdf0dc82",
+  "transform": "base bytes + newline + extra after its already imported Nat line"
+}

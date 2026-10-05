@@ -1,0 +1,257 @@
+[
+  {
+    "label": "native-O2-source_observer-final-build",
+    "argv": [
+      "make",
+      "-j1",
+      "-f",
+      "src/prototype/c_backend/source_observer/build.mk",
+      "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/native-r1-current-review/tree",
+      "BUILD=/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/native-O2",
+      "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+      "CFLAGS=-std=c11 -g -Wall -Wextra -Werror -O2",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/native-O2/c_source_observer_test"
+    ],
+    "exit": 0,
+    "start": "2026-10-05T00:04:25.937197+00:00",
+    "finish": "2026-10-05T00:04:31.642777+00:00",
+    "environment": {
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/tmp",
+      "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+      "CLIENT_CFLAGS": "-O2",
+      "ASAN_OPTIONS": "detect_leaks=1:abort_on_error=1",
+      "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+    }
+  },
+  {
+    "label": "native-candidate-O2-terminal",
+    "argv": [
+      "python3",
+      "src/prototype/c_backend/acc_command/check.py",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/native-O2/c-acc-image",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/native-O2/c-acc-image-fault",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/native-actual.a",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/native-O2/pointer-check",
+      "src/prototype/c_backend/.evidence/epoch44-acc-capture-20261004/candidate-O2/oracle.c",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/native-candidate-O2-terminal",
+      "--recipe-helper",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/native-O2/c_acc_recipe_emit",
+      "--observer-test",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/native-O2/c_source_observer_test",
+      "--native-owners"
+    ],
+    "exit": 0,
+    "start": "2026-10-05T00:04:31.642947+00:00",
+    "finish": "2026-10-05T00:04:36.576286+00:00",
+    "environment": {
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/tmp",
+      "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+      "CLIENT_CFLAGS": "-O2",
+      "ASAN_OPTIONS": "detect_leaks=1:abort_on_error=1",
+      "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+    }
+  },
+  {
+    "label": "native-SAN-source_observer-final-build",
+    "argv": [
+      "make",
+      "-j1",
+      "-f",
+      "src/prototype/c_backend/source_observer/build.mk",
+      "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/native-r1-current-review/tree",
+      "BUILD=/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/native-SAN",
+      "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+      "CFLAGS=-std=c11 -g -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/native-SAN/c_source_observer_test"
+    ],
+    "exit": 0,
+    "start": "2026-10-05T00:04:36.576925+00:00",
+    "finish": "2026-10-05T00:04:44.818634+00:00",
+    "environment": {
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/tmp",
+      "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+      "CLIENT_CFLAGS": "-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+      "ASAN_OPTIONS": "detect_leaks=1:abort_on_error=1",
+      "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+    }
+  },
+  {
+    "label": "native-candidate-SAN-terminal",
+    "argv": [
+      "python3",
+      "src/prototype/c_backend/acc_command/check.py",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/native-SAN/c-acc-image",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/native-SAN/c-acc-image-fault",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/native-actual.a",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/native-O2/pointer-check",
+      "src/prototype/c_backend/.evidence/epoch44-acc-capture-20261004/candidate-O2/oracle.c",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/native-candidate-SAN-terminal",
+      "--recipe-helper",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/native-SAN/c_acc_recipe_emit",
+      "--observer-test",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/native-SAN/c_source_observer_test",
+      "--native-owners"
+    ],
+    "exit": 0,
+    "start": "2026-10-05T00:04:44.818842+00:00",
+    "finish": "2026-10-05T00:05:24.052181+00:00",
+    "environment": {
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/tmp",
+      "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+      "CLIENT_CFLAGS": "-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+      "ASAN_OPTIONS": "detect_leaks=1:abort_on_error=1",
+      "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+    }
+  },
+  {
+    "label": "legacy-O2-source_observer-final-build",
+    "argv": [
+      "make",
+      "-j1",
+      "-f",
+      "src/prototype/c_backend/source_observer/build.mk",
+      "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/tree",
+      "BUILD=/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/legacy-O2",
+      "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+      "CFLAGS=-std=c11 -g -Wall -Wextra -Werror -O2",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/legacy-O2/c_source_observer_test"
+    ],
+    "exit": 0,
+    "start": "2026-10-05T00:05:24.052512+00:00",
+    "finish": "2026-10-05T00:05:29.681921+00:00",
+    "environment": {
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/tmp",
+      "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+      "CLIENT_CFLAGS": "-O2",
+      "ASAN_OPTIONS": "detect_leaks=1:abort_on_error=1",
+      "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+    }
+  },
+  {
+    "label": "legacy-candidate-O2-terminal",
+    "argv": [
+      "python3",
+      "src/prototype/c_backend/acc_command/check.py",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/legacy-O2/c-acc-image",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/legacy-O2/c-acc-image-fault",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/actual-materialized.a",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/pointer-check",
+      "src/prototype/c_backend/.evidence/epoch44-acc-capture-20261004/candidate-O2/oracle.c",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/legacy-candidate-O2-terminal",
+      "--recipe-helper",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/legacy-O2/c_acc_recipe_emit",
+      "--observer-test",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/legacy-O2/c_source_observer_test"
+    ],
+    "exit": 0,
+    "start": "2026-10-05T00:05:29.682219+00:00",
+    "finish": "2026-10-05T00:05:34.641319+00:00",
+    "environment": {
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/tmp",
+      "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+      "CLIENT_CFLAGS": "-O2",
+      "ASAN_OPTIONS": "detect_leaks=1:abort_on_error=1",
+      "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+    }
+  },
+  {
+    "label": "legacy-SAN-acc_command-final-build",
+    "argv": [
+      "make",
+      "-j1",
+      "-f",
+      "src/prototype/c_backend/acc_command/build.mk",
+      "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/tree",
+      "BUILD=/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/legacy-SAN",
+      "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+      "CFLAGS=-std=c11 -g -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/legacy-SAN/c-acc-image",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/legacy-SAN/c-acc-image-fault"
+    ],
+    "exit": 0,
+    "start": "2026-10-05T00:05:34.641888+00:00",
+    "finish": "2026-10-05T00:06:14.849718+00:00",
+    "environment": {
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/tmp",
+      "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+      "CLIENT_CFLAGS": "-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+      "ASAN_OPTIONS": "detect_leaks=1:abort_on_error=1",
+      "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+    }
+  },
+  {
+    "label": "legacy-SAN-acc_recipe-final-build",
+    "argv": [
+      "make",
+      "-j1",
+      "-f",
+      "src/prototype/c_backend/acc_recipe/build.mk",
+      "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/tree",
+      "BUILD=/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/legacy-SAN",
+      "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+      "CFLAGS=-std=c11 -g -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/legacy-SAN/c_acc_recipe_emit"
+    ],
+    "exit": 0,
+    "start": "2026-10-05T00:06:14.850105+00:00",
+    "finish": "2026-10-05T00:06:33.070621+00:00",
+    "environment": {
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/tmp",
+      "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+      "CLIENT_CFLAGS": "-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+      "ASAN_OPTIONS": "detect_leaks=1:abort_on_error=1",
+      "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+    }
+  },
+  {
+    "label": "legacy-SAN-source_observer-final-build",
+    "argv": [
+      "make",
+      "-j1",
+      "-f",
+      "src/prototype/c_backend/source_observer/build.mk",
+      "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/tree",
+      "BUILD=/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/legacy-SAN",
+      "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+      "CFLAGS=-std=c11 -g -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/legacy-SAN/c_source_observer_test"
+    ],
+    "exit": 0,
+    "start": "2026-10-05T00:06:33.070833+00:00",
+    "finish": "2026-10-05T00:06:41.193198+00:00",
+    "environment": {
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/tmp",
+      "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+      "CLIENT_CFLAGS": "-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+      "ASAN_OPTIONS": "detect_leaks=1:abort_on_error=1",
+      "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+    }
+  },
+  {
+    "label": "legacy-candidate-SAN-terminal",
+    "argv": [
+      "python3",
+      "src/prototype/c_backend/acc_command/check.py",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/legacy-SAN/c-acc-image",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/legacy-SAN/c-acc-image-fault",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/actual-materialized.a",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/pointer-check",
+      "src/prototype/c_backend/.evidence/epoch44-acc-capture-20261004/candidate-O2/oracle.c",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/legacy-candidate-SAN-terminal",
+      "--recipe-helper",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/legacy-SAN/c_acc_recipe_emit",
+      "--observer-test",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/legacy-SAN/c_source_observer_test"
+    ],
+    "exit": 0,
+    "start": "2026-10-05T00:06:41.193554+00:00",
+    "finish": "2026-10-05T00:07:20.502158+00:00",
+    "environment": {
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/tmp",
+      "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+      "CLIENT_CFLAGS": "-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+      "ASAN_OPTIONS": "detect_leaks=1:abort_on_error=1",
+      "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+    }
+  }
+]

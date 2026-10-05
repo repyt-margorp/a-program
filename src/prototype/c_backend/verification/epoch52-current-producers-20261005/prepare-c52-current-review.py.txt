@@ -1,0 +1,74 @@
+import collections,datetime,hashlib,json,pathlib,re,shutil,tarfile
+s=pathlib.Path(__file__).resolve().parent;w=pathlib.Path('/home/repyt/workspace/a-program-workers/c-backend');e=w/'src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004';q=s/'c52-current-producers';sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+def pins(p):
+ rows=[l.split('  ',1) for l in p.read_text().splitlines()];v={n:d for d,n in rows};assert len(rows)==len(v);return v
+notice=w/'src/prototype/coordination/outbox/c-backend-c52-ready-20261004.txt';assert sha(notice)=='8f4bc754947c9634dfa4f245000e2614028ad8d9a6d281b1eb44f38748b2ef7c'
+meta={'epoch52-files.sha256':'54283d0ab2ae584dbf1ce9c1229b1111d0f3d8509d7afba959a27d09a9045101','epoch52-submitted-snapshot.tar':'228335ddac506344b32bb982a53bd764a31692a5ce0651231c7277a3620d6887','epoch52-freeze.json':'79df493fc59104ac119059b0423ab4d96497dec9c7c83563feef3e87f8c7b681','verification.json':'ae33c92fe0f4a6df1cd7293a672ea41b537027f06edfb27e7d3ee189ec3efa20','epoch52-runs.sha256':'02f2de89e471c6a0adf8d3cefd1b6ca97ca5c9ce59f85cc80c80cb2d3b57a79e','retained-input-pins.json':'d016052d71ac2e95fd4f7ca0d98cfea4b62c4b8c409aed7e7861c7fb58ab4ae2','style.json':'d614c3c197134a3997985e34c801b530be971b1af0b40c845ed25fc6a2f5365f'}
+for n,d in meta.items():assert sha(e/n)==d,n
+freeze=json.loads((e/'epoch52-freeze.json').read_text());files={r['path']:r['sha256'] for r in freeze['files']};assert len(files)==16 and files==pins(e/'epoch52-files.sha256');assert freeze['delegated_parent']=='bb5bd0a35623e81c219d1144dead6036f93391e2'
+assert not q.exists();(q/'frozen').mkdir(parents=True)
+with tarfile.open(e/'epoch52-submitted-snapshot.tar') as package:
+ members={r.name.removeprefix('./'):r for r in package.getmembers() if r.isfile()};assert set(members)==set(files)
+ for n,d in files.items():
+  assert not n.startswith('/') and '..' not in pathlib.PurePosixPath(n).parts
+  data=package.extractfile(members[n]).read();assert hashlib.sha256(data).hexdigest()==d;target=q/'frozen'/n;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(data);target.chmod(members[n].mode)
+raw=pins(e/'epoch52-runs.sha256');assert len(raw)==1233
+for n,d in raw.items():assert sha(w/n)==d,n
+inputs=json.loads((e/'retained-input-pins.json').read_text());assert len(inputs)==392
+for n,r in inputs.items():assert sha(w/r['copy'])==r['sha256'],n
+copies=json.loads((e/'all-retained-input-copies.json').read_text());assert len(copies)==291
+for n,d in copies.items():assert sha(w/n)==d,n
+older={}
+for r in json.loads((e/'old-snapshots.json').read_text())['archives']:
+ archive=w/r['archive'];assert sha(archive)==r['archive_sha256'];manifest=archive.with_name('epoch'+str(r['epoch'])+'-files.sha256');assert sha(manifest)==r['manifest_sha256'];pp=pins(manifest)
+ with tarfile.open(archive) as package:
+  mm={x.name.removeprefix('./'):x for x in package.getmembers() if x.isfile()};assert set(mm)==set(pp)
+  for n,d in pp.items():assert hashlib.sha256(package.extractfile(mm[n]).read()).hexdigest()==d
+ older[str(r['epoch'])]=r['archive_sha256']
+assert len(older)==20
+for name in ['legacy','native']:
+ tree=q/name/'tree';shutil.copytree(s/('c51-current-accepted-fc/tree' if name=='legacy' else 'native-r1-current-review/tree'),tree)
+ if name=='native':
+  for subdir in ['c_backend','artifact_persistence']:shutil.copytree(s/'c51-current-accepted-fc/tree/src/prototype'/subdir,tree/'src/prototype'/subdir,dirs_exist_ok=True)
+ for n,d in files.items():
+  target=tree/n;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(q/'frozen'/n,target);assert sha(target)==d
+ if name=='legacy':
+  manifest=s/'c51-current-accepted-fc/runtime-source.sha256';assert sha(manifest)=='c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907';image=s/'c51-current-accepted-fc/actual-materialized.a';shutil.copy2(image,q/'legacy-actual.a')
+ else:
+  manifest=s/'native-r1-current-review/frozen/candidate-code126.sha256';assert sha(manifest)=='441cbd699ca87b505564938c81e68cf17fc3de03581af903bfc02636544c2244'
+ shutil.copy2(manifest,q/(name+'-runtime-source.sha256'))
+ for n,d in pins(manifest).items():assert sha(tree/n)==d,n
+ for n,r in inputs.items():
+  original=pathlib.Path(n)
+  if original.is_relative_to(w/'src/prototype/c_backend') and not original.is_relative_to(w/'src/prototype/c_backend/.evidence'):
+   rel=original.relative_to(w);assert sha(tree/rel)==r['sha256'],(name,rel)
+shutil.copy2(e/'native-actual.a',q/'owner-native-actual.a');assert sha(q/'owner-native-actual.a')=='f1e98ff72920899cf30cbfe0a3cc3e44175fc04ea188b1474d76bdaaa0e4a1f8'
+shutil.copy2(s/'c51-current-accepted-fc/reused-Core-cases.c',q/'reused-Core-cases.c');assert sha(q/'reused-Core-cases.c')=='b6d5fd77f6f83805180138511cdf8104231648db725324e12061df792a99378a'
+example=q/'legacy/tree/src/prototype/c_backend/acc_recipe/example';products={}
+for producer in ['native','legacy']:
+ for phase in ['O2','SAN']:
+  name=producer+'-candidate-'+phase+'-terminal';gate=e/name;rows=json.loads((gate/'commands.json').read_text());assert len(rows)==55 and all(r['exit']==r['expected'] for r in rows);assert dict(collections.Counter(str(r['exit']) for r in rows))=={'0':29,'1':2,'2':12,'3':1,'4':11}
+  for r in rows:
+   assert r['start']<r['finish'];assert sha(gate/(r['label']+'.out'))==r['stdout_sha256'] and sha(gate/(r['label']+'.err'))==r['stderr_sha256']
+  for n,d in json.loads((gate/'input-hashes.json').read_text()).items():assert n in inputs and inputs[n]['sha256']==d and sha(w/inputs[n]['copy'])==d
+  for mode in ['source','object','archive','alias']:
+   for n in ['component.c','component.h','provenance.json']:assert (gate/mode/n).read_bytes()==(example/n).read_bytes()
+   receipt=json.loads((gate/mode/'product.json').read_text());assert len(receipt['generated_inputs'])==8 and all(r['exit']==0 for r in receipt['commands'])
+   old=json.loads((example/'provenance.json').read_text())['source_body_inputs']
+   for n,d in receipt['generated_inputs'].items():assert d==('591fa73f5abcd1b5257e7ee3c271672452fa63c93c9b888aa9d1063445c8e6d0' if n=='transport.inc' else old[n])
+   for n,d in receipt['outputs'].items():assert sha(gate/mode/n)==d
+  products[name]={'rows':55,'commands_SHA':sha(gate/'commands.json'),'input_hashes_SHA':sha(gate/'input-hashes.json'),'owner_timing_censor':'timestamps recorded, censor not recorded; no uncensored inference'}
+styles={}
+for n,d in files.items():
+ source=q/'frozen'/n
+ if source.suffix in ['.c','.h','.py','.mk']:
+  t=source.read_text();assert not re.search(r'^ +\S',t,re.M),n
+  if source.suffix in ['.c','.h']:assert not re.search(r'\btypedef\b',t),n
+  if source.suffix=='.h':assert not re.search(r'\)\s*\{',t),n
+  styles[n]='Leading tabs; C no typedef; header declarative'
+(q/'tmp').mkdir()
+for n in meta:
+ if not n.endswith('.tar'):shutil.copy2(e/n,q/n)
+shutil.copy2(notice,q/'ready-notice.txt')
+v={'date_UTC':datetime.datetime.now(datetime.timezone.utc).isoformat(),'Main_parent':'92ccece12c30c6cc90f6f09d25ff9835c693f032','notice_SHA':sha(notice),'frozen_metadata_exact':meta,'frozen16_archive_exact':files,'all1233_raw_exact':True,'all392_terminal_path_input_copies_exact':True,'all291_deduplicated_content_copies_exact':True,'all20_C32_C51_archives_manifests_members_exact':older,'legacy_runtime120_manifest_SHA':sha(q/'legacy-runtime-source.sha256'),'native_R1_runtime126_manifest_SHA':sha(q/'native-runtime-source.sha256'),'owner_native_image_SHA':sha(q/'owner-native-actual.a'),'all4_owner_products_C51_exact':products,'style_fresh':styles,'source_review':'Downstream observer snapshots graph/typing container bytes before index-array reads, bucket/entry membership and typed Context/Scope/Occurrence/map including trailing inputs/admission payload. Whole legacy container keeps receipt-count guard; no restored Evidence authority. Emission advancement wrappers retained. Standalone helper drops obsolete included test main only. Command emits seven actual fresh source bodies+recipe, transient C49 parent -> unchanged C51 packer. Native preinterned Universe admission leaves typing-container bytes fixed but payload observer catches it.','observer_extent':'Borrowed live owners/index storage; selected inline input/payload bytes, not all reachable private allocations/full heap immutability/checker certificate.','preserved_failures':'ROOT-only setup2/native missing proofs make2/historical native image2/legacy syntax option omission1/native empty Scope not preinterned-6/legacy API absent-6/harness1 retained. Some exploratory binaries rebuilt, not claimed exact; terminal inputs copies exact.','native_R1_dependency':'Root current fresh qualification pending. C52 native runtime uses frozen126 private producer, not accepted adoption. Job test observer header correction remains separate; broader strict3/frontier/full SE/net criteria unwaived.','SAN_scope':'Four phases whole drivers/helpers/generated products/object/archive/clients; pointer/Core retained341 input O2. Main native4/input3/private16 inherited, not rerun on native R1.','limits':'Finite manual roles/closure/storage/Nat-LT/array/full checked Scope/source equivalence/general native61; borrowed immutable lifetime/nonoverlap/Nat32/depth256/node65536/status1-6/transactional/private-token lifetime/finite SAN/unexercised overflow/arbitrary pointer safety/larger records-validation/net costs unmeasured.','Root_replay':'pending','accepted_adoption':False,'general_native_Acc':False,'Goal_or_owner_actions':False,'cost_samples':0}
+(s/'c52-readonly-static-review.json').write_text(json.dumps(v,indent=2)+'\n');print(json.dumps({'frozen':16,'raw':1233,'path_inputs':392,'dedup_inputs':291,'old_archives':20,'owner_expected_rows_each':55,'native_legacy_trees_pinned':True}))

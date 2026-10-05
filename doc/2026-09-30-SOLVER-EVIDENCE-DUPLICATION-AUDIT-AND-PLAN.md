@@ -1,7 +1,7 @@
 # Solver and Evidence Duplication Audit
 
 Date: 2026-09-30
-Status: R1 local/detailed6308/3040/Root16 verified; current C/native guard and header policy corrections defer implementation publication. C51 parent-qualified55; separate typed-query frontier inert-byte abort-6 retained. Strict3/full SE/net open in this sole work list.
+Status: R1 local/detailed6308/3040/Root16 verified; C52 native+legacy current55 O2/full SAN correct downstream observer dependency. Job header correction/distinct handoff still defer R1 publication. Strict3/private query frontier/full SE/net remain open in this sole list.
 Parent: [artifact plan, AP0](2026-09-28-ARTIFACT-SEMANTIC-PERSISTENCE-REFACTOR-PLAN.md#ap0-simplify-before-extending-persistence).
 This is the active prerequisite work list, not another artifact format proposal.
 
@@ -319,6 +319,25 @@ identical TSVs in O2 and ASan/UBSan builds, including repeated samples without
 additional fuel. No full acceptance suite was rerun for this audit-only change.
 
 ## Assessment
+
+2026-10-05, [C52 current review](../src/prototype/coordination/reviews/20261005-c52-current-owner-command-review.json)
+supersedes the current C/native proof-count build-blocker finding for frozen native
+R1 runtime126 and accepted fc legacy120: Root18 terminal/reaped/uncensored commands
+include native fresh pointer/image and all four O2/full affected source SAN55 gates.
+The target observer preserves legacy receipt-count/source-advancement guards and
+checks native owner admission payloads, including pre-interned Universe with unchanged
+typing-container bytes. Old actual C50/native make2 and initial C52 failures remain
+historical evidence. Fresh native imagef1e98ff7 reproduces the owner result; this
+does not imply old-image compatibility or producer adoption. Exact16 C52 prototype
+task/integration is separate from native R1 implementation publication.
+
+Job declarative-header correction and distinct exact handoff remain required for
+R1 publication. Strict3, format break, transitional selector/owner overhead,
+partial typed-query/full public frontier/full SE/net criteria remain unwaived.
+The separate private partial-query source extension is still unqualified; initial
+trial3 abort-6 and unequal inert images are preserved, not waived by C52 consumer
+qualification. Original owners continue; no second implementation list or blanket
+hold is created. Manual native Acc/full checked source correspondence remain.
 
 2026-10-04, [C51 current review](../src/prototype/coordination/reviews/20261004-c51-current-recipe-review.json)
 records taskbb5bd0a3/prototype integration and Root O2/full source SAN55 each

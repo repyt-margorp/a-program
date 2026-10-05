@@ -1,0 +1,103 @@
+{
+  "Goal_complete": false,
+  "accepted_promotion": false,
+  "all_final_inputs_copies_exact": true,
+  "all_owned_heavy_commands_terminal_reaped": true,
+  "all_terminal_rows_expected": true,
+  "branch": "parallel/c-backend-20261003",
+  "cost_samples": 0,
+  "date_UTC": "2026-10-05T00:08:03.091118+00:00",
+  "delegated_parent": "bb5bd0a35623e81c219d1144dead6036f93391e2",
+  "epoch": 52,
+  "final_inputs_sha256": "d016052d71ac2e95fd4f7ca0d98cfea4b62c4b8c409aed7e7861c7fb58ab4ae2",
+  "general_native_Acc": false,
+  "independent_Merge_current_review": "pending",
+  "initial_exploratory_binary_retention": "logs and available source pins retained; some exploratory binary paths rebuilt; all four terminal phase binary/source copies exact",
+  "initial_failures": [
+    "ROOT-only mismatched Makefile2; native joint missing proofs make2",
+    "native driver historical image2",
+    "fresh source missing existing legacy syntax flag1",
+    "observer empty Scope not preinterned abort-6",
+    "legacy empty Scope unavailable abort-6/harness1; conditional native-only control retains legacy receipts assertion"
+  ],
+  "input_count": 392,
+  "legacy_fc52755b_runtime120_SHA": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907",
+  "limits": [
+    "manual role/storage/closure/Nat-LT/array interpretation and full checked Scope/source-equivalence open",
+    "general native indexed/callable Acc/QuickSort/full61 open",
+    "Nat32/depth256/node65536/borrowed immutable lifetime/nonoverlap/status1-6/transactional output unchanged",
+    "finite SAN is not arbitrary pointer proof; overflow guard not exercised; larger records and actual costs unmeasured",
+    "native R1 is a separate unintegrated producer candidate; no producer/schema/checker/erasure/ABI authority"
+  ],
+  "main_native4_inputs3_private16": "inherited separately qualified; not rerun on native R1",
+  "native_R1_code126_SHA": "441cbd699ca87b505564938c81e68cf17fc3de03581af903bfc02636544c2244",
+  "native_fresh_image_SHA": "f1e98ff72920899cf30cbfe0a3cc3e44175fc04ea188b1474d76bdaaa0e4a1f8",
+  "native_image_is_new_result_not_old_byte_equality": true,
+  "phases": [
+    {
+      "all_expected": true,
+      "commands_sha256": "62b88e924f9c246b6bf694d78dc952ac1b3f99e88fb06fdd9581792267909105",
+      "finish": "2026-10-05T00:04:36.548486+00:00",
+      "input_hashes_sha256": "f59d0b5c59dc7b3dacf9731b7965910e49d0a3e660059a8c6de17d6c218ebce4",
+      "outcomes": {
+        "0": 29,
+        "1": 2,
+        "2": 12,
+        "3": 1,
+        "4": 11
+      },
+      "phase": "native-candidate-O2-terminal",
+      "rows": 55,
+      "verification_sha256": "5ad2c51064237bc5292623c3e5ea90faf81c2a83fcb88c6c4e2658d55b889b53"
+    },
+    {
+      "all_expected": true,
+      "commands_sha256": "e2d8fcf6c191e205eb304dcf26eec64052c322d74cfdf84b5b5e6cb71f88b0f2",
+      "finish": "2026-10-05T00:05:24.012783+00:00",
+      "input_hashes_sha256": "4b83ad494bca8d8de2dd48dfa390dc9b55334f5455d2f45769b08ac869a702a7",
+      "outcomes": {
+        "0": 29,
+        "1": 2,
+        "2": 12,
+        "3": 1,
+        "4": 11
+      },
+      "phase": "native-candidate-SAN-terminal",
+      "rows": 55,
+      "verification_sha256": "c32277b9633eef3518515e640a9893b5daa911156daa9349dac29f722856560b"
+    },
+    {
+      "all_expected": true,
+      "commands_sha256": "3869b963be726dd9235d3efa6d9ca5cdc30dcfab4089eb6b014ded17b5b0ffc3",
+      "finish": "2026-10-05T00:05:34.612909+00:00",
+      "input_hashes_sha256": "e974d562f6d1782d31ee7ae87e0cb104f95d7feda8370023acd0ec15a4ca55de",
+      "outcomes": {
+        "0": 29,
+        "1": 2,
+        "2": 12,
+        "3": 1,
+        "4": 11
+      },
+      "phase": "legacy-candidate-O2-terminal",
+      "rows": 55,
+      "verification_sha256": "4efd3e73a74be6dfcd04a01829ab62efc45dd86d7bb86e2f9fa35b58f644f75e"
+    },
+    {
+      "all_expected": true,
+      "commands_sha256": "c463248d0f826635cc17bbd6b45e6850a20568a30044ec9ca1508bacb7d93afc",
+      "finish": "2026-10-05T00:07:20.456829+00:00",
+      "input_hashes_sha256": "b97c30ced5613d7ffb06ce70fe3ff3cb474dcba254aadbd9f9f4ac8799fb2155",
+      "outcomes": {
+        "0": 29,
+        "1": 2,
+        "2": 12,
+        "3": 1,
+        "4": 11
+      },
+      "phase": "legacy-candidate-SAN-terminal",
+      "rows": 55,
+      "verification_sha256": "2ee23526afcbe38163e90817ddbeccfb2c39495da9485904c4955aefc83db3af"
+    }
+  ],
+  "worker_HEAD": "cc3cba3495b81628e0a68ec8b45aee4f5447d188"
+}

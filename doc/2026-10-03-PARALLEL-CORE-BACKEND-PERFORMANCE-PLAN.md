@@ -1,7 +1,7 @@
 # Parallel Development: Inquiry Desk, Merge and Workers
 
 Date: 2026-10-03
-Status: C51 published/current parent-qualified O2/full SAN55; native R1 remains locally qualified but deferred for joint guard/header correction. Original C52 and separate Job frontier work continue; strict3/full criteria/net open, Goals/timer unchanged.
+Status: C52 published/native+legacy current O2/full SAN55 each; downstream native owner guard dependency corrected. R1 producer remains private pending Job header/distinct handoff; strict3/frontier/full SE/net/general native open, original Goals/timer unchanged.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `fd45c42`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -17,15 +17,50 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | ID | Problem / owner | Related | Status |
 | --- | --- | --- | --- |
 | 1 | Inquiry desk -> `merge`: reporting vs coordination/integration | All lanes | Desk answers the user; only Merge integrates after verified handoff |
-| 2 | `c-backend`: downstream C design | #61; shared policy #47 | C51 taskbb5bd0a3/current Root O2-full SAN55/prototype integrated; source down/action recipes finite. C52 native guard/command work continues; manual/Scope/general native/cost open |
+| 2 | `c-backend`: downstream C design | #61; shared policy #47 | C52 exact16/task fe6f725e/Root native+legacy O2-full SAN55/prototype integrated; native observer and fresh recipe command qualified. C53 private constructor index ACTION, full refusal/product/SAN freeze pending; full Scope/general native/cost open |
 | 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Approved current frame deletion accepted; original363 plus adopted4 verified separately. Actual matched peakRSS/time pending safe all-owner window; peripheral MEM10/spine/empty arrays parked |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
-| 5 | `job-evidence`: typed ownership/deletion/resume | SE1-SE5, AP0 | R1 raw6308/detailed3040/Root16 qualified; joint guard/header corrections defer publication. Separate private frontier inert-byte abort-6 retained; strict3/full SE/net open |
+| 5 | `job-evidence`: typed ownership/deletion/resume | SE1-SE5, AP0 | R1 local/detailed qualification preserved; C52 downstream guard correction now qualified. Job header/distinct handoff deferred; separate private query extension/strict3/frontier/full SE/net open |
 | 6 | `verification-audit`: independent read-mostly suite/debt inventory | #59 / PR #60, #51 | Bounded static inventory/pilot complete; measured cost deferred, full #59 remains open |
 | 7 | `test-suite`: implement coverage-preserving test reductions | #59 / PR #60 | Bounded Goal complete; exact7 taskbc16df9 pushed/remote verified, Root raw/assembly review complete, prototype Main36a27be integrated |
 | 8 | `issue-audit`: evidence-backed GitHub disposition | All open Issues/PRs | Bounded Goal complete; verified dispositions, task8bb5018/Mainb461ace; #61 retains C residuals |
 
 ### Current Delivery Status
+
+2026-10-05, [C52 current owner/command review](../src/prototype/coordination/reviews/20261005-c52-current-owner-command-review.json)
+supersedes C52 action-pending and the current downstream proof-count build blocker
+for pinned native R1/legacy fc producers. Exact16 task `fe6f725e` follows C51;
+frozen16/raw1233/path-input392/content-copy291/all20 prior archives and members
+match. Root18 serial commands terminal/reaped/uncensored qualify fresh native O2
+pointer/image and native/legacy O2/full affected driver/helper/observer/generated-
+module/client source-object-archive ASan/UBSan/leak55 rows each29zero/11unsupported4/
+two expected compiler-linker1/one pending3/twelve I-O2. Native image `f1e98ff7`
+reproduces the owner result byte-for-byte; it is a fresh image, not old wire equality.
+
+The target observer detects admission of a pre-interned Universe while every
+native typing-container byte remains fixed. It snapshots container/index/typed
+owner payloads without restoring Evidence bookkeeping; legacy receipt count and
+source-advance wrappers remain. Containers are checked before old bucket reads;
+selected inline bytes do not prove full heap immutability. Standalone helper removes
+obsolete included test-main only. The command regenerates seven actual bodies and
+recipe, transiently composes a C49 parent and uses unchanged C51 byte guards.
+All source/object/archive/alias code955 `1da176b5`, header/provenance/recipe and
+original algorithm/maps/frame/captures/gs_sort reproduce exactly. Supplemental
+receipts vary by producer/tool/path/mode. Core341/pointer O2 reused; Main native4/
+input3/private16 inherited, not rerun on native R1. Source selection/refusals/
+resources/prior outputs/invalid recipe/I-O/cleanup/no-replace controls pass.
+
+Old actual missing-member make2, ROOT setup2, historical native image2, omitted
+legacy syntax flag1 and native/legacy observer aborts remain preserved; some
+exploratory binary paths were rebuilt, not claimed original exact. The C observer
+dependency is corrected for these chosen producer trees. Native R1 implementation
+publication still requires Job declarative-header correction/distinct handoff;
+strict3/format/partial query/full frontier/full SE/net/general native61/adoption
+remain open. Native producer remains private; no source/schema/checker/erasure/ABI
+expansion. Manual roles/closure/storage/Nat-LT/array/full checked Scope, lifetime/
+bounds/finite SAN/unexercised overflow/larger records-validation/net cost remain.
+Original C53 constructor index ACTION4ff84607 and Job partial-query source extension are
+separate unqualified progress, not new READY, lifecycle actions or blanket holds.
 
 2026-10-04, [C51 current recipe review](../src/prototype/coordination/reviews/20261004-c51-current-recipe-review.json)
 supersedes initial action progress. Exact15 task `bb5bd0a3` follows C50 `768213ab`;
