@@ -214,6 +214,12 @@ static int receipt(const char *path, const struct pg_c_link_plan *plan, const ch
 int pg_c_link_publish(const struct pg_c_link_plan *plan, const char *directory,
 	const char *cc, const char *ar, const char *script, int trusted, uint64_t spent)
 {
+	/* The labeled Acc candidate has its own admitted-body command and packer.
+	 * Never let it fall through to scalar or ordinary native lowering. */
+	if (plan->lowering == PG_C_ACC_CREATION_CANDIDATE) {
+		fputs("C link: use acc_link/compose.py for the fixed Acc candidate\n", stderr);
+		return 4;
+	}
 	struct stat existing;
 	if (!lstat(directory, &existing) || errno != ENOENT) {
 		fputs("C link: output directory must not already exist\n", stderr);

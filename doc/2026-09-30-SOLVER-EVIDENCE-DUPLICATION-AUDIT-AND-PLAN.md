@@ -1,7 +1,7 @@
 # Solver and Evidence Duplication Audit
 
 Date: 2026-09-30
-Status: R1/query private; C55 chosen native126+legacy120 image-driven products O2/full affected SAN61 verified/prototype published. Corrected Source preparation progress private; header/current broad/public/strict3/full SE/net open in this sole list.
+Status: R2 current Source/query O2-SAN/C55-61/C56-67/Sorted955410 verified; actual strict-public fail1 original3 and inherited header/general continuation/full SE/net remain. Review-only R2 evidence, no implementation adoption; this remains the sole solver work list.
 Parent: [artifact plan, AP0](2026-09-28-ARTIFACT-SEMANTIC-PERSISTENCE-REFACTOR-PLAN.md#ap0-simplify-before-extending-persistence).
 This is the active prerequisite work list, not another artifact format proposal.
 
@@ -319,6 +319,19 @@ identical TSVs in O2 and ASan/UBSan builds, including repeated samples without
 additional fuel. No full acceptance suite was rerun for this audit-only change.
 
 ## Assessment
+
+2026-10-05, [application progress](../src/prototype/coordination/reviews/20261005-C57-application-owner-dependency-review.json): original same-owner O2-SAN0/409cuts624cursors15tails111intrinsics are hash-audited. Cold fresh-Program build0/run-6/cut0 useful84/cut1 Source write-1 is retained as private full-closure transport evidence. Exact runtime130/input674 and675 differ only in their disclosed control inventory. Canonical formation/context/RETURN_CONTENT input borrowing and Source closure belong to Job; no general resume/accepted bug/Performance restart/evaluator/readback/cost/strict3 waiver. C57 comparator is separate private scope.
+
+2026-10-05 agent assessment, [R2 current review](../src/prototype/coordination/reviews/20261005-native-query-r2-current-review.json):
+exact37/runtime129/input671/external551/immutable parent90 reconstruct. Root34
+qualification records preserve40 actual launches and3 runner setup failures;
+Source/query/Lambda O2-SAN/closure parent1-new0/fresh C55-61/Sorted955410 pass.
+Actual strict-public fail1 retains original3 and exact40 TSV/52 images; owner broad0/
+seven affected SAN0 are hash-audited. [C56 consumer](../src/prototype/coordination/reviews/20261005-c56-current-Acc-LinkerScript-review.json)
+adds current query129 O2-SAN67 within a labeled finite prototype candidate.
+Adopt review evidence only; R2 implementation/task publication remains deferred
+for inherited header/general continuation/full SE/net criteria. Application130/
+parked E25-27 excluded. No new solver list, authority or Goal completion claim.
 
 2026-10-05, [C55 consumer](../src/prototype/coordination/reviews/20261005-c55-current-image-creation-products-review.json)
 records four native126/legacy120 O2/full affected SAN61 gates with one-image fresh

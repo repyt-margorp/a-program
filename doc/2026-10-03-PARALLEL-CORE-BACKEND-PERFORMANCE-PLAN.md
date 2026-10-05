@@ -1,7 +1,7 @@
 # Parallel Development: Inquiry Desk, Merge and Workers
 
 Date: 2026-10-03
-Status: C55 one-image source-connected Acc creation products published/current native+legacy O2/full affected SAN61 each. Corrected query progress private; R1/header/current broad/public/strict3/full SE/net/general native remain open; Goals/timer unchanged.
+Status: C56 labeled Acc candidate LinkerScript prototype published/current native126+legacy120+query129 O2/full affected SAN67. R2 current review evidence delivered; implementation/header/general continuation/strict3/full SE/net remain open. Original Goals/timer unchanged.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `fd45c42`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -17,15 +17,54 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | ID | Problem / owner | Related | Status |
 | --- | --- | --- | --- |
 | 1 | Inquiry desk -> `merge`: reporting vs coordination/integration | All lanes | Desk answers the user; only Merge integrates after verified handoff |
-| 2 | `c-backend`: downstream C design | #61; shared policy #47 | C55 exact9/task c2dccb72/Root8/native-legacy O2-SAN61/prototype integrated; one image supplies fresh bodies/creation recipe. General LinkerScript/full Scope/manual storage/net remain |
+| 2 | `c-backend`: downstream C design | #61; shared policy #47 | C56 exact15/task a99fbcbf/Root21/six O2-SAN67/prototype integrated; labeled candidate LinkerScript. General native/full Scope/manual storage/net remain |
 | 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Approved current frame deletion accepted; original363 plus adopted4 verified separately. Actual matched peakRSS/time pending safe all-owner window; peripheral MEM10/spine/empty arrays parked |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
-| 5 | `job-evidence`: typed ownership/deletion/resume | SE1-SE5, AP0 | R1 private/C52 consumer qualified. Trial15 owner focused O2-SAN0; Root671/129/86 pins and38 inert pairs exact/static review only. Current guards/link/header/broad/public/strict3/full SE/net pending |
+| 5 | `job-evidence`: typed ownership/deletion/resume | SE1-SE5, AP0 | R2 exact37/runtime129/input671/Root34/current C55-61/C56-67 verified; review-only delivery. Strict3/header/general continuation/full SE/net remain |
 | 6 | `verification-audit`: independent read-mostly suite/debt inventory | #59 / PR #60, #51 | Bounded static inventory/pilot complete; measured cost deferred, full #59 remains open |
 | 7 | `test-suite`: implement coverage-preserving test reductions | #59 / PR #60 | Bounded Goal complete; exact7 taskbc16df9 pushed/remote verified, Root raw/assembly review complete, prototype Main36a27be integrated |
 | 8 | `issue-audit`: evidence-backed GitHub disposition | All open Issues/PRs | Bounded Goal complete; verified dispositions, task8bb5018/Mainb461ace; #61 retains C residuals |
 
 ### Current Delivery Status
+
+2026-10-05, [later C57/application progress review](../src/prototype/coordination/reviews/20261005-C57-application-owner-dependency-review.json):
+33 evidence pins exact, no Root runtime replay. C57 borrowed Nat/Nat/Bool comparator
+code/context/gs_sort_with is separate live candidate work; explicit source imports
+correct an initial probe setup, no frozen READY/full source/runtime/adoption claim.
+Application runtime130 `0462882c`, owner-input674 `b527e57a` and cold-input675 exact.
+Owner O2-SAN4 records0 include409 aggregate cuts/624 cursors/15 tails/111 intrinsics;
+actual fresh-Program build0/run-6, cut0 useful84/pass but cut1 Source writer-1 at
+stage2/jobs4. Original4/5 aborts and7 link2 retained. This is private full-closure
+transport evidence; same-owner progress is not general resume. Canonical formation/
+context/RETURN_CONTENT input borrowing before sequence-frame allocation deletion
+and full Source closure controls remain original Job work. C56 immutable publication
+uses its submitted snapshot. No Performance restart/eval/readback/cost/strict3 waiver.
+
+2026-10-05, [C56 current candidate LinkerScript review](../src/prototype/coordination/reviews/20261005-c56-current-Acc-LinkerScript-review.json):
+exact15 task `a99fbcbf` follows C55. Raw1742/explicit1001 direct-inherited file references/
+content419/all24 prior archives exact. Root21 terminal/reaped/uncensored serial
+commands: native126/legacy120/frozen query129 O2/full affected SAN67 each30zero/two
+compiler-link1/22 IO2/pending3/12 unsupported4; all30 C54 product triplets and eight
+fresh body/recipe receipt maps exact. Three original LinkerScript and publication
+IO19 gates pass with explicit materialized image setup; original input-only
+failures/baseline setup remain. Shared parser, labeled candidate ABI/profile and
+fixed remaining roles reuse C55 admitted bodies and no-replace packaging; ordinary
+backend refuses4 before scalar/native fallback. Optional README scope clarification
+is operational documentation, not a defect or new human requirement. General native/
+full61/full checked Scope/source equivalence/manual storage/roles/net remain open.
+
+2026-10-05, [R2 current query review](../src/prototype/coordination/reviews/20261005-native-query-r2-current-review.json):
+frozen37/runtime129 `82da2626`/input671 `6ba6568c`/external551 and parent R1 immutable90
+exact. Root34 qualification records/40 actual launched commands preserve three
+runner setup failures -6/2/127; first6 fresh O2 controls reused without repetition.
+Source/query/mapped/List/Lambda O2/full SAN and byte closure pass; original parent
+O2-SAN closure1/new0. Fresh R2 producer/current C55 O2/full affected SAN61 each and
+genuine imported Sorted done955410 pass. Actual strict public FAIL1 retains
+1000:1000,1600:1600,completed1915:0; all40 TSV and52 images byte-exact R1. Owner full
+unskipped broad0/seven affected SAN0 hash-audited, not Root broad replay. C56 query
+consumer qualification is separate. Review evidence only; no R2 implementation/
+task adoption. New headers declarative; inherited R1 native_admissions.h obligation,
+general continuation/full SE/net remain. Application130/parked E25-27 excluded.
 
 2026-10-05, [C55 image product review](../src/prototype/coordination/reviews/20261005-c55-current-image-creation-products-review.json):
 exact9 task `c2dccb72` follows C54. Raw766/input599 explicit file roles/content341/
@@ -2017,6 +2056,10 @@ public resume failures are in the
 Accepted `src/evidence.*`, `src/iadt.*` and their tests retain unrelated edits.
 
 ### Assessment
+
+2026-10-05 agent progress disposition: keep C57 comparator and application130 separate/private. Record cold-Program write failure as a Source-closure dependency within Job scope; route exact evidence without reviving Performance or granting a cost/evaluator/readback change. No accepted bug/general continuation/adoption claim.
+
+2026-10-05 agent decision: publish only frozen C56 prototype after six current O2/SAN67 and affected original gates. Deliver R2 review evidence; retain unwaived strict3 and header/general continuation/full SE/net criteria. No Goal/owner/model/timer/cost action or accepted promotion. Detailed evidence is linked in Current Delivery Status.
 
 2026-10-04 20:07 UTC, inquiry-desk agent scheduling review under existing
 measurement scope, not a new human design approval:600 seconds is the collector

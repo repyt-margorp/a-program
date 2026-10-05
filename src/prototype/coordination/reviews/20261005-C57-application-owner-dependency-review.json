@@ -1,0 +1,75 @@
+{
+  "date_UTC": "2026-10-05T02:59:29.909595+00:00",
+  "pins": {
+    "C57-action.txt": "e728b0bcc1c04c63cbee97dba08cfa2679d4a247d8ff2371749bdb427ffbc690",
+    "application-dependency.txt": "81a1c129a772510cdeb7c778f5fbab8858d529dc03339e48d31e4f3a812c14b1",
+    "C57-plan.md": "7110c06dab62655b598936c2ff1efd717dbb4bfac53aea0d1a034dd864eed971",
+    "application/progress.json": "b01c59412e09974b29fa336afa4cd71bad930319b1df3b965d4a2e20f5781222",
+    "application/trial6-owner/terminal.json": "d8289544aea7976fe3b148c47ddbf347238361f7470c46933582e1e8ee60dd02",
+    "application/trial6-owner/o2-build.log": "31fc80dfb4d06a92f0cabc0af4fa52afb872475ac605d842b1e208d90acbdf5d",
+    "application/trial6-owner/o2-run.log": "95d6684b1b4cd7a3cd9757505aa2fe1459ccf7d43f8700902f94ed6bbf3f2fc5",
+    "application/trial6-owner/san-build.log": "9d636a7e0f0081161a6059dcfc99d0c090553ea267f20eb2d3df1399b93d6d65",
+    "application/trial6-owner/san-run.log": "95d6684b1b4cd7a3cd9757505aa2fe1459ccf7d43f8700902f94ed6bbf3f2fc5",
+    "application/trial8-cold/terminal.json": "4c239997b0ab34f588124c7408b3bb8980383e071ce94140beefcbd654ac2849",
+    "application/trial8-cold/o2-build.log": "9ac570d5237cb34d5a1005f76be20b7f317cb4d4008406594da4e5b31b11f034",
+    "application/trial8-cold/o2-run.log": "9f16ca2b906933e60bd9d31b820c2cd9fc3dece0e30182435a8208b92816e92a",
+    "application/trial4-owner/terminal.json": "c6bb4756c36b1347c2466bc3b8425762d0c6fa7118c790243b891a09f852bdaf",
+    "application/trial4-owner/o2-build.log": "7f833304c520478935e2132e66d88b5f035a03b0598d64bde6767ca3f6e2b99d",
+    "application/trial4-owner/o2-run.log": "44af30a32ec199c0267989da070169e0a8663facbdbf37b2ac9783308035c4f3",
+    "application/trial5-owner/terminal.json": "e7b9d2e877e7cc54dd46ec959a6b9c882a87c3fde5714560b21ebc4845dd7b6a",
+    "application/trial5-owner/o2-build.log": "61abbc92b5d4a90948b7fed49c37ced28128b15ed3d7038ade0af4744e01ca72",
+    "application/trial5-owner/o2-run.log": "0aecda2e2dcef4bc9ce2994120fc499fde3e483ac908ff2593d9bd7404a188a1",
+    "application/trial7-cold/terminal.json": "2f643bca175da8eceadb1124d4a36331c8d3eb0c4b0d340160436929a8fb90c2",
+    "application/trial7-cold/o2-build.log": "3d2eb07046fbaf3ad36e099ec893bab36325f9c2515925f6d91e839d914f5c2e",
+    "application/trial6-provenance.json": "3693b677fabe04f545bfd0cb0d797bd06b47f7cd8f7ceb33a8e80743e202a661",
+    "application/trial6-inputs.sha256": "b527e57a59651bac15de2b0a44f518c9ff3d9bf5dec96b879140e08ac5b07cd1",
+    "application/trial6-code.sha256": "0462882cf3b7bd357a9c6e9487a738d3f28e3f3f18c87987440a8cff1e2eb847",
+    "application/trial8-inputs.sha256": "88c68ccd0623a374e7ed2002aea795f3c0499c439df2255e131c4c8bd7f070c9",
+    "application/trial8-code.sha256": "0462882cf3b7bd357a9c6e9487a738d3f28e3f3f18c87987440a8cff1e2eb847",
+    "application/owner-control.c": "265eed0e6e5b61dde36ff355e7b275d673ab1db9c8e48970b6ec86265df227ca",
+    "application/cold-control.c": "4e8df975eddcd31d34116bcd5fed47d991fb1350ce34b1ce96782c157ab9c158",
+    "C57-initial-probe/source-admission.out": "a2adfec9be2027d7aae99a1634a32e2e34da1c0d86ab1de41859e342b948c3db",
+    "C57-initial-probe/source-admission.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "C57-initial-probe/source-admission-qualified.out": "c54475f5859bfdfe4117efc529b915866eecdd485629b564a033c721ba330bc8",
+    "C57-initial-probe/source-admission-qualified.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "C57-initial-probe/initial-emission.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "C57-initial-probe/initial-emission.err": "9b205caad5eacdd35a3c80b683f965d17cc92f9a2028a65fc9434b56b33a6fc5"
+  },
+  "C57_ACTION_notice_SHA": "e728b0bcc1c04c63cbee97dba08cfa2679d4a247d8ff2371749bdb427ffbc690",
+  "Job_application_notice_SHA": "81a1c129a772510cdeb7c778f5fbab8858d529dc03339e48d31e4f3a812c14b1",
+  "application_manifests": {
+    "trial6-inputs": {
+      "SHA": "b527e57a59651bac15de2b0a44f518c9ff3d9bf5dec96b879140e08ac5b07cd1",
+      "files": 674,
+      "all_exact": true
+    },
+    "trial6-code": {
+      "SHA": "0462882cf3b7bd357a9c6e9487a738d3f28e3f3f18c87987440a8cff1e2eb847",
+      "files": 130,
+      "all_exact": true
+    },
+    "trial8-inputs": {
+      "SHA": "88c68ccd0623a374e7ed2002aea795f3c0499c439df2255e131c4c8bd7f070c9",
+      "files": 675,
+      "all_exact": true
+    },
+    "trial8-code": {
+      "SHA": "0462882cf3b7bd357a9c6e9487a738d3f28e3f3f18c87987440a8cff1e2eb847",
+      "files": 130,
+      "all_exact": true
+    }
+  },
+  "application_owner_records_exact_four0": true,
+  "application_cold_actual_build0_run_SIGABRT_minus6_cut0_84_cut1_write_minus1": true,
+  "original4_5_aborts_7_link2_preserved": true,
+  "Root_runtime_replay": 0,
+  "Assessment": "Progress-only: authentic same-owner application O2/SAN0 with409 cuts624 cursors15 tails111 intrinsic cursors; fresh-Program trial8 actual build0/run-6, cut0 completes exact84 useful fuel but cut1 actual Source writer refuses at stage2/jobs4. Exact trial6 runtime130/input674 and trial8 same runtime130/input675 verified separately. This private full-closure transport boundary is not an accepted bug, general resume pass or R2 adoption. Source transport is Job-owned; canonical existing formation/RETURN_CONTENT inputs should be inspected before sequence-frame allocation deletion. No new codec/index/erasure authority, borrowed scratch lifetime or discarded progress is authorized. C57 comparator plan is distinct live work, inherited requirement proposal only; source probe setup failure/corrected imports retained, no frozen READY/current qualification/publication. C56 immutable snapshot used for publication remains exact. Original owners continue; Performance is not restarted and no cost/evaluator/readback edit is authorized by these notices.",
+  "next": "C57 exact comparator source/capture/O2-SAN/fallback/IO handoff; application same-owner deletion and cold-Program full-closure controls remain owner work. Coordinate any actual cross-owner interface finding through Merge with revision and raw evidence.",
+  "accepted_Goal_owner_timer_model_cost_actions": false,
+  "implementation_adoption": false,
+  "raw_path": "src/prototype/coordination/verification/c57-application-progress-20261005",
+  "packed_files": 36,
+  "raw_archive_SHA": "e4fe7979dbfad61036f9abf888700b710b4c41cc002333780cad3498e40896a2",
+  "raw_manifest_SHA": "4ed60ff7e3a40b5256629e6e18d5dd3abc5631135ecb2ae4f1dbac87b5f1017c",
+  "Main_delivery": "Progress review evidence only; C57/application implementation remains private."
+}

@@ -26,7 +26,7 @@ script() {
 }
 
 mkdir "$temporary/scripts"
-expect_status 0 "$compiler" --save "$temporary/scripts/image with spaces.a" "$here/fixture.p"
+expect_status 0 "$compiler" --save-materialized "$temporary/scripts/image with spaces.a" "$here/fixture.p"
 sha256sum "$temporary/scripts/image with spaces.a" > "$temporary/before"
 : > "$temporary/reference"
 for entry in first second first noop; do
@@ -87,7 +87,7 @@ printf '42B42' > "$temporary/expected"
 cmp "$temporary/out" "$temporary/expected"
 
 # Different components reuse local ordinal numbers but exchange no handles.
-expect_status 0 "$compiler" --save "$temporary/scripts/other.a" "$here/other.p"
+expect_status 0 "$compiler" --save-materialized "$temporary/scripts/other.a" "$here/other.p"
 printf 'aplink 1\nartifact other.a\nabi isolated_v1\ntarget host-c11\nproduct archive\nexport other other\n' > "$temporary/scripts/other.aplink"
 expect_status 0 "$backend" --link "$temporary/scripts/other.aplink" "$temporary/other"
 "$cc" "${flags[@]}" -DLINK_OTHER_COMPONENT -include "$temporary/other/component.h" -I"$temporary/archive" "$here/client.c" "$temporary/archive/library.a" "$temporary/other/library.a" -o "$temporary/combined"
