@@ -123,6 +123,28 @@ names, separate directories and reviewed integration epochs.
 
 ### Objective (Code)
 
+Distinct C60 [runtime source capture](2026-10-05-C-BACKEND-ACC-RUNTIME-CAPTURE-PLAN.md)
+ordinarily admits a Bool-parameter wrapper of actual QuickSort Nat and associates
+the outer binder with comparator environment data using existing views. Generated
+gs_sort_mode accepts source constructor-position data at run time, retaining a
+local context/both source matcher clauses through partition and both Acc branches.
+The seven actual algorithm bodies/creation recipe are unchanged. An explicit
+private target ABI proposal c_acc_runtime_bool_candidate_v1 avoids overloading
+gs_sort/gs_sort_with; shared LinkerScript profiles are unchanged and a new script
+discriminator remains separate target integration work. Native/legacy admission0,
+initial executable source/C orders/branches/resources and all four focused O2/
+full affected-source-client SAN97 phases pass, serial j1. All24 product triplets
+retain parent sections/creation recipe;4054 input/reference pins/1088 copies/349
+compile dependencies, all28 immutable histories and style pass. Initial raw-
+selection CLI2 and client newline/source-byte mismatch1 retained, corrected test
+setup only. Exact19 [C60 handoff](2026-10-05-C-BACKEND-EPOCH60-HANDOFF.md) is ready
+for separate publication/current audit/Main integration. Merge05:24UTC C59
+receipt consumed: task6df48a3d450d7877b2cf0f6ae68a0b9388c3d45e/prototype
+Main d0c9f9b9207eff5413790b49b6b190842241abf7 pushed/remote exact; independent
+Root13 six199/all126 products with fresh nine inputs qualify. Original link/
+I-O19 inherited; R2/R3/R4 not adopted. C60 action review is not READY/runtime/Main
+qualification. Historical exact13 C59 archive/manifest stay immutable.
+
 Distinct C59 [source Bool capture](2026-10-05-C-BACKEND-ACC-BOOL-CAPTURE-PLAN.md)
 now admits true/false/opposite Bool closures on both pinned producers, reads
 source constructor/matcher data and emits a runtime context/case adapter. All
@@ -135,8 +157,9 @@ C58 products. Final3429 input/reference pins/928 copies, all27 C32-C58 archives
 and tabs/English/style/shared Git/index pass. Initial harness tuple1 and retry
 directory1 failures retained, corrected setup only. Exact13
 [C59 handoff](2026-10-05-C-BACKEND-EPOCH59-HANDOFF.md) is ready for separate
-publication/current audit/Main integration; source views/public gs_sort/actual
-algorithm unchanged. Submitted C58 exact19 stays immutable.
+publication/current audit/Main integration, now independently reviewed/published
+as task6df48a3d/Main d0c9f9b9 above; source views/public gs_sort/actual algorithm
+unchanged. Submitted C58/C59 histories stay immutable.
 
 Distinct C58 [closed comparator capture](2026-10-05-C-BACKEND-ACC-CLOSED-CAPTURE-PLAN.md)
 inspects actual admitted descending_sort/closed comparator application. Agent
@@ -1096,7 +1119,8 @@ Current issue status (2026-10-05 local; detailed pins stay in linked epoch plans
 | #61 actual Acc candidate LinkerScript, C56 | New acc_link/ [plan](2026-10-05-C-BACKEND-ACC-LINKERSCRIPT-PLAN.md), explicit acc_creation_candidate_v1/c_acc_candidate_v1; shared parser/relative paths and C55 fresh actual bodies/gs_sort/source/object/archive. Main/direct publication API refuse candidate profile; old command scope links clarified. | Local native126/legacy120 strict O2/full affected-source SAN67 each pass: ordinary/source/Core341/resource/maps/aliases/ABI/role/product/fuel/status/I-O/late-output/script-change controls. Both original link gates +I-O19 pass after explicit materialized-fixture preparation; four initial input-only gate failures/baseline3/header-setup1 retained. All24 earlier snapshots exact. | Exact taska99fbcbf25c217c538bf1f3668e9320b9699d4e2 /prototype Main01ae6856fd0f6571a5e03823adaec8adda13fee6 pushed/remote exact, Merge03:03UTC receipt consumed. Independent Root21: six67 current phases plus3 original link/I-O19 pass; R2 remains unadopted owner trial. | Fixed roles/byte qualifiers/manual storage/closures/array/full Scope/source equivalence/general native/full61/whole immutable graph/Nat32/depth256/node65536/finite SAN/cost/adoption remain. | C57 comparator parameter/capture is a distinct bounded next milestone; preserve C56 historical evidence and route demonstrated shared needs first. |
 | #61 actual Acc comparator parameter/capture, C57 | acc_comparator/ [plan](2026-10-05-C-BACKEND-ACC-COMPARATOR-PLAN.md), admitted quickSort Nat before comparator application, parameter classifier reader and gs_sort_with borrowed code/context bridge; actual seven body sections/C54 prefix unchanged. Explicit comparator candidate LinkerScript products, old gs_sort/default/native refusals retained. | Local native126/legacy120 strict O2/full affected-source SAN new85 +parent67 each pass, both original link/I-O19 O2 pass. Source ascending/descending and682 finite C order/permutation/capture observations, old Core341/resources, source/object/archive/status/transaction/I-O controls. Initial imports4 and entry-name setup gate1 retained. All25 C32-C56 submitted snapshots exact. | Exact task78652ca5e0fd4d14f511c720fadf05096d1dd30f/prototype Mainf9f2241f53318c1a7a14befa35188e41c5bbd092 pushed/remote exact, Merge03:55UTC receipt consumed. Independent Root31 twelve85/parent67 phases/all60 triplets plus3 original link/I-O19 qualify; R2/application not adopted. | Caller pure-total provider interpretation/code/context lifetime; foreign work/effects outside arena/depth/no rollback. Fixed source/body qualifiers/manual storage/roles/Scope/source equivalence/general native/full61/finite SAN/cost/adoption remain. | C58 closed source operands and C59 source Bool context are distinct next milestones; preserve C57 borrowed provider contract/history, no authority expansion. |
 | #61 actual Acc closed source comparator/capture, C58 | New acc_closed_capture/ [plan](2026-10-05-C-BACKEND-ACC-CLOSED-CAPTURE-PLAN.md), admitted closed lambda/type/comparator association and source-derived operand adapter; same actual comparison/partition/Acc/down/indices/measure/creation bodies, same gs_sort signature and candidate grammar. | Fresh native126/legacy120 admission0 and O2/full affected-source/client SAN four100 matching rows; independent Root13 six100/all54 products with fresh nine inputs pass. Exact C57 backends/pointers reused; original linker/I-O19 inherited. Initial header build2 and wrong-direction client assert(-6) retained/corrected setup only. | Exact task84755c36fbc4ccd22063a1c004b3ebd41784b4d8/prototype Main58c155ff66269c84ae3084cdaa7fa21f49d41e70 pushed/remote exact; Merge04:38UTC receipt consumed. Frozen exact19 unchanged; R2/application/R3 not adopted. | Direct known Nat comparator or two bound-operand permutation only; constants/repeated/parameter/complex/effects remain explicit refusals. Manual storage/roles/Scope/source equivalence/Nat32/depth256/node65536/finite SAN/general native/full61/cost/adoption remain. | C59 actual Bool closure-data capture is a distinct bounded next milestone; preserve C58 history/refusals, no producer fields/private checker. |
-| #61 actual Acc comparator source-data capture, C59 | C58 target reader/packer gains one admitted closed Bool field/actual matcher cases in private C context; source constructor positions and both operand branches retained through unchanged Acc algorithm. [Plan](2026-10-05-C-BACKEND-ACC-BOOL-CAPTURE-PLAN.md); old direct/permuted products/public gs_sort unchanged. | Fresh native126/legacy120 strict O2/full affected-source-client SAN four199 expected rows pass; all84 triplets retain parent sections/recipe/header, old products exact. Source four variants/context values/recursive/resource/transaction/status/refusal/I-O pass. Unused Bool/Nat/bad inactive branch refusal4 retained. Initial harness tuple1/retry directory1 failures kept.3429 pins/928 copies/all27 histories/style/Git exact. | Exact13 C59 ready after immutable C58 task84755c36/Main58c155ff; no C59 task/current joint/Main claimed. | One ground Bool field/two known Nat operand clauses; broader captures/effects/indices/callables/Scope/source equivalence/general native/full61/manual storage/Nat32/depth256/node65536/finite SAN/cost/adoption remain. | Merge exact publication/current review/integration separately; next inspect one concrete remaining source closure/body correspondence boundary, preserving fixed ABI/refusals; no shared owner need shown. |
+| #61 actual Acc comparator source-data capture, C59 | C58 target reader/packer gains one admitted closed Bool field/actual matcher cases in private C context; source constructor positions and both operand branches retained through unchanged Acc algorithm. [Plan](2026-10-05-C-BACKEND-ACC-BOOL-CAPTURE-PLAN.md); old direct/permuted products/public gs_sort unchanged. | Local native126/legacy120 O2/full affected SAN four199/all84 triplets pass; independent Root13 six199/all126 products with fresh nine inputs qualify. Original link/I-O19 inherited. Source variants/recursive/resource/status/refusal/I-O pass; unused Bool/Nat/bad inactive branch refusal4 retained. Initial tuple1/retry1 kept;3429 pins/928 copies/history/style/Git exact. | Exact task6df48a3d450d7877b2cf0f6ae68a0b9388c3d45e/prototype Main d0c9f9b9207eff5413790b49b6b190842241abf7 pushed/remote exact; Merge05:24UTC receipt consumed. Frozen exact13 unchanged; R2/R3/R4 not adopted. | One ground Bool field/two known Nat operand clauses; broader captures/effects/indices/callables/Scope/source equivalence/general native/full61/manual storage/Nat32/depth256/node65536/finite SAN/cost/adoption remain. | C60 actual runtime source Bool parameter is a distinct milestone; preserve C59 history/refusals, no producer gap shown. |
+| #61 actual Acc runtime source-parameter capture, C60 | New acc_runtime_capture/ [plan](2026-10-05-C-BACKEND-ACC-RUNTIME-CAPTURE-PLAN.md): admitted Bool wrapper/binder/environment and runtime context/both matcher clauses through unchanged actual Acc bodies. Explicit private gs_sort_mode ABI/direct image source/object/archive; existing signatures/shared LinkerScript unchanged. | Fresh native126/legacy120 O2/full affected-source-client SAN four97 matching rows pass; source two modes/opposite maps, both recursive traces/Core/resource/product/ABI/status/refusal/I-O pass. All24 triplets retain parent sections/recipe;4054 pins/1088 copies/349 compile dependencies/all28 histories/style pass. Initial CLI2/newline comparison1 retained. | Exact19 C60 ready after immutable C59 task6df48a3d/Main d0c9f9b9; no C60 task/current joint/Main claimed. | One runtime Bool argument/one Bool capture/two known Nat clauses; new target script discriminator not wired. Fixed qualifiers/manual storage/Scope/source equivalence/general native/full61/Nat32/depth/finite SAN/cost/adoption remain. | Merge exact publication/current review/integration; coordinate target shared-interface discriminator before editing it. General source/representation gaps remain separate, no producer need shown. |
 | #61 remaining public contracts (historical #49) | General/boxed callbacks, effects, higher Identity, recursive captures and shared nominal exchange remain explicit limits; C16 advances only fixed borrowed unary/binary scalar inputs. | Local/joint gates verify supported cases and refusals, not general completion. | Historical tasks/prototype Main published; no publication of general missing contracts. | Need bounded justified representation/demand contracts. | Preserve refusals; route shared needs through Merge. |
 
 Evidence: historical [C5](2026-10-03-C-BACKEND-EPOCH5-HANDOFF.md),
@@ -2251,8 +2275,13 @@ this target work while Main continues SE1, superseding the earlier AP6 hold.
 - [x] C59 actual closed Bool field/both source matcher cases execute through
   unchanged Acc recursion; four199 focused O2/full affected SAN phases/all84
   products/style/pins/history pass, exact13 handoff for Merge.
-- [ ] C59 exact publication/current independent audit/Main integration; broader
-  captures/general native/full61/Scope/cost/adoption remain separate.
+- [x] C59 exact task6df48a3d/prototype Main d0c9f9b9 and Root13 six199/all126
+  current qualification consumed; broader native/full61/Scope/adoption separate.
+- [x] C60 runtime source Bool data retained through actual Acc captures; four97
+  focused O2/full affected SAN phases/products/refusals/style/pins/history pass,
+  exact19 handoff and separate private parameter ABI for Merge review.
+- [ ] C60 exact publication/current review/Main and coordinated new target
+  LinkerScript discriminator; no producer schema/erasure authority implied.
 - [ ] Review broader actual-source action/capture correspondence and general
   indexed/callable native Acc; accepted adoption/actual costs/full Goal separate.
 - [ ] Automatically derive actual scoped down actions from admitted fields and
