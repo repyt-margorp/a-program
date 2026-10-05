@@ -1,5 +1,11 @@
 # Actual Acc saved-image C product command
 
+This earlier C52 command produces the C51 down/action recipe module. Its
+generated-output link below remains specific to that historical product. For
+the current LT prior/result creation product, use the
+[C55 creation command](../acc_create_command/README.md) and inspect its
+[generated C module](../acc_create/example/component.c).
+
 This command regenerates the seven actual-source Acc QuickSort bodies and the
 source map/endpoint/frame/down-action recipe from an admitted materialized `.a` image.
 It packages the reviewed fixed candidate as ordinary C source, an object, or an
