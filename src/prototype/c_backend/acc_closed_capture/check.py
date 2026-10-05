@@ -26,7 +26,7 @@ def main():
 	image = scripts / "actual image.a"
 	image.write_bytes(args.image.read_bytes())
 	inputs = [args.plan_driver, args.backend, args.driver, args.fault_driver, args.image,
-		args.pointer, args.core_cases, here / "plan.c", here / "compose.py", here / "actual.aplink", here / "emit.c", here / "emit.h", here / "main.c", here / "pack.py", here / "extra.p", here / "client.c", here / "resource_client.c",
+		args.pointer, args.core_cases, here / "plan.c", here / "compose.py", here / "actual.aplink", here / "emit.c", here / "emit.h", here / "main.c", here / "pack.py", here / "extra.p", here / "client.c", here / "resource_client.c", here / "capture_client.c",
 		here / "check.py", here / "build.mk", here.parent / "link/plan.c", here.parent / "link/plan.h",
 		here.parent / "link/driver.c", here.parent / "main.c", here.parent / "acc_create_command/compose.py",
 		here.parent / "acc_create_command/recipe_pack.py", here.parent / "acc_products/client.c",
@@ -120,6 +120,39 @@ def main():
 				if source_name == "outer_fn":
 					for name in ("component.c", "component.h", "provenance.json"):
 						assert (directory / name).read_bytes() == (out / "forward_sort_source" / name).read_bytes()
+		for selected, reference, direction, clauses in (
+			("true_sort", "reference_true", "descending", "normal"),
+			("false_sort", "reference_false", "ascending", "normal"),
+			("opposite_true_sort", "reference_opposite_true", "ascending", "opposite"),
+			("opposite_false_sort", "reference_opposite_false", "descending", "opposite")):
+			run(selected + "_reference", 0, [args.pointer, "--load", "--steps", "5000000", "--run", reference, args.image])
+			for product in ("source", "object", "archive"):
+				label = selected + "_" + product
+				path = script(label, base.replace("descending_sort gs_sort", selected + " gs_sort").replace("product source", "product " + product))
+				directory = out / label
+				run(label + "_command", 0, [*compose, path, directory, *common])
+				operand = directory / {"source": "component.c", "object": "component.o", "archive": "library.a"}[product]
+				core_source = out / "core_cases.c" if direction == "descending" else out / "forward_core.c"
+				for role, source, linker in (("client", here / "client.c", []), ("resource", here / "resource_client.c", ["-Wl,--wrap=malloc"]), ("Core", core_source, [])):
+					binary = directory / role
+					run(label + "_" + role + "_build", 0, [*compile_prefix, "-I" + str(directory), source, operand, *linker, "-o", binary])
+					run(label + "_" + role, 0, [binary, *([direction] if role != "Core" else [])])
+				assert (out / (label + "_client.out")).read_bytes() == (out / (selected + "_reference.out")).read_bytes()
+				provenance = json.loads((directory / "provenance.json").read_text())
+				assert provenance["sections"][-2]["extent"] == "actual admitted Bool field/constructor/matcher and Nat operands; both source cases retained"
+				assert (directory / "component.h").read_bytes() == (here / "example/component.h").read_bytes()
+				if product == "source":
+					binary = directory / "capture"
+					run(label + "_capture_build", 0, [*compile_prefix, "-I" + str(directory), here / "capture_client.c", "-o", binary])
+					run(label + "_capture", 0, [binary, clauses])
+					if selected == "true_sort":
+						for name in ("component.c", "component.h", "provenance.json"):
+							assert (directory / name).read_bytes() == (here / "bool_example" / name).read_bytes()
+				else:
+					for name in ("component.c", "component.h", "provenance.json"):
+						assert (directory / name).read_bytes() == (out / (selected + "_source") / name).read_bytes()
+		for selected in ("unused_mode_sort", "nat_mode_sort", "bad_mode_sort"):
+			failure("unsupported_" + selected, 4, base.replace("descending_sort gs_sort", selected + " gs_sort"))
 		for selected in ("constant_sort", "repeated_sort", "outer_parameter"):
 			failure("unsupported_" + selected, 4, base.replace("descending_sort gs_sort", selected + " gs_sort"))
 		directory = out / "source"
@@ -213,7 +246,7 @@ def main():
 		assert not list(out.glob(".acc-link-*"))
 		(out / "verification.json").write_text(json.dumps({"all_expected": True, "commands": len(rows),
 			"input_hashes": before, "flags": flags, "input_bytes_unchanged": True,
-			"actual_algorithm_sections_exact_C54": True, "source_closed_comparator_capture": True, "descending_Core_composition_not_fresh_source_oracle": True, "ordinary_native_refusal_retained": True,
+			"actual_algorithm_sections_exact_C54": True, "source_closed_comparator_capture": True, "closed_Bool_data_and_both_matcher_cases_retained": True, "old_C58_products_exact": True, "descending_Core_composition_not_fresh_source_oracle": True, "ordinary_native_refusal_retained": True,
 			"scope": "fixed actual candidate target profile; no generalized native/full61/adoption/cost"}, indent=2) + "\n")
 	except BaseException:
 		(out / "failed.json").write_text(json.dumps({"commands": len(rows), "input_hashes": before}, indent=2) + "\n")

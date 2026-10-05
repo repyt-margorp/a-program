@@ -17,6 +17,15 @@ retain the same source-selected comparator. No extra comparator depth frame or
 foreign effect/interpretation boundary is introduced; the original source Nat
 comparison's structural depth limit remains.
 
+C59 also retains one closed ground Bool field, its actual source constructor
+position, and both source matcher clauses. Each clause calls the known Nat
+comparison with its admitted operand order. The generated private context is
+passed through partition and both Acc recursive branches; the public ABI stays
+unchanged. bool_example/component.c is the readable generated true-mode product.
+The private capture_client.c tests both constructor positions against each
+source clause map and rejects invalid/null contexts; no runtime public direction
+flag or foreign comparator is added.
+
 Use actual.aplink with the existing acc_creation_candidate_v1/c_acc_candidate_v1,
 host-c11, fallback reject and source/object/archive. Export the closed source name
 to gs_sort and the successor role to successor. Explicitly use this separate
@@ -37,10 +46,12 @@ qualified bodies, pins script/image/helpers/outputs and publishes a new director
 with Linux no-replace semantics. Status0/1/2/3/4 and per-selector budget remain;
 there is no trust-image mode. Atomic visibility/cleanup is not crash durability.
 
-emit.c supports only a direct known Nat comparator or its two bound-argument
-permutation. Admitted constant/repeated-operand and parameter/unary/wrong source
-shapes retain refusal4. More complex closure environments, effects, indices,
-dynamic/callable main-native Acc and generalized source functions remain open.
+emit.c supports a direct known Nat comparator, its two bound-argument permutation,
+or one ground Bool capture whose two actual matcher clauses have those operands.
+Admitted constant/repeated-operand, unused-Bool/Nat captures, unsupported inactive
+clauses and parameter/unary/wrong source shapes retain refusal4. More complex
+closure environments, effects, indices, dynamic/callable main-native Acc and
+generalized source functions remain open.
 The source parameter body and pure-total classifier are separately validated by
 the existing C57 emitter before capture reading. The new reader supplies no
 private checker, synthesized expected classifier or erasure authority.
@@ -69,3 +80,9 @@ An initial descending product ran the old ascending-only client and asserted;
 direction-aware tests corrected the fixture expectation, retaining the original
 failure. These are target setup failures, not a producer/source-policy defect.
 
+C59 initially refused the admitted Bool capture under the immutable C58 helper,
+then added the bounded source-data reader above. Its first focused harness had
+two malformed resource tuples and stopped before client testing; the corrected
+harness retains those original logs. An existing-directory retry setup failure
+is separately retained. Broader admitted captures and unsupported inactive
+clauses remain explicit refusals rather than omitted coverage.
