@@ -14,4 +14,10 @@ struct pg_c_acc_measure_sources {
 int pg_c_acc_measure_emit(FILE *, struct pg_graph *, const struct pg_typing *,
 	const struct pg_c_acc_measure_sources *, const struct pg_c_indexed_entry *);
 
+/* Same actual Nat algorithm, selected before applying its pure-total quoted
+	* Nat/Nat/Bool comparator. This only borrows an admitted parameter classifier;
+	* target code/context interpretation and lifetime remain caller preconditions. */
+int pg_c_acc_measure_parameter_emit(FILE *, struct pg_graph *, const struct pg_typing *,
+	const struct pg_c_acc_measure_sources *, const struct pg_c_indexed_entry *);
+
 #endif

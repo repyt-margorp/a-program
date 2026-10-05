@@ -11,13 +11,13 @@ struct export_row {
 
 const char *pg_c_lowering_name(enum pg_c_lowering lowering)
 {
-	static const char *const names[] = {"structural_v1", "scalar_direct_v1", "native_direct_v1", "callback_direct_v1", "callback2_direct_v1", "predicate_native_direct_v1", "predicate_signed_direct_v1", "callback_native_direct_v1", "native_buffer_query_v1", "native_array_calls_v1", "acc_creation_candidate_v1"};
+	static const char *const names[] = {"structural_v1", "scalar_direct_v1", "native_direct_v1", "callback_direct_v1", "callback2_direct_v1", "predicate_native_direct_v1", "predicate_signed_direct_v1", "callback_native_direct_v1", "native_buffer_query_v1", "native_array_calls_v1", "acc_creation_candidate_v1", "acc_comparator_candidate_v1"};
 	return names[lowering];
 }
 
 const char *pg_c_abi_name(enum pg_c_lowering lowering)
 {
-	static const char *const names[] = {"isolated_v1", "c_scalar_v1", "c_native_v1", "c_callback_v1", "c_callback2_v1", "c_predicate_native_v1", "c_predicate_signed_v1", "c_callback_native_v1", "c_native_v1", "c_native_v1", "c_acc_candidate_v1"};
+	static const char *const names[] = {"isolated_v1", "c_scalar_v1", "c_native_v1", "c_callback_v1", "c_callback2_v1", "c_predicate_native_v1", "c_predicate_signed_v1", "c_callback_native_v1", "c_native_v1", "c_native_v1", "c_acc_candidate_v1", "c_acc_comparator_candidate_v1"};
 	return names[lowering];
 }
 
@@ -136,6 +136,7 @@ int pg_c_link_read(struct pg_c_link_plan *plan, const char *path, size_t *line, 
 			else if (!strcmp(args[1], "native_buffer_query_v1")) plan->lowering = PG_C_NATIVE_BUFFER_QUERY;
 			else if (!strcmp(args[1], "native_array_calls_v1")) plan->lowering = PG_C_NATIVE_ARRAY_CALLS;
 			else if (!strcmp(args[1], "acc_creation_candidate_v1")) plan->lowering = PG_C_ACC_CREATION_CANDIDATE;
+			else if (!strcmp(args[1], "acc_comparator_candidate_v1")) plan->lowering = PG_C_ACC_COMPARATOR_CANDIDATE;
 			else if (!strcmp(args[1], "structural_v1")) plan->lowering = PG_C_STRUCTURAL;
 			else goto done;
 			lowering = 1;

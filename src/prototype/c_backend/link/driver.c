@@ -216,8 +216,9 @@ int pg_c_link_publish(const struct pg_c_link_plan *plan, const char *directory,
 {
 	/* The labeled Acc candidate has its own admitted-body command and packer.
 	 * Never let it fall through to scalar or ordinary native lowering. */
-	if (plan->lowering == PG_C_ACC_CREATION_CANDIDATE) {
-		fputs("C link: use acc_link/compose.py for the fixed Acc candidate\n", stderr);
+	if (plan->lowering == PG_C_ACC_CREATION_CANDIDATE || plan->lowering == PG_C_ACC_COMPARATOR_CANDIDATE) {
+		fprintf(stderr,"C link: use %s/compose.py for the fixed Acc candidate\n",
+			plan->lowering == PG_C_ACC_CREATION_CANDIDATE ? "acc_link" : "acc_comparator");
 		return 4;
 	}
 	struct stat existing;
