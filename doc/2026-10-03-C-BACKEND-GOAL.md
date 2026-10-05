@@ -123,6 +123,33 @@ names, separate directories and reviewed integration epochs.
 
 ### Objective (Code)
 
+Fresh C54 [actual constructor creation](2026-10-05-C-BACKEND-ACC-CREATION-PLAN.md)
+derives recursive prior-field Nat arguments from existing admitted views, uses
+those arguments plus retained result recipes before allocation and checks the
+immediate prior constructor. No manual LT result formula remains in wrappers.
+1053-line C59224615 preserves all seven actual algorithm sections/header and
+complete C53 recipe prefix; source/object/archive products/metadata match across
+native R1 source126441cbd69 and acceptedfc52755b/runtime120c206. Each local strict
+O2/full helper-generated-source/client SAN61 expected rows pass; parent51/new29
+runtime/source/reused Core341/resource/refusal controls pass. Initial missing
+test string.h compiler1 retained/corrected only that include.535 direct-input/
+inherited-reference pins,297 retained copies/all22 C32-C53 archives verified.
+Only immediate prior consistency is validated; whole borrowed graph/source
+equivalence/full checked Scope/general native/full61 remain open. Separate
+exact15 handoff prepared; task/current independent review/Main pending Merge.
+
+Consumed Merge C53 operational01:05/01:15UTC receipts: exact task
+3b97c0feb59f19945ee000d0163b242334e4289e/prototype Main
+7a0b8480798f24ccb6be2dda634e7f416433117a both pushed/remote exact. Independent
+native/legacy O2/full affected SAN61 each/fresh source images/seven algorithm
+sections/header/frozen16 qualify. C54 is distinct; native R1/query implementation
+still unpublished, no accepted/Goal/source-authority/cost approval follows.
+
+Consumed Merge informational native-query receipts00:51/00:54UTC: distinct
+trial15 source12913fac73f Source-frontier typing_io link dependency does not
+claim current C52/C53 failure or authorize adoption. C54 continues on pinned
+source126/legacy, not that new trial. No producer/accepted/shared interface edit.
+
 Fresh C53 [actual constructor indices](2026-10-05-C-BACKEND-ACC-INDEX-RECIPE-PLAN.md)
 uses existing admitted declaration fields/result images to derive LT step/
 weakenRight/lift indices. Source-selected Nat projections and constructor
@@ -931,7 +958,7 @@ This is prototype integration, not accepted promotion. The
 new issue-feedback note/table is incorporated here after release; the temporary
 addendum is removed. Old handoffs/manifests stay unchanged.
 
-Current issue status (2026-10-04 local; detailed pins stay in linked epoch plans):
+Current issue status (2026-10-05 local; detailed pins stay in linked epoch plans):
 
 | Issue/subproblem | Implemented change + exact revision | Local vs joint verification | Task publication vs Main integration | Remaining acceptance/blocker | Next concrete epoch |
 | --- | --- | --- | --- | --- | --- |
@@ -985,7 +1012,8 @@ Current issue status (2026-10-04 local; detailed pins stay in linked epoch plans
 | #61 actual Acc saved-image C products, C50 | New acc_command/ [plan](2026-10-04-C-BACKEND-ACC-COMMAND-PLAN.md): one admitted-image driver regenerates seven bodies/table and packages ordinary source/object/archive; code/header/ABI exact C49. Owned disk streams/staging and no-replace directory publication. | Currentfc52755b/runtime120c206 O2/full driver-emitter-generated-source/client SAN44 expected rows each/source/reused Core341/resources/inertness/parent refusals/four I-O2/pending3/unsupported4/compiler/prior-output/cleanup/late publication pass. Original dependency build2/linker1 and target-name source4/diagnostic4 retained. | Merge exact task768213aba5d683128a0ccb2cb4e38905f73a46bb/prototype Main834488016c5570aa3142e82c868a501f420bfd2d pushed/remote exact; independent current O2/full affected SAN44 each/raw/input/archive/dependency pins verified. Exact9 submitted history immutable. | Fixed actual mockup with manual role/action/storage/complete checked Scope/source equivalence; main-native4/input3 inherited C46, general native/full61 open. Nat32/depth256/node65536/borrowed/nonoverlap/overflow/finite SAN/cost/accepted limits persist. | Concrete down-domain/result/direction recipe delivered separately in C51; preserve actual algorithm and source authority. |
 | #61 actual Acc source-derived down actions, C51 | New acc_recipe/ [plan](2026-10-04-C-BACKEND-ACC-ACTION-PLAN.md): actual constructor/Pi domain/TOTAL result/field directions drive executable callback remapping/result check.955-line module1da176b5/seven source bodies/public ABI unchanged; complete map/endpoint/frame prefix exact C49. | Currentfc52755b/runtime120c206 O2/full helper-generated-source-client SAN55 expected rows each/source/reused Core341/resources/inertness/parent28/new7 runtime refusals/parameter-source-family refusals/products pass; six C/H/three provenance/recipe exact. Initial nested-main test compiler1 retained/corrected only test assembly. | Merge exact taskbb5bd0a35623e81c219d1144dead6036f93391e2/prototype Main92ccece12c30c6cc90f6f09d25ff9835c693f032 pushed/remote exact; independent fc52755b O2/full affected SAN55 each qualify. Exact15 history immutable; shared Git read-only. | Fixed Nat/LT/Acc recipe with manual roles/storage/closure/complete checked Scope/source equivalence; native4/input3/private16 structural controls inherited, no new native completion. Nat32/depth256/node65536/borrowed/nonoverlap/finite SAN/overflow/cost/adoption/full61 limits persist. | Connect the bounded recipe to the reproducible saved-image product command; broader source action/capture/native obligations remain separate, route a demonstrated shared need first. |
 | #61 native owner inertness/actual recipe command, C52 | Exact taskfe6f725e6264f0f81fcb0531d3bd0763320d040b; source_observer/ plus command/helper migration, [plan](2026-10-04-C-BACKEND-NATIVE-OWNER-PLAN.md). Snapshots preserve native admission marks/legacy counts; command emits C51 recipe from its own fresh admitted image. | Local and independent Merge native R1 source126441cbd69/legacyfc52755b each O2/full-source SAN55 expected rows pass; native typed admission detected with all container bytes fixed. Seven bodies/955-line products/header exact C51; frozen16/raw1233/path-input392/copy291/all20 archives verified. Initial source/setup/observer/API failures retained. | Taskfe6f725e/prototype Mainffc674049954ee715bde73fc2c04a81e3ccb0c5c pushed/remote exact; immutable snapshot preserved. | R1 implementation still unpublished/unaccepted. Manual roles/storage/closure/full Scope/general native/borrowed/Nat32/depth/overflow/cost/adoption/full61 remain. | Preserve owner guards and actual command; C53 separately derives actual constructor indices. |
-| #61 actual Acc constructor index correspondence, C53 | New acc_indices/ [plan](2026-10-05-C-BACKEND-ACC-INDEX-RECIPE-PLAN.md): admitted LT fields/result images derive executable refinement indices/projections/constructor identity;994-line C b3cfdfe9 retains seven actual algorithm sections/header/C51 recipe prefix. | Local native R1 source126441cbd69 and legacyfc52755b each O2/full-source SAN61 expected rows; source/reused Core341/resource/inertness/parent35/new16 runtime controls and three separately admitted shape refusals pass.354 exact input paths/copies; no failed C53 gate observed. | Exact16 new handoff after published C52 taskfe6f725e; C53 delegated publication, independent current review and Main pending Merge. C32-C52 immutable archives preserved. | Fixed two-index/three-constructor/direct-or-one-succ recipe; creation formulas/manual role/storage/closure/full Scope/source equivalence/general native remain. Borrowed/Nat32/depth/finite SAN/overflow/cost/adoption/full61 limits persist. | Reuse the admitted recipe for concrete LT constructor creation, preserving actual source/captures; route any demonstrated shared-owner need first. |
+| #61 actual Acc constructor index correspondence, C53 | Exact task3b97c0feb59f19945ee000d0163b242334e4289e, acc_indices/ [plan](2026-10-05-C-BACKEND-ACC-INDEX-RECIPE-PLAN.md): admitted LT fields/result images derive executable refinement indices/projections/constructor identity;994-line C b3cfdfe9 retains seven actual algorithm sections/header/C51 prefix. | Local and independent Merge native R1 source126441cbd69/legacyfc52755b each O2/full-source SAN61 expected rows; fresh images/source/reused Core341/resource/inertness/parent35-new16/three admitted-shape refusals pass.354 input pins/frozen16/seven sections/header exact. | Task3b97c0fe/prototype Main7a0b8480798f24ccb6be2dda634e7f416433117a pushed/remote exact; immutable history preserved. | Fixed two-index/three-constructor/direct-or-one-succ recipe; creation delivered separately C54. Manual role/storage/closure/full Scope/source equivalence/general native/borrowed/Nat32/depth/finite SAN/cost/adoption/full61 limits persist. | Preserve exact source index/refusal contract while connecting verified creation to saved-image products; route demonstrated shared needs first. |
+| #61 actual Acc constructor creation, C54 | New acc_create/ [plan](2026-10-05-C-BACKEND-ACC-CREATION-PLAN.md): admitted recursive prior arguments and result recipes drive creation before allocation;1053-line C59224615 retains seven actual source algorithm sections/header/C53 prefix. | Local native R1 source126441cbd69 and legacyfc52755b each O2/full-source SAN61 expected rows; parent51/new29 runtime/source/reused Core341/resource/refusal controls pass.535 direct-input/inherited-reference pins/297 copies/all22 archives exact. Initial test missing string.h compiler1 retained/corrected include only. | Exact15 handoff after published C53 task3b97c0fe; C54 delegated task/current independent review/Main pending Merge. C53 submitted archive immutable. | Immediate prior only; entire borrowed immutable graph/manual role/storage/closure/full Scope/source equivalence/general native/full61 remain. Existing Nat32/depth/finite SAN/output overflow/cost/adoption limits persist. | Connect these verified recipes to existing saved-image ordinary C product command; route demonstrated shared needs first. |
 | #61 remaining public contracts (historical #49) | General/boxed callbacks, effects, higher Identity, recursive captures and shared nominal exchange remain explicit limits; C16 advances only fixed borrowed unary/binary scalar inputs. | Local/joint gates verify supported cases and refusals, not general completion. | Historical tasks/prototype Main published; no publication of general missing contracts. | Need bounded justified representation/demand contracts. | Preserve refusals; route shared needs through Merge. |
 
 Evidence: historical [C5](2026-10-03-C-BACKEND-EPOCH5-HANDOFF.md),
@@ -1138,6 +1166,16 @@ pinned/current producer images and emitted C/headers match byte-for-byte.
 Evidence and exact publication files are in the [epoch handoff](2026-10-03-C-BACKEND-EPOCH1-HANDOFF.md).
 
 ### Assessment
+
+C54 agent result: actual admitted prior/result classifier images now drive
+creation and immediate constructor consistency, replacing manual LT result
+formulas while retaining concrete field storage and all source/capture bodies.
+Validation is bounded to the immediate prior, not whole-graph/source checking.
+Connect this verified executable extent to the saved-image ordinary product
+command next. Separate query-frontier trial129 link information does not justify
+adoption/shared edits or a worker hold; current producer126/legacy remain pinned.
+C53 immutable history stays exact; this live Goal advances as C54, not a reset,
+new source authority, cost/adoption/native completion or full Goal claim.
 
 C53 agent result: one manual index interpretation now comes from admitted LT
 declaration images and drives executable actual Acc refinement checks, with
@@ -2084,8 +2122,13 @@ this target work while Main continues SE1, superseding the earlier AP6 hold.
 - [x] C53: admitted LT constructor index recipes drive actual Acc refinement;
   native/legacy O2/full-source SAN61 expected rows each pass, exact16 handoff
   prepared with original source limits/parent refusals and unchanged algorithm.
-- [ ] C53 delegated task/current independent review/Main integration; next reuse
-  source index recipes for concrete LT creation without new source authority.
+- [x] Consume C53 exact task/current independent review/Main receipt; preserve
+  immutable history while creation advances separately in C54.
+- [x] C54: source prior/result recipes drive creation; native/legacy O2/full-source
+  SAN61 expected rows each pass with parent51/new29 runtime controls, all22 earlier
+  archives/source bodies exact, initial test compiler1 and manual limits retained.
+- [ ] C54 ordered task/current independent review/Main integration; next connect
+  verified recipes to saved-image products without producer/checker expansion.
 - [ ] Review broader actual-source action/capture correspondence and general
   indexed/callable native Acc; accepted adoption/actual costs/full Goal separate.
 - [ ] Automatically derive actual scoped down actions from admitted fields and
