@@ -1,0 +1,15 @@
+{
+  "date_UTC": "2026-10-05T00:51:15.647545+00:00",
+  "notice_SHA": "7241645a18bd3a50b8d8936d0f12e993067cc9969f32bc009af85babb23f1b6b",
+  "review": "src/prototype/coordination/reviews/20261005-native-query-trial15-progress-review.json",
+  "frozen_input671_SHA": "9488d4e4edf2d359f8c5569ce5843067b2e6f4676fd97b8256c9a2dff4c37753",
+  "frozen_runtime129_SHA": "13fac73f0d29d3d429d09a83ae9f41e1001f750a99b90d6e9d16a5b68eee7da5",
+  "Root_fresh": "671 input/129 runtime/86 terminal pins exact;38 inert pairs+19 O2/SAN counterparts byte-equal; static source/control/build/header review.",
+  "Root_runtime_replay": false,
+  "owner_report": "O2/SAN build+all3 modes exit0,19 cuts per flavor, validation424/25/29; no owner censor/timing inference.",
+  "remaining": "Freeze current guard/link/header changes; full old Source/lambda/current broad/genuine completed Sorted-public partitions/strict3/net pending. Trial15 real pending-substitution count0, no pending executor coverage pass. Native R1 remains private; frozen native_admissions.h policy correction/distinct handoff still needed.",
+  "task_or_runtime_integration": false,
+  "owner_continues_without_review_hold": true,
+  "accepted_Goal_owner_model_timer_actions": false,
+  "cost_samples": 0
+}

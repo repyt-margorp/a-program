@@ -1,7 +1,7 @@
 # Parallel Development: Inquiry Desk, Merge and Workers
 
 Date: 2026-10-03
-Status: C52 published/native+legacy current O2/full SAN55 each; downstream native owner guard dependency corrected. R1 producer remains private pending Job header/distinct handoff; strict3/frontier/full SE/net/general native open, original Goals/timer unchanged.
+Status: C52 native+legacy current55 published; private query trial15 focused reports/pins/images reviewed, later guard/link/header and full broad/public/net pending. R1 private, strict3/full SE/general native open; original Goals/timer unchanged.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `fd45c42`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -20,12 +20,25 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | 2 | `c-backend`: downstream C design | #61; shared policy #47 | C52 exact16/task fe6f725e/Root native+legacy O2-full SAN55/prototype integrated; native observer and fresh recipe command qualified. C53 private constructor index ACTION, full refusal/product/SAN freeze pending; full Scope/general native/cost open |
 | 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Approved current frame deletion accepted; original363 plus adopted4 verified separately. Actual matched peakRSS/time pending safe all-owner window; peripheral MEM10/spine/empty arrays parked |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
-| 5 | `job-evidence`: typed ownership/deletion/resume | SE1-SE5, AP0 | R1 local/detailed qualification preserved; C52 downstream guard correction now qualified. Job header/distinct handoff deferred; separate private query extension/strict3/frontier/full SE/net open |
+| 5 | `job-evidence`: typed ownership/deletion/resume | SE1-SE5, AP0 | R1 private/C52 consumer qualified. Trial15 owner focused O2-SAN0; Root671/129/86 pins and38 inert pairs exact/static review only. Current guards/link/header/broad/public/strict3/full SE/net pending |
 | 6 | `verification-audit`: independent read-mostly suite/debt inventory | #59 / PR #60, #51 | Bounded static inventory/pilot complete; measured cost deferred, full #59 remains open |
 | 7 | `test-suite`: implement coverage-preserving test reductions | #59 / PR #60 | Bounded Goal complete; exact7 taskbc16df9 pushed/remote verified, Root raw/assembly review complete, prototype Main36a27be integrated |
 | 8 | `issue-audit`: evidence-backed GitHub disposition | All open Issues/PRs | Bounded Goal complete; verified dispositions, task8bb5018/Mainb461ace; #61 retains C residuals |
 
 ### Current Delivery Status
+
+2026-10-05, [native query trial15 progress review](../src/prototype/coordination/reviews/20261005-native-query-trial15-progress-review.json):
+private frozen runtime129 `13fac73f`/input671 `9488d4e4`; Root hashes all671/129/86
+and checks38 inert image pairs/19 O2-SAN counterparts byte-equal. Owner reports
+both builds/all3 modes0,19 cuts per flavor, validation424/25/29; no Root runtime
+replay or owner timing/censor inference. Static12-file review confirms one native
+indexed cursor, shared Source owner, retained lexical body link and completed Core
+output slots. Trial3 byte loss is historical on these tested bytes; old failures
+remain. Live guard/link/header corrections require the next exact freeze. Real
+pending-substitution count0, public B/R/old Source-lambda/current broad/genuine
+Sorted-public/strict3/full SE/net remain open; no READY/task/runtime integration.
+Source IO borrowers need prototype typing_io.c/ordinary codecs; Job owns link
+correction. R1 header correction still pending; C52/native126 is separate.
 
 2026-10-05, [C52 current owner/command review](../src/prototype/coordination/reviews/20261005-c52-current-owner-command-review.json)
 supersedes C52 action-pending and the current downstream proof-count build blocker

@@ -1,7 +1,7 @@
 # Solver and Evidence Duplication Audit
 
 Date: 2026-09-30
-Status: R1 local/detailed6308/3040/Root16 verified; C52 native+legacy current55 O2/full SAN correct downstream observer dependency. Job header correction/distinct handoff still defer R1 publication. Strict3/private query frontier/full SE/net remain open in this sole list.
+Status: R1 private; C52 native+legacy current55 correct downstream observer dependency. Query trial15 focused owner reports/pins/images reviewed; later guard/link/header/broad/public/net pending. Strict3/full SE remain open in this sole list.
 Parent: [artifact plan, AP0](2026-09-28-ARTIFACT-SEMANTIC-PERSISTENCE-REFACTOR-PLAN.md#ap0-simplify-before-extending-persistence).
 This is the active prerequisite work list, not another artifact format proposal.
 
@@ -319,6 +319,19 @@ identical TSVs in O2 and ASan/UBSan builds, including repeated samples without
 additional fuel. No full acceptance suite was rerun for this audit-only change.
 
 ## Assessment
+
+2026-10-05, [typed-query trial15 progress](../src/prototype/coordination/reviews/20261005-native-query-trial15-progress-review.json)
+supersedes the current focused trial3 inert-byte failure on private frozen trial15
+only: Root verifies671 inputs/129 runtime/86 terminal pins and38 byte-equal pairs,
+19 corresponding O2-SAN images; owner reports all3 modes0/19 cuts per flavor.
+Static indexed cursor/shared Source/lexical link/Core result transport reviewed;
+no Root execution/current guard-link-header qualification or runtime publication.
+The controls explicitly select authentic continuation reuse after ordinary Solve,
+not public B/R policy; unfinished substitution guard is static, actual pending
+executor count0. Preserve all byte/admission/cache/coverage/setup failures. Next
+exact guard/link/header freeze must qualify old Source/lambda/current broad/genuine
+Sorted-public partitions. R1 native_admissions.h policy/strict3/full SE/net remain;
+C52/native126 compatibility is separate. Original owner continues without a hold.
 
 2026-10-05, [C52 current review](../src/prototype/coordination/reviews/20261005-c52-current-owner-command-review.json)
 supersedes the current C/native proof-count build-blocker finding for frozen native

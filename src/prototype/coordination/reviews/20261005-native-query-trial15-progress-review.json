@@ -1,0 +1,677 @@
+{
+  "date_UTC": "2026-10-05T00:51:15.647545+00:00",
+  "Main_parent": "ffc674049954ee715bde73fc2c04a81e3ccb0c5c",
+  "notice_SHA": "7241645a18bd3a50b8d8936d0f12e993067cc9969f32bc009af85babb23f1b6b",
+  "source_scope": "Private frozen trial15 parent-native-r1 code126, not accepted-source edits/current live guard corrections.",
+  "frozen_input671_manifest_SHA": "9488d4e4edf2d359f8c5569ce5843067b2e6f4676fd97b8256c9a2dff4c37753",
+  "frozen_runtime129_manifest_SHA": "13fac73f0d29d3d429d09a83ae9f41e1001f750a99b90d6e9d16a5b68eee7da5",
+  "all671_input_and129_runtime_blobs_exact": true,
+  "terminal_SHA": "467cf4f5ff13a14721e1681d03efc66eb2e78831e2d32b1a123302bd214aa5d1",
+  "all_terminal_pins_exact": 86,
+  "owner_reported_eight_build_mode_commands_exit0": true,
+  "owner_reported_children_reaped": true,
+  "owner_terminal_timing_and_censor_fields": "Absent; not inferred.",
+  "Root_runtime_replayed": false,
+  "all38_image_inert_pairs_fresh_byte_equal": [
+    {
+      "flavor": "o2",
+      "mode": "source-owner",
+      "cut": 1,
+      "size": 2965,
+      "image_SHA": "3fa2cd1af1b2e27861ebeec8e46553466b97c3bf2b2cbb0e2b6b7dd16b8ab259",
+      "inert_SHA": "3fa2cd1af1b2e27861ebeec8e46553466b97c3bf2b2cbb0e2b6b7dd16b8ab259"
+    },
+    {
+      "flavor": "o2",
+      "mode": "source-owner",
+      "cut": 2,
+      "size": 2965,
+      "image_SHA": "de150a8238d615ee69675dc4e5004b4f4220c3d7c78b2261edfe97b66796be48",
+      "inert_SHA": "de150a8238d615ee69675dc4e5004b4f4220c3d7c78b2261edfe97b66796be48"
+    },
+    {
+      "flavor": "o2",
+      "mode": "source-owner",
+      "cut": 3,
+      "size": 2997,
+      "image_SHA": "0a457ec16fa5e37afe552b24a20944cf0bcdd1c3ed3382a4f2ac8b8871af08f1",
+      "inert_SHA": "0a457ec16fa5e37afe552b24a20944cf0bcdd1c3ed3382a4f2ac8b8871af08f1"
+    },
+    {
+      "flavor": "o2",
+      "mode": "source-owner",
+      "cut": 4,
+      "size": 2997,
+      "image_SHA": "94e2e56cce8158bcb9f374b06aea652164189a4aa3064b369d991ba346e14ac2",
+      "inert_SHA": "94e2e56cce8158bcb9f374b06aea652164189a4aa3064b369d991ba346e14ac2"
+    },
+    {
+      "flavor": "o2",
+      "mode": "source-owner",
+      "cut": 5,
+      "size": 3005,
+      "image_SHA": "ff28afb02fac9e42ef1453600c398f88eac75d766d37e2a1f5a300cd9edc0636",
+      "inert_SHA": "ff28afb02fac9e42ef1453600c398f88eac75d766d37e2a1f5a300cd9edc0636"
+    },
+    {
+      "flavor": "o2",
+      "mode": "source-owner",
+      "cut": 6,
+      "size": 3005,
+      "image_SHA": "a96639e6208e23abb8023699493e5df67bc20e41284b123cbb6c04a1bc99cc82",
+      "inert_SHA": "a96639e6208e23abb8023699493e5df67bc20e41284b123cbb6c04a1bc99cc82"
+    },
+    {
+      "flavor": "o2",
+      "mode": "source-owner",
+      "cut": 7,
+      "size": 3005,
+      "image_SHA": "3476241823414929117fd3742736a3bb8b174fa60e9d332c7aae03bdbac0c85b",
+      "inert_SHA": "3476241823414929117fd3742736a3bb8b174fa60e9d332c7aae03bdbac0c85b"
+    },
+    {
+      "flavor": "o2",
+      "mode": "source-owner",
+      "cut": 8,
+      "size": 2931,
+      "image_SHA": "a55aff6645a21ec0a73cfd911e5f0f5b5947bc0ad080900500d0ec970f394ee4",
+      "inert_SHA": "a55aff6645a21ec0a73cfd911e5f0f5b5947bc0ad080900500d0ec970f394ee4"
+    },
+    {
+      "flavor": "o2",
+      "mode": "mapped",
+      "cut": 1,
+      "size": 2853,
+      "image_SHA": "abe947bd333c7e78435b8f89487a5226a8b5e0c861a4d6a13ffc906406378421",
+      "inert_SHA": "abe947bd333c7e78435b8f89487a5226a8b5e0c861a4d6a13ffc906406378421"
+    },
+    {
+      "flavor": "o2",
+      "mode": "mapped",
+      "cut": 2,
+      "size": 2853,
+      "image_SHA": "577bc16e09623806113e83e3e1a8a4715cadafe50e8ddcccd8a0700ec00f43c6",
+      "inert_SHA": "577bc16e09623806113e83e3e1a8a4715cadafe50e8ddcccd8a0700ec00f43c6"
+    },
+    {
+      "flavor": "o2",
+      "mode": "mapped",
+      "cut": 3,
+      "size": 2885,
+      "image_SHA": "8c54e4ad0817172994bdd756a22592cbd2baff7e4a3c257afa16016ea9b0f926",
+      "inert_SHA": "8c54e4ad0817172994bdd756a22592cbd2baff7e4a3c257afa16016ea9b0f926"
+    },
+    {
+      "flavor": "o2",
+      "mode": "mapped",
+      "cut": 4,
+      "size": 2885,
+      "image_SHA": "dc5096e77d3f096cd01ae0992c89c7c03ae0cebd1abac4c0cff40a1f0090a5f4",
+      "inert_SHA": "dc5096e77d3f096cd01ae0992c89c7c03ae0cebd1abac4c0cff40a1f0090a5f4"
+    },
+    {
+      "flavor": "o2",
+      "mode": "mapped",
+      "cut": 5,
+      "size": 2893,
+      "image_SHA": "a1f7990837a45f27619ad3e727154a846b78625de708644969eb2289628dfe51",
+      "inert_SHA": "a1f7990837a45f27619ad3e727154a846b78625de708644969eb2289628dfe51"
+    },
+    {
+      "flavor": "o2",
+      "mode": "mapped",
+      "cut": 6,
+      "size": 2893,
+      "image_SHA": "485a391bb32db4d4224c8e59c8de186c38371713d7ef90478b8407c2efaf2640",
+      "inert_SHA": "485a391bb32db4d4224c8e59c8de186c38371713d7ef90478b8407c2efaf2640"
+    },
+    {
+      "flavor": "o2",
+      "mode": "mapped",
+      "cut": 7,
+      "size": 2893,
+      "image_SHA": "cb43a927acab7d8e2fd60b860acb22463f4810250af967d3b27e55bfecdcfaad",
+      "inert_SHA": "cb43a927acab7d8e2fd60b860acb22463f4810250af967d3b27e55bfecdcfaad"
+    },
+    {
+      "flavor": "o2",
+      "mode": "mapped",
+      "cut": 8,
+      "size": 2819,
+      "image_SHA": "6b26403036da32c436039ade27102ad01fa2a9cf46ecc58ac5c9881152a5aea2",
+      "inert_SHA": "6b26403036da32c436039ade27102ad01fa2a9cf46ecc58ac5c9881152a5aea2"
+    },
+    {
+      "flavor": "o2",
+      "mode": "list",
+      "cut": 1,
+      "size": 35627,
+      "image_SHA": "2694c0fece21dcc2955b4544ccaab1afa8dc431e625800bae81cedd9f076d81d",
+      "inert_SHA": "2694c0fece21dcc2955b4544ccaab1afa8dc431e625800bae81cedd9f076d81d"
+    },
+    {
+      "flavor": "o2",
+      "mode": "list",
+      "cut": 2,
+      "size": 35627,
+      "image_SHA": "6a18229732e4294fbaecc2c7b017eea782fcebaf3be6a2024de9643171b94596",
+      "inert_SHA": "6a18229732e4294fbaecc2c7b017eea782fcebaf3be6a2024de9643171b94596"
+    },
+    {
+      "flavor": "o2",
+      "mode": "list",
+      "cut": 3,
+      "size": 35669,
+      "image_SHA": "661400ceee63852b7a3df9bf0aabd64df7bdb6dbd64c04f2398de0ceb6d256f9",
+      "inert_SHA": "661400ceee63852b7a3df9bf0aabd64df7bdb6dbd64c04f2398de0ceb6d256f9"
+    },
+    {
+      "flavor": "san",
+      "mode": "source-owner",
+      "cut": 1,
+      "size": 2965,
+      "image_SHA": "3fa2cd1af1b2e27861ebeec8e46553466b97c3bf2b2cbb0e2b6b7dd16b8ab259",
+      "inert_SHA": "3fa2cd1af1b2e27861ebeec8e46553466b97c3bf2b2cbb0e2b6b7dd16b8ab259"
+    },
+    {
+      "flavor": "san",
+      "mode": "source-owner",
+      "cut": 2,
+      "size": 2965,
+      "image_SHA": "de150a8238d615ee69675dc4e5004b4f4220c3d7c78b2261edfe97b66796be48",
+      "inert_SHA": "de150a8238d615ee69675dc4e5004b4f4220c3d7c78b2261edfe97b66796be48"
+    },
+    {
+      "flavor": "san",
+      "mode": "source-owner",
+      "cut": 3,
+      "size": 2997,
+      "image_SHA": "0a457ec16fa5e37afe552b24a20944cf0bcdd1c3ed3382a4f2ac8b8871af08f1",
+      "inert_SHA": "0a457ec16fa5e37afe552b24a20944cf0bcdd1c3ed3382a4f2ac8b8871af08f1"
+    },
+    {
+      "flavor": "san",
+      "mode": "source-owner",
+      "cut": 4,
+      "size": 2997,
+      "image_SHA": "94e2e56cce8158bcb9f374b06aea652164189a4aa3064b369d991ba346e14ac2",
+      "inert_SHA": "94e2e56cce8158bcb9f374b06aea652164189a4aa3064b369d991ba346e14ac2"
+    },
+    {
+      "flavor": "san",
+      "mode": "source-owner",
+      "cut": 5,
+      "size": 3005,
+      "image_SHA": "ff28afb02fac9e42ef1453600c398f88eac75d766d37e2a1f5a300cd9edc0636",
+      "inert_SHA": "ff28afb02fac9e42ef1453600c398f88eac75d766d37e2a1f5a300cd9edc0636"
+    },
+    {
+      "flavor": "san",
+      "mode": "source-owner",
+      "cut": 6,
+      "size": 3005,
+      "image_SHA": "a96639e6208e23abb8023699493e5df67bc20e41284b123cbb6c04a1bc99cc82",
+      "inert_SHA": "a96639e6208e23abb8023699493e5df67bc20e41284b123cbb6c04a1bc99cc82"
+    },
+    {
+      "flavor": "san",
+      "mode": "source-owner",
+      "cut": 7,
+      "size": 3005,
+      "image_SHA": "3476241823414929117fd3742736a3bb8b174fa60e9d332c7aae03bdbac0c85b",
+      "inert_SHA": "3476241823414929117fd3742736a3bb8b174fa60e9d332c7aae03bdbac0c85b"
+    },
+    {
+      "flavor": "san",
+      "mode": "source-owner",
+      "cut": 8,
+      "size": 2931,
+      "image_SHA": "a55aff6645a21ec0a73cfd911e5f0f5b5947bc0ad080900500d0ec970f394ee4",
+      "inert_SHA": "a55aff6645a21ec0a73cfd911e5f0f5b5947bc0ad080900500d0ec970f394ee4"
+    },
+    {
+      "flavor": "san",
+      "mode": "mapped",
+      "cut": 1,
+      "size": 2853,
+      "image_SHA": "abe947bd333c7e78435b8f89487a5226a8b5e0c861a4d6a13ffc906406378421",
+      "inert_SHA": "abe947bd333c7e78435b8f89487a5226a8b5e0c861a4d6a13ffc906406378421"
+    },
+    {
+      "flavor": "san",
+      "mode": "mapped",
+      "cut": 2,
+      "size": 2853,
+      "image_SHA": "577bc16e09623806113e83e3e1a8a4715cadafe50e8ddcccd8a0700ec00f43c6",
+      "inert_SHA": "577bc16e09623806113e83e3e1a8a4715cadafe50e8ddcccd8a0700ec00f43c6"
+    },
+    {
+      "flavor": "san",
+      "mode": "mapped",
+      "cut": 3,
+      "size": 2885,
+      "image_SHA": "8c54e4ad0817172994bdd756a22592cbd2baff7e4a3c257afa16016ea9b0f926",
+      "inert_SHA": "8c54e4ad0817172994bdd756a22592cbd2baff7e4a3c257afa16016ea9b0f926"
+    },
+    {
+      "flavor": "san",
+      "mode": "mapped",
+      "cut": 4,
+      "size": 2885,
+      "image_SHA": "dc5096e77d3f096cd01ae0992c89c7c03ae0cebd1abac4c0cff40a1f0090a5f4",
+      "inert_SHA": "dc5096e77d3f096cd01ae0992c89c7c03ae0cebd1abac4c0cff40a1f0090a5f4"
+    },
+    {
+      "flavor": "san",
+      "mode": "mapped",
+      "cut": 5,
+      "size": 2893,
+      "image_SHA": "a1f7990837a45f27619ad3e727154a846b78625de708644969eb2289628dfe51",
+      "inert_SHA": "a1f7990837a45f27619ad3e727154a846b78625de708644969eb2289628dfe51"
+    },
+    {
+      "flavor": "san",
+      "mode": "mapped",
+      "cut": 6,
+      "size": 2893,
+      "image_SHA": "485a391bb32db4d4224c8e59c8de186c38371713d7ef90478b8407c2efaf2640",
+      "inert_SHA": "485a391bb32db4d4224c8e59c8de186c38371713d7ef90478b8407c2efaf2640"
+    },
+    {
+      "flavor": "san",
+      "mode": "mapped",
+      "cut": 7,
+      "size": 2893,
+      "image_SHA": "cb43a927acab7d8e2fd60b860acb22463f4810250af967d3b27e55bfecdcfaad",
+      "inert_SHA": "cb43a927acab7d8e2fd60b860acb22463f4810250af967d3b27e55bfecdcfaad"
+    },
+    {
+      "flavor": "san",
+      "mode": "mapped",
+      "cut": 8,
+      "size": 2819,
+      "image_SHA": "6b26403036da32c436039ade27102ad01fa2a9cf46ecc58ac5c9881152a5aea2",
+      "inert_SHA": "6b26403036da32c436039ade27102ad01fa2a9cf46ecc58ac5c9881152a5aea2"
+    },
+    {
+      "flavor": "san",
+      "mode": "list",
+      "cut": 1,
+      "size": 35627,
+      "image_SHA": "2694c0fece21dcc2955b4544ccaab1afa8dc431e625800bae81cedd9f076d81d",
+      "inert_SHA": "2694c0fece21dcc2955b4544ccaab1afa8dc431e625800bae81cedd9f076d81d"
+    },
+    {
+      "flavor": "san",
+      "mode": "list",
+      "cut": 2,
+      "size": 35627,
+      "image_SHA": "6a18229732e4294fbaecc2c7b017eea782fcebaf3be6a2024de9643171b94596",
+      "inert_SHA": "6a18229732e4294fbaecc2c7b017eea782fcebaf3be6a2024de9643171b94596"
+    },
+    {
+      "flavor": "san",
+      "mode": "list",
+      "cut": 3,
+      "size": 35669,
+      "image_SHA": "661400ceee63852b7a3df9bf0aabd64df7bdb6dbd64c04f2398de0ceb6d256f9",
+      "inert_SHA": "661400ceee63852b7a3df9bf0aabd64df7bdb6dbd64c04f2398de0ceb6d256f9"
+    }
+  ],
+  "O2_SAN_mode_logs_byte_equal": true,
+  "changed_runtime_files": {
+    "src/artifact/source.c": {
+      "parent": "e12a8681d70014f8cd4328ca5b853f75e90edad88ab8bcc52e9949c717c67f24",
+      "trial15": "d4cd200b3a3f7106cf1a0d66886c6269d6cfd66f5f9a9ae66321b4b3b58cf18f"
+    },
+    "src/artifact/source.h": {
+      "parent": "6c39858fc8308910af44556ac37165ad1f89625bd2d82889c22c51b4a7087ef4",
+      "trial15": "7a8fbfb82f0edb9bb3d14147503617c048ffdd6fe68ce42ca04a92a9e7d5ecb8"
+    },
+    "src/evidence.c": {
+      "parent": "4bddf8794716daa2f9e5ea210b259c43a69af233f644cca46fc72304859520f5",
+      "trial15": "dcd57b8178b0663d6c2cd41b864d4db10d319a8af2280a15ec49d504bdeafe66"
+    },
+    "src/evidence.h": {
+      "parent": "66f05f676547bfab61f64ff0648578300543e2c7d1e9a4d28940ee4e5e81d696",
+      "trial15": "4d39bccd7efd2fee351c474e8f08d2af2bceb0bcd50a1764bea2dafdbf36df2d"
+    },
+    "src/occurrence_io.c": {
+      "parent": "25a4047c754f2f6a0d31d1bc24b1b255aec63314e237f48bb06642e29b871fbe",
+      "trial15": "9593486787af809019b0f902852a7b2a43db0f6dd3f3dce1870db887ac29a536"
+    },
+    "src/occurrence_io.h": {
+      "parent": "ed23f76f630391f08042f720ba40ee6c8d144d7d83d1c716a1c209f031f7f47b",
+      "trial15": "95454b34c420e76d265e5593fe08cf5f1ce03a16ae6717a00ff0b998f85ab620"
+    },
+    "src/source_io.c": {
+      "parent": "2000a803735e772a9a69568511b0de75248d9cfdf3a49442c3e16a5b686e2d2d",
+      "trial15": "c0342a71c67bba876736388dc71b5478202c024f5a0b7704e6b3a9fb27da4136"
+    },
+    "src/typing.c": {
+      "parent": "f33d32014156d10f8d057d04d7edb12ced29abad5d1a8ca5a689350235aa2ee9",
+      "trial15": "de0ebbfe1c825bc6e9098e3ea5810ecc6bca426256a5dd492d70387a22bdcc60"
+    },
+    "src/typing.h": {
+      "parent": "a7074af5cae4176464f2e6e639727664eacef508d2b84b037d1280c0118472c1",
+      "trial15": "a1909c4aa37f8396c2921527edcc3158dc587adf973d45fcb2d4fcd16d0b7fe0"
+    },
+    "src/typing_internal.h": {
+      "parent": null,
+      "trial15": "2ff5cfa23c00b82dfa4c08007e6a70c8eafbc6bb43565c2ef5e64b2eb0157654"
+    },
+    "src/typing_io.c": {
+      "parent": null,
+      "trial15": "e2524215960a9fb96208d6c5a263833c3d907f8c8793bf5cb944451da2cc35e4"
+    },
+    "src/typing_io.h": {
+      "parent": null,
+      "trial15": "dc6af64ed0a6fd9e10f2fe478e2d4bd15446e1a2e516366c510e7ca9f4def784"
+    }
+  },
+  "native_R1_implementation_task_Main_published": false,
+  "C52_dependency_already_qualified": "Main ffc67404/task fe6f725e; separate chosen frozen runtime126 producer. Not trial15/C53 current dependency qualification.",
+  "assessment": "Focused retained trial15 images now byte-equal; earlier trial3 20->18/276B failure remains historical. Recorded zero/admission/copied-cursor/useful-step claims require static test/source review and eventual current exact handoff. Small later guard/link/header edits/current broad/public/old Source-lambda/full SE/net pending; no READY or full qualification.",
+  "cost_samples": 0,
+  "accepted_code_Goal_owner_timer_model_actions": false,
+  "live_runtime129_deltas_at_readonly_checkpoint": {
+    "date_UTC": "2026-10-05T00:47:50.204478+00:00",
+    "paths": {
+      "src/typing.c": {
+        "trial15_SHA": "de0ebbfe1c825bc6e9098e3ea5810ecc6bca426256a5dd492d70387a22bdcc60",
+        "observed_live_SHA": "0e9afd1718b69f3f59142282eda21e3e6fe347a626d15c6c894034d36bac9fb0"
+      },
+      "src/typing_internal.h": {
+        "trial15_SHA": "2ff5cfa23c00b82dfa4c08007e6a70c8eafbc6bb43565c2ef5e64b2eb0157654",
+        "observed_live_SHA": "1a5c92392288bd6368b3b38a6c744e31f2c249877636ca2ea2bc45d7e04adc1e"
+      },
+      "src/typing_io.h": {
+        "trial15_SHA": "dc6af64ed0a6fd9e10f2fe478e2d4bd15446e1a2e516366c510e7ca9f4def784",
+        "observed_live_SHA": "fd698e2141fb6392cc791259c1effe4d99565c85bec44c35ca92c3b39f8ef7bd"
+      }
+    },
+    "qualification": "Observed live differences only, not a frozen/current runtime qualification."
+  },
+  "source_review": {
+    "canonical_cursor": "typing.c input_find keys source/index/map/child; pending_import copies a temporary decode header into existing native index once; repeated key refuses. type_resume insists exact index identity/canonical admitted source before attaching graph-owned maps/action; copied handles reject.",
+    "one_Source_owner": "artifact/source.c APGSRCW4 partial CLASSIFIER record borrows native input; later shared record references earlier record index. write_with/read_with share enclosing occurrence/Core codec. Legacy/default attach rejects partial reuse; explicit attach_with_frontiers is an opt-in authentic continuation policy, not automatic trust or result acceptance.",
+    "completed_substitution": "APGTYP2/APGSCT1 save completed Core term into existing action output slot and use same mixed Scope/context/Core relocation; no serialized substitution executor/cache. Pending substitution rejects in shape; all trial15 actual logs pending-substitutions=0, so no genuine pending executor coverage pass claimed.",
+    "source_byte_fix": "source_io.c retains unfinished lexical definition-body key when write->continuation is set, independently of materialized output. Frozen byte equality independently confirmed; this does not qualify current broad/public source combination.",
+    "ordinary_validation": "typed_query_checkpoint.c checks raw source and formation through ordinary artifact_revalidate/Solve, shares local B512+total/R512 across validation and continuation; validation424/25/29. Its explicit comment disclaims public B/R validation accounting. No public policy/full frontier claim.",
+    "build_dependency": "query_frontier.mk explicitly adds typing_io.c and artifact/source.c. Other frozen frontier.mk targets borrowing source.c omit typing_io.c: static link dependency identified, not a fresh failed build or external technical blocker. Current link fixes require separate frozen run."
+  },
+  "header_policy": {
+    "new_typing_headers_declarative": true,
+    "frozen_trial15_native_admissions_header_nontrivial_implementation_remains": true,
+    "frozen_header_pins": {
+      "src/typing_io.h": "dc6af64ed0a6fd9e10f2fe478e2d4bd15446e1a2e516366c510e7ca9f4def784",
+      "src/typing_internal.h": "2ff5cfa23c00b82dfa4c08007e6a70c8eafbc6bb43565c2ef5e64b2eb0157654",
+      "tests/native_admissions.h": "c9d906eef49d5625ae4d295a80309dcc4db412ef2c80ee8c66e9b91479925970"
+    },
+    "remaining": "R1 and trial15 frozen native_admissions.h include nontrivial static observer. Later header correction must have distinct exact qualified handoff; not waived.",
+    "frozen_new_header_guards": "Trial15 new typing headers use A_PROGRAM_POINTER_* guards rather than prescribed __FILENAME_H__; live changes observed, separate next freeze required."
+  },
+  "all19_O2_SAN_corresponding_images_byte_equal": true,
+  "retained_historical_failures_progress_reports": {
+    "1": {
+      "terminal_SHA": "3a762f52d2da161cc58efd82e8ab4106553d3339281c86356e591f530c543c16",
+      "record_keys": [
+        "input_sha256",
+        "code_sha256",
+        "code_records",
+        "records",
+        "pins_exact_after",
+        "children_reaped"
+      ],
+      "reported_results": [
+        {
+          "name": "build",
+          "exit": 2
+        }
+      ]
+    },
+    "3": {
+      "terminal_SHA": "3a40ac4e2b69ce33e6a2fb07d431fe772e1c515eb0e5fd346847bbff1ff27ee8",
+      "record_keys": [
+        "input_sha256",
+        "code_sha256",
+        "code_records",
+        "records",
+        "images",
+        "pins_exact_after",
+        "children_reaped"
+      ],
+      "reported_results": [
+        {
+          "name": "build",
+          "exit": 0
+        },
+        {
+          "name": "typed-checkpoint-List09",
+          "exit": -6
+        }
+      ]
+    },
+    "4": {
+      "terminal_SHA": "fb09faecb2f6c05036f5525d5027005890811bd2937bab17af2488359ac476d7",
+      "record_keys": [
+        "input_sha256",
+        "code_sha256",
+        "records",
+        "pins",
+        "pins_exact_after",
+        "children_reaped"
+      ],
+      "reported_results": [
+        {
+          "name": "source-closure-build",
+          "exit": 0
+        },
+        {
+          "name": "source-closure-run",
+          "exit": 1
+        },
+        {
+          "name": "query-build",
+          "exit": 0
+        },
+        {
+          "name": "query-run",
+          "exit": -6
+        }
+      ]
+    },
+    "5": {
+      "terminal_SHA": "1182cd0b4b8ab0d07740bdd099676fbf6e1ab955fe6650b003698ec8f92c7466",
+      "record_keys": [
+        "input_sha256",
+        "records",
+        "pins",
+        "children_reaped"
+      ],
+      "reported_results": [
+        {
+          "name": "source-closure-build",
+          "exit": 0
+        },
+        {
+          "name": "source-closure-run",
+          "exit": 0
+        },
+        {
+          "name": "query-build",
+          "exit": 0
+        },
+        {
+          "name": "query-run",
+          "exit": -6
+        }
+      ]
+    },
+    "6": {
+      "terminal_SHA": "3ee2c65fb3f1f52f4e88945da8a4cc0191a4b5e6cac0127a1d2fe628005068b9",
+      "record_keys": [
+        "input_sha256",
+        "records",
+        "pins",
+        "children_reaped"
+      ],
+      "reported_results": [
+        {
+          "name": "build",
+          "exit": 2
+        }
+      ]
+    },
+    "8": {
+      "terminal_SHA": "8a7e5c545c338dcd00806eb6251e46f488ccb6ba4fc0d8f66d840330c1b0d712",
+      "record_keys": [
+        "input_sha256",
+        "records",
+        "pins",
+        "children_reaped"
+      ],
+      "reported_results": [
+        {
+          "name": "build",
+          "exit": 0
+        },
+        {
+          "name": "mapped",
+          "exit": -6
+        },
+        {
+          "name": "list",
+          "exit": 0
+        }
+      ]
+    },
+    "9": {
+      "terminal_SHA": "12260a935f20a869775af76cca9b428e7f5a44e7bfbb9c18b1c57df7f8e9b656",
+      "record_keys": [
+        "input_sha256",
+        "records",
+        "pins",
+        "children_reaped"
+      ],
+      "reported_results": [
+        {
+          "name": "build",
+          "exit": 0
+        },
+        {
+          "name": "mapped",
+          "exit": -6
+        }
+      ]
+    },
+    "13": {
+      "terminal_SHA": "c2dea5c04c9e0cb859beab627dde0955ddc0d7a972aa0df843c491c6f0e40f30",
+      "record_keys": [
+        "input_sha256",
+        "code_sha256",
+        "records",
+        "pins",
+        "children_reaped"
+      ],
+      "reported_results": [
+        {
+          "name": "build",
+          "exit": 2
+        }
+      ]
+    },
+    "14": {
+      "terminal_SHA": "ed8c2834a899c2e7d9af5b8d964216ee79d5bf21b43da6512d797e5945f708b3",
+      "record_keys": [
+        "input_sha256",
+        "code_sha256",
+        "records",
+        "pins",
+        "children_reaped"
+      ],
+      "reported_results": [
+        {
+          "name": "build",
+          "exit": 0
+        },
+        {
+          "name": "source-owner",
+          "exit": -6
+        },
+        {
+          "name": "mapped",
+          "exit": -6
+        },
+        {
+          "name": "list",
+          "exit": 0
+        }
+      ]
+    }
+  },
+  "fresh_static_scope": "All671 frozen input/129 runtime blobs and86 terminal pins exact;38 inert pairs+19 O2/SAN counterparts independently byte-equal and three mode logs matched. Frozen12 runtime deltas and relevant control/build/header source statically reviewed. No Root execution/current post-trial15 qualification; no READY/code integration.",
+  "fresh_worker_progress": {
+    "c-backend": {
+      "pane": "%0",
+      "SHA": "e0517a4d8568604a39fafc4d2b2484cac725d37af86424af5c7a8cb1f19c4af8",
+      "status_lines": [
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/c-backend \u00b7 Verify Surface index.lock handoff        Pursuing goal (1d 17h 54m)    \u26a0 1 warning \u00b7 f2 to view"
+      ]
+    },
+    "job-evidence": {
+      "pane": "%4",
+      "SHA": "1ff113df80583782e83dfbe135e7e75d58fa4485d6902997d5edb95eb5b7bace",
+      "status_lines": [
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-progra\u2026 Pursuing goal (1d 11h 6m)    \u26a0 1 warning \u00b7 f2 to view"
+      ]
+    },
+    "performance": {
+      "pane": "%1",
+      "SHA": "34556eb3c77033482dc90236134669dc687be048843e98bdcd391ba028940825",
+      "status_lines": [
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-prog\u2026 Goal stalled (/goal resume)    \u26a0 1 warning \u00b7 f2 to view"
+      ]
+    },
+    "verification-audit": {
+      "pane": "%10",
+      "SHA": "c171c1c2631ac54bd2dba21ce78b3e4037bf761d6d42c20cf14ead86e8f85fb0",
+      "status_lines": [
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/verification-audit \u00b7 Hand off static inventory              Goal achieved (50m)    \u26a0 1 warning \u00b7 f2 to view"
+      ]
+    },
+    "sort-library": {
+      "pane": "%11",
+      "SHA": "afa71c1e238de91661f224ebe655f6538fd4d8cbb92cd6037a2d890b73e5ea9a",
+      "status_lines": [
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/sort-library \u00b7 Start authorized sort worker                 Goal achieved (24m)    \u26a0 1 warning \u00b7 f2 to view"
+      ]
+    },
+    "test-suite": {
+      "pane": "%12",
+      "SHA": "bb2a980cb52eefdfcafba6b9aa53e89c402c08e024bf01010d40d62417a7ee1b",
+      "status_lines": [
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/test-suite \u00b7 Simplify and deduplicate tests                 Goal achieved (37m)    \u26a0 1 warning \u00b7 f2 to view"
+      ]
+    },
+    "issue-audit": {
+      "pane": "%14",
+      "SHA": "c19bf743ddab52e861d9f6c00b9c96bf3fa1a67946a70a5bb54dd6993c7f8829",
+      "status_lines": [
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/issue-audit \u00b7 Record audit ownership receipt                Goal achieved (23m)    \u26a0 1 warning \u00b7 f2 to view"
+      ]
+    },
+    "watchers": "1585465 node\n1674731 node\n",
+    "date_UTC": "2026-10-05T00:48:26.717693+00:00"
+  },
+  "C53_progress": "00:48UTC pane shows owner sealing C53 and reports local O2/SAN61 and exact16 handoff in preparation, after explicit C52 receipt consumption. This is pane observation only; no C53 READY/current independent qualification/publication inferred.",
+  "raw_path": "src/prototype/coordination/verification/native-query-trial15-progress-20261005",
+  "lossless_archive_SHA": "1f1fb933b55e904cd10b8618e53d8f3aaf39dab4721cfef4b87763d2cf45f654",
+  "packed_files": 153,
+  "external_pinned_files": 155,
+  "raw_manifest_SHA": "30f223be87949d5413eb96fde2040fe3f883b7655a87dc9e75b4ec30d88aba94",
+  "implementation_integration": false,
+  "task_publication": false,
+  "Main_integration": "Review/immutable evidence/status only; no runtime implementation or task publication.",
+  "Assessment": "Record material focused trial15 progress against exact frozen private parent bytes. Root freshly verified671/129/86 pins and38 inert pairs/19 flavor counterparts and reviewed12 source deltas/controls. Owner O2/SAN build+three modes0 are retained reports, not Root execution. Supersedes current focused trial3 byte-failure state only on tested trial15; all initial failures remain historical. Live guard/link/header changes require exact next run and major READY. Pending executor coverage/public B-R/full Source-lambda/current broad/public/strict3/full SE/net remain. R1 header policy unresolved; C52 chosen native126 compatibility qualified separately. No Goal/lifecycle/accepted/cost change."
+}
