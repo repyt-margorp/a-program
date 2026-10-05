@@ -1,7 +1,7 @@
 # Parallel Development: Inquiry Desk, Merge and Workers
 
 Date: 2026-10-03
-Status: C54 source-selected constructor creation published/current native+legacy O2/full SAN61 each. Next saved-image command connection bounded; R1/query/header/current broad/public/strict3/full SE/net/general native remain open; original Goals/timer unchanged.
+Status: C55 one-image source-connected Acc creation products published/current native+legacy O2/full affected SAN61 each. Corrected query progress private; R1/header/current broad/public/strict3/full SE/net/general native remain open; Goals/timer unchanged.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `fd45c42`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -17,7 +17,7 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | ID | Problem / owner | Related | Status |
 | --- | --- | --- | --- |
 | 1 | Inquiry desk -> `merge`: reporting vs coordination/integration | All lanes | Desk answers the user; only Merge integrates after verified handoff |
-| 2 | `c-backend`: downstream C design | #61; shared policy #47 | C54 exact15/task 0a0c3919/Root8/native-legacy O2-SAN61/prototype integrated; LT prior/result indices validated before allocation. Saved-image command/manual storage/full Scope/general native/net remain |
+| 2 | `c-backend`: downstream C design | #61; shared policy #47 | C55 exact9/task c2dccb72/Root8/native-legacy O2-SAN61/prototype integrated; one image supplies fresh bodies/creation recipe. General LinkerScript/full Scope/manual storage/net remain |
 | 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Approved current frame deletion accepted; original363 plus adopted4 verified separately. Actual matched peakRSS/time pending safe all-owner window; peripheral MEM10/spine/empty arrays parked |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
 | 5 | `job-evidence`: typed ownership/deletion/resume | SE1-SE5, AP0 | R1 private/C52 consumer qualified. Trial15 owner focused O2-SAN0; Root671/129/86 pins and38 inert pairs exact/static review only. Current guards/link/header/broad/public/strict3/full SE/net pending |
@@ -26,6 +26,28 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | 8 | `issue-audit`: evidence-backed GitHub disposition | All open Issues/PRs | Bounded Goal complete; verified dispositions, task8bb5018/Mainb461ace; #61 retains C residuals |
 
 ### Current Delivery Status
+
+2026-10-05, [C55 image product review](../src/prototype/coordination/reviews/20261005-c55-current-image-creation-products-review.json):
+exact9 task `c2dccb72` follows C54. Raw766/input599 explicit file roles/content341/
+all23 prior archives exact. Root8 terminal/reaped/uncensored serial builds/gates:
+native126/legacy120 O2/full affected SAN61 each29zero/17unsupported4/two compiler-
+link1/pending3/twelve IO2. All16 source/object/archive/alias products exact C54;
+receipts match seven fresh actual bodies/full3168B creation recipe. Qualified
+images/pointers/Core341/matching helpers/observers reused, no producer regeneration.
+Finite one-image command retains Source/advancement/cleanup/no-replace contracts;
+manual templates/whole graph/roles/full Scope/source equivalence/general native
+LinkerScript/adoption/R1 header/strict3/full SE/net remain. Next owner boundary
+inspection remains private; no source checker/erasure/schema/ABI authority.
+
+2026-10-05, [later Job ordering progress](../src/prototype/coordination/reviews/20261005-job-owner-ordering-progress-review.json):
+private corrected runtime129 `82da2626`/input671 `6ba6568c`;16 focused owner O2/SAN0,
+770 terminal pins exact. Prior trial17 affected SAN link2 and trial18 preparation
+assertion134 retained; Source prepare validates an already attached exact lexical
+body rather than reattaching. Broad/final SAN/genuine Sorted-public/current exact
+major handoff/joint qualification pending at notice. Public unsupported-owner8/4
+at1000/1600 is owner-reported, not Root runtime replay. Separate application Jobs/
+argument constraints/sequence transport evolves privately, other owner states
+refuse. No implementation adoption/strict3 waiver/time or peak gain inferred.
 
 2026-10-05, [scheduled01:44 all-worker review](../src/prototype/coordination/reviews/20261005-timed-0144-worker-review.json):
 all seven panes freshly inspected; C/Job pursue original Goals, Performance
