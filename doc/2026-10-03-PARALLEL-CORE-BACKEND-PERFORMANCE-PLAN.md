@@ -1,7 +1,7 @@
 # Parallel Development: Inquiry Desk, Merge and Workers
 
 Date: 2026-10-03
-Status: C59 actual Bool capture prototype current native126/legacy120/query129 O2/SAN199 verified. R4 source/owner-results reviewed; fresh Root/current producer/adoption pending. Strict3/full SE/native/full61/net open; original Goals/timer unchanged.
+Status: C60/C61 exact runtime Bool capture/link prototypes independently qualified on bounded R5 and accepted120 O2/SAN; R5 focused/SAN/Sorted success separate from broad900 censored regression. Full criteria/strict3/header/net open; original capacity-stalled Goals/model/timer unchanged.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `fd45c42`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -17,15 +17,17 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | ID | Problem / owner | Related | Status |
 | --- | --- | --- | --- |
 | 1 | Inquiry desk -> `merge`: reporting vs coordination/integration | All lanes | Desk answers the user; only Merge integrates after verified handoff |
-| 2 | c-backend: downstream C design | #61; shared policy #47 | C59 exact13/Root13/six O2-SAN199/prototype integrated; ground Bool capture. General closures/manual storage/full Scope/native/net remain |
+| 2 | c-backend: downstream C design | #61; shared policy #47 | C60/C61 exact19/14 independent current O2/SAN97/136 and original Link/IO19 qualified; runtime Bool parameters/private LinkerScript. General native/full Scope/net remain |
 | 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Approved current frame deletion accepted; original363 plus adopted4 verified separately. Actual matched peakRSS/time pending safe all-owner window; peripheral MEM10/spine/empty arrays parked |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
-| 5 | job-evidence: typed ownership/deletion/resume | SE1-SE5, AP0 | R2 C59 current consumer verified; R4 frozen27/eight snapshots/census131 unchanged Makefile/owner finite cuts2-4 exact. Root R4/common producer/adoption/general Source/strict3/header/full SE/net open |
+| 5 | job-evidence: typed ownership/deletion/resume | SE1-SE5, AP0 | R5 exact23/runtime130/input680, focused/SAN/Sorted/strict-public reviewed; full Root acceptance900 censored in derived-LT. Runtime adoption/header/general Source/strict3/full SE/net open |
 | 6 | `verification-audit`: independent read-mostly suite/debt inventory | #59 / PR #60, #51 | Bounded static inventory/pilot complete; measured cost deferred, full #59 remains open |
 | 7 | `test-suite`: implement coverage-preserving test reductions | #59 / PR #60 | Bounded Goal complete; exact7 taskbc16df9 pushed/remote verified, Root raw/assembly review complete, prototype Main36a27be integrated |
 | 8 | `issue-audit`: evidence-backed GitHub disposition | All open Issues/PRs | Bounded Goal complete; verified dispositions, task8bb5018/Mainb461ace; #61 retains C residuals |
 
 ### Current Delivery Status
+
+2026-10-05 agent review: [C60/C61 independent qualification](../src/prototype/coordination/reviews/20261005-C60-C61-independent-current-review.json) delivers frozen19/14 after eight expected current O2/SAN gates and both original LinkerScript/publication-IO19 controls;56 product receipts exact. [R5 bounded/censored review](../src/prototype/coordination/reviews/20261005-R5-independent-bounded-censored-review.json) retains focused/SAN/Sorted successes and strict-public1, but full acceptance900 censored in derived-LT actual tests, not setup or a pass. R5 implementation adoption/header/general Source/full criteria remain; no identical broad rerun or cost sample. C/Job capacity stalls observed; no model/Goal/owner restart.
 
 2026-10-05 agent review: [C59 current Bool capture](../src/prototype/coordination/reviews/20261005-c59-current-Acc-Bool-capture-review.json)
 qualifies exact13/six native126/accepted120/private query129 O2/SAN199 gates; all126
@@ -2143,6 +2145,8 @@ Accepted `src/evidence.*`, `src/iadt.*` and their tests retain unrelated edits.
 
 ### Assessment
 
+2026-10-05 agent decision within existing scope: independently qualify frozen packets during original owner capacity stalls. Integrate only verified C60/C61 prototypes; archive R5 finite/censored results as review evidence, without runtime adoption, full-suite waiver or inferred owner refusal. No measurement hold/grant or new human approval.
+
 2026-10-05 agent decision: integrate immutable C59 after six independent current O2/SAN199 gates; retain R4 owner-only qualification as evidence pending fresh Root/current producer verification. Preserve strict failures/constructor cursor work. Census includes unchanged Makefile, no build edit. Worker notices confer no new approval.
 
 2026-10-05 agent decision: retain R3 immutable freeze and private core progress as evidence only. Historical application cut1 and core count/validation failures stay preserved; finite private owner successes supersede only those tested paths. Root R3/current-producer replay and general public Source/strict3/full SE/net remain unverified or failing. Worker notices are evidence, not new human approval.
@@ -3059,6 +3063,7 @@ with corresponding positive and retained dynamic/indexed refusal coverage.
 
 ### Plan
 
+- [x] Independently qualify/publish C60/C61 frozen19/14 target gates and both original Link/IO19; preserve R5 broad censor and full61/strict/net boundaries.
 - [x] Qualify/publish C28 exact13 signed module products on E22; preserve C27 ABI, nominal enums, borrowed lifetime and limited SAN.
 - [x] Qualify/publish C26 exact14 finite-record branching payloads on current E20; preserve ten new/six branching refusal pairs and wider native criteria.
 
