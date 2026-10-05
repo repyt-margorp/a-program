@@ -1,7 +1,7 @@
 # Parallel Development: Inquiry Desk, Merge and Workers
 
 Date: 2026-10-03
-Status: C58 source-derived closed comparator prototype published/current native126+legacy120+query129 O2/full affected SAN100. R2/application private; strict3/header/general continuation/full SE/net unfinished. Original Goals/timer unchanged.
+Status: C59 actual Bool capture prototype current native126/legacy120/query129 O2/SAN199 verified. R4 source/owner-results reviewed; fresh Root/current producer/adoption pending. Strict3/full SE/native/full61/net open; original Goals/timer unchanged.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `fd45c42`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -17,15 +17,34 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | ID | Problem / owner | Related | Status |
 | --- | --- | --- | --- |
 | 1 | Inquiry desk -> `merge`: reporting vs coordination/integration | All lanes | Desk answers the user; only Merge integrates after verified handoff |
-| 2 | `c-backend`: downstream C design | #61; shared policy #47 | C58 exact19/task 84755c36/Root13/six O2-SAN100/prototype integrated; actual known comparator operands. General closures/manual storage/full Scope/native/net remain |
+| 2 | c-backend: downstream C design | #61; shared policy #47 | C59 exact13/Root13/six O2-SAN199/prototype integrated; ground Bool capture. General closures/manual storage/full Scope/native/net remain |
 | 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Approved current frame deletion accepted; original363 plus adopted4 verified separately. Actual matched peakRSS/time pending safe all-owner window; peripheral MEM10/spine/empty arrays parked |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
-| 5 | `job-evidence`: typed ownership/deletion/resume | SE1-SE5, AP0 | R2 current consumer C58 O2/SAN100 verified; R3 frozen25/runtime130/input675/external328 readonly exact; core finite owner cuts2/3 O2-SAN0. Root R3/common producer/general Source/strict3/header/full SE/net open |
+| 5 | job-evidence: typed ownership/deletion/resume | SE1-SE5, AP0 | R2 C59 current consumer verified; R4 frozen27/eight snapshots/census131 unchanged Makefile/owner finite cuts2-4 exact. Root R4/common producer/adoption/general Source/strict3/header/full SE/net open |
 | 6 | `verification-audit`: independent read-mostly suite/debt inventory | #59 / PR #60, #51 | Bounded static inventory/pilot complete; measured cost deferred, full #59 remains open |
 | 7 | `test-suite`: implement coverage-preserving test reductions | #59 / PR #60 | Bounded Goal complete; exact7 taskbc16df9 pushed/remote verified, Root raw/assembly review complete, prototype Main36a27be integrated |
 | 8 | `issue-audit`: evidence-backed GitHub disposition | All open Issues/PRs | Bounded Goal complete; verified dispositions, task8bb5018/Mainb461ace; #61 retains C residuals |
 
 ### Current Delivery Status
+
+2026-10-05 agent review: [C59 current Bool capture](../src/prototype/coordination/reviews/20261005-c59-current-Acc-Bool-capture-review.json)
+qualifies exact13/six native126/accepted120/private query129 O2/SAN199 gates; all126
+triplets retain seven actual algorithm sections/full recipe/C54 header/nine fresh
+input receipts. Actual ground Bool constructor positions and both clauses retain
+one typed context through same Acc recursion. Known comparator only; general
+closures/manual storage/full Scope/native/full61/net remain. Parent C58 consumed;
+Root missing-parent-file audit/owner pre-client setup failures retained, no waiver.
+[Job R4 progress](../src/prototype/coordination/reviews/20261005-C59-Job-R4-source-progress-review.json)
+is readonly: exact27/eight snapshots reconstruct130 implementation inputs; named
+runtime130 census131 includes unchanged Makefile. Broad/focused678 sole unused
+control separately qualified;353 refs exact. Owner O2/seven SAN/focusedfour pass,
+destroyed-producer cuts2/3/4 validation0/4/4,useful82/81/80,total84. Existing Source/
+direct-rule/one-schedule reconnect; charged checked Self supplies borrowed Universe
+fact, lexical ancestry before raw scope dereference. Zero/one-cap/copy/foreign/
+wrong/duplicate/escaped controls pass. Sorted both955248; strict both1/original3,
+all40 TSV/all52 images exact R3. Root R4/current joint/adoption pending; constructor
+cursor array/later schema/qualified/Match/WHNF/header/full SE/net open. No new
+human approval or accepted/Goal/owner/model/timer/cost action.
 
 2026-10-05, [Job R3/frame/core progress audit](../src/prototype/coordination/reviews/20261005-C58-Job-R3-core-progress-review.json):
 READY R3 manifest `4a9585bf` has exact25 records; full130 `fcd78841` reconstructs
@@ -2123,6 +2142,8 @@ public resume failures are in the
 Accepted `src/evidence.*`, `src/iadt.*` and their tests retain unrelated edits.
 
 ### Assessment
+
+2026-10-05 agent decision: integrate immutable C59 after six independent current O2/SAN199 gates; retain R4 owner-only qualification as evidence pending fresh Root/current producer verification. Preserve strict failures/constructor cursor work. Census includes unchanged Makefile, no build edit. Worker notices confer no new approval.
 
 2026-10-05 agent decision: retain R3 immutable freeze and private core progress as evidence only. Historical application cut1 and core count/validation failures stay preserved; finite private owner successes supersede only those tested paths. Root R3/current-producer replay and general public Source/strict3/full SE/net remain unverified or failing. Worker notices are evidence, not new human approval.
 
