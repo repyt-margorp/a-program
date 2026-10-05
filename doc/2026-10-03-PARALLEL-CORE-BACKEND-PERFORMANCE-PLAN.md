@@ -1,7 +1,7 @@
 # Parallel Development: Inquiry Desk, Merge and Workers
 
 Date: 2026-10-03
-Status: C57 fixed Acc comparator prototype published/current native126+legacy120+query129 O2/full affected SAN85+67. R2/application remain private; strict3/header/general continuation/full SE/net unfinished. Original Goals/timer unchanged.
+Status: C58 source-derived closed comparator prototype published/current native126+legacy120+query129 O2/full affected SAN100. R2/application private; strict3/header/general continuation/full SE/net unfinished. Original Goals/timer unchanged.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `fd45c42`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -17,15 +17,52 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | ID | Problem / owner | Related | Status |
 | --- | --- | --- | --- |
 | 1 | Inquiry desk -> `merge`: reporting vs coordination/integration | All lanes | Desk answers the user; only Merge integrates after verified handoff |
-| 2 | `c-backend`: downstream C design | #61; shared policy #47 | C57 exact25/task 78652ca5/Root31/twelve O2-SAN85+67/prototype integrated; actual borrowed comparator. Caller contract/manual storage/general native/full Scope/net remain |
+| 2 | `c-backend`: downstream C design | #61; shared policy #47 | C58 exact19/task 84755c36/Root13/six O2-SAN100/prototype integrated; actual known comparator operands. General closures/manual storage/full Scope/native/net remain |
 | 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Approved current frame deletion accepted; original363 plus adopted4 verified separately. Actual matched peakRSS/time pending safe all-owner window; peripheral MEM10/spine/empty arrays parked |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
-| 5 | `job-evidence`: typed ownership/deletion/resume | SE1-SE5, AP0 | R2 exact37/runtime129 review-only; C55-61/C56-67/C57-85+67 consumers verified. Application cold cut1 fails; strict3/header/general continuation/full SE/net remain |
+| 5 | `job-evidence`: typed ownership/deletion/resume | SE1-SE5, AP0 | R2 current consumer C58 O2/SAN100 verified; R3 frozen25/runtime130/input675/external328 readonly exact; core finite owner cuts2/3 O2-SAN0. Root R3/common producer/general Source/strict3/header/full SE/net open |
 | 6 | `verification-audit`: independent read-mostly suite/debt inventory | #59 / PR #60, #51 | Bounded static inventory/pilot complete; measured cost deferred, full #59 remains open |
 | 7 | `test-suite`: implement coverage-preserving test reductions | #59 / PR #60 | Bounded Goal complete; exact7 taskbc16df9 pushed/remote verified, Root raw/assembly review complete, prototype Main36a27be integrated |
 | 8 | `issue-audit`: evidence-backed GitHub disposition | All open Issues/PRs | Bounded Goal complete; verified dispositions, task8bb5018/Mainb461ace; #61 retains C residuals |
 
 ### Current Delivery Status
+
+2026-10-05, [Job R3/frame/core progress audit](../src/prototype/coordination/reviews/20261005-C58-Job-R3-core-progress-review.json):
+READY R3 manifest `4a9585bf` has exact25 records; full130 `fcd78841` reconstructs
+from unchanged R2 frozen37, input675 `1c82bbed` and external328 exact. Readonly
+owner-results audit, no Root R3 runtime replay or task/Main implementation adoption.
+Actual allocated APP frames and copied decoder/owned frames deleted; same canonical
+CONTEXT_EXTEND/RETURN_CONTENT/classifier inputs remain. Owner unskipped O2
+acceptance0/seven affected SAN0/focusedfour0:406 cuts/621 restorations/15 tails/
+111 intrinsic cursors. Actual Sorted955410->955248/completion1915->1912; all52
+images equal after explicit completion-budget correspondence. Both strict recipes1
+retain original three failures;40 TSV fuel differs and original equality assertion1
+is retained. No measured time/peak or current joint/Main runtime claim.
+Separate core trial6 runtime census131 (includes identical Makefile),input678 exact,
+owner O2/SANfour0: finite cuts2/3 useful82/81 with validation0/4 under one B/R.
+Typed Self-context validation precedes borrowed Declaration->DataSchema fact;
+read/resave inert, one captured useful schedule. Earlier cold cut1/count/validation
+failures retained as history; these finite private successes do not establish
+general public Source resume. Mutable core trials excluded from R3. Fresh Root R3
+and common-producer qualification/strict3/header/full SE/net remain open; original
+owner work continues independently, no Performance restart/cost or new approval.
+
+2026-10-05, [C58 current closed-comparator review](../src/prototype/coordination/reviews/20261005-c58-current-Acc-closed-comparator-review.json):
+exact19 task 84755c36 follows independently verified C57task78652ca5/Mainf9f2241f;
+owner pending-parent field remains historical. Raw1389/explicit2107 direct-inherited
+references/content549/all26 prior archives exact. Root13 terminal/reaped/uncensored:
+native126/accepted120/private query129 O2/full affected SAN100 each60zero/two1/
+22IO2/pending3/15unsupported4. All54 product triplets/nine fresh inputs retain seven
+actual algorithm bodies/full creation recipe/C54 header. Descending/forward/original
+source matches; descending Core is C reversal against retained ascending controls,
+not a fresh source oracle. Fresh helpers/parser/fault/embedded source/product/client
+SAN; exact C57 backend/O2 pointers/Core reused. C57 unchanged original link/IO19
+evidence inherited without rerun. Known closed comparator/two-bound operand
+permutation emits tiny gc_compare adapter, same algorithm/public gs_sort; no caller
+interpretation needed for this closed entry. Constant/repeated/open-parameter/
+complex functions/effects/closures refuse4. Manual roles/storage/full Scope/source
+equivalence/native/full61/net remain. Initial build2/fixture abort-6 retained.
+R2/application private/strict3 unwaived; original Goal/owner/model/timer/cost unchanged.
 
 2026-10-05, [later C58 closed-comparator progress](../src/prototype/coordination/reviews/20261005-C58-closed-comparator-progress-review.json):
 ACTION5afb7233 has66 exact captured pins/owner14 records; initial missing-header
@@ -2086,6 +2123,10 @@ public resume failures are in the
 Accepted `src/evidence.*`, `src/iadt.*` and their tests retain unrelated edits.
 
 ### Assessment
+
+2026-10-05 agent decision: retain R3 immutable freeze and private core progress as evidence only. Historical application cut1 and core count/validation failures stay preserved; finite private owner successes supersede only those tested paths. Root R3/current-producer replay and general public Source/strict3/full SE/net remain unverified or failing. Worker notices are evidence, not new human approval.
+
+2026-10-05 agent decision: integrate immutable C58 after six current O2-SAN100 gates. Actual known closed comparator now needs no foreign interpreter; fixed manual roles/storage/Scope/source equivalence/native/full61/net remain. Earlier C58 progress is superseded by READY/current review. No new human approval inferred.
 
 2026-10-05 agent decision: integrate only frozen C57 prototype after twelve current new85/parent67 O2-SAN phases and affected original gates. Borrowed callback contract/manual roles/full Scope/source equivalence/general native/net limits stay explicit; R2/application implementation, strict3/full SE/Goal criteria remain unfinished. Worker READY is evidence, not new human approval.
 

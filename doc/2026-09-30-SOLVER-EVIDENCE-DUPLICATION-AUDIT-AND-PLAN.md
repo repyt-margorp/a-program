@@ -320,6 +320,27 @@ additional fuel. No full acceptance suite was rerun for this audit-only change.
 
 ## Assessment
 
+2026-10-05 agent assessment, [R3/core progress audit](../src/prototype/coordination/reviews/20261005-C58-Job-R3-core-progress-review.json):
+R3 actual APP/decoder frame deletion is immutable25/runtime130/input675/refs328
+exact; owner O2 acceptance/seven SAN/focused406 cuts qualify locally. Canonical
+context/input owners replace copied frame storage. Root R3/current common-producer
+verification and implementation adoption remain pending. Fuel reductions are real;
+52 public images correspond, both strict recipes retain original3 and TSV differs.
+Separate private schema trial6 destroys producer and qualifies finite cuts2/3 with
+charged typed Self validation0/4 and useful82/81; read/resave inert and one useful
+saved schedule. Historical failed cuts/counts/validation retained. No general public
+Source/qualified/Match/unfinished substitution/header/full SE/net or Goal pass; no
+second checker/codec/evaluator/readback authority or Performance restart. Mutable
+core work remains excluded from R3. This owning list remains the active work list.
+
+2026-10-05 agent assessment, [C58 consumer review](../src/prototype/coordination/reviews/20261005-c58-current-Acc-closed-comparator-review.json):
+independently frozen query129 qualifies actual closed source comparator O2/full
+affected SAN100, all emitted algorithm/recipe/product bytes exact. Downstream
+prototype evidence only; R2/application implementation private and strict3/header/
+general continuation/full SE/net/native application closure/sequence-frame criteria
+remain with the sole owning list. No new checker/schema/index/evaluator/readback/
+cost authority or Goal completion.
+
 2026-10-05 agent assessment, [C57 current consumer review](../src/prototype/coordination/reviews/20261005-c57-current-Acc-comparator-review.json):
 the independently frozen R2 query129 producer qualifies fresh comparator85 and
 parent67 under O2/full affected SAN; emitted bodies/recipes/products exact and

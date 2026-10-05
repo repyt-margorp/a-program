@@ -1,0 +1,9 @@
+aplink 1
+artifact actual.a
+abi c_acc_candidate_v1
+target host-c11
+product source
+lowering acc_creation_candidate_v1
+fallback reject
+export descending_sort gs_sort
+export succ_access successor
