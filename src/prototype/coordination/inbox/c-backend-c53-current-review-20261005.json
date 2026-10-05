@@ -1,0 +1,17 @@
+{
+  "date_UTC": "2026-10-05T01:05:03.837337+00:00",
+  "review": "src/prototype/coordination/reviews/20261005-c53-current-constructor-index-review.json",
+  "notice_SHA": "08d890774172669626ffdf828114faee3b365715cc3a8fa5a95ba488d874a16a",
+  "task_commit": "3b97c0feb59f19945ee000d0163b242334e4289e",
+  "task_parent_C52": "fe6f725e6264f0f81fcb0531d3bd0763320d040b",
+  "Root10_four61_current_qualified": true,
+  "fresh_native_legacy_images_owner_exact": {
+    "native": "07f201f130ca5e3f3f96f6bf3e62c251f89d5ab088ecb1b53e7877f1f997b081",
+    "legacy": "b8504410c0630eec777a2fdd4e282cb59d7e7683449c2030e0f1dbaf5b093f81"
+  },
+  "source_index_recipe": "Exact admitted LT fields/two result indices drive projections/refinement; creation formulas/manual storage/roles/full Scope/source equivalence/general native remain.",
+  "Main_integration": "Prototype integration recorded; final publication receipt follows.",
+  "native_R1_query_implementation_published": false,
+  "accepted_Goal_owner_timer_model_actions": false,
+  "cost_samples": 0
+}

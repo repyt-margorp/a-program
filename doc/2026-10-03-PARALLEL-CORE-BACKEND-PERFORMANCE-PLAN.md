@@ -1,7 +1,7 @@
 # Parallel Development: Inquiry Desk, Merge and Workers
 
 Date: 2026-10-03
-Status: C52 native+legacy current55 published; private query trial15 focused reports/pins/images reviewed, later guard/link/header and full broad/public/net pending. R1 private, strict3/full SE/general native open; original Goals/timer unchanged.
+Status: C53 source constructor index recipe published/current native+legacy O2-full SAN61 each. R1/query remain private pending header/current guard-link/broad/public/strict3/full SE/net; manual constructor creation/general native open, original Goals/timer unchanged.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `fd45c42`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -17,7 +17,7 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | ID | Problem / owner | Related | Status |
 | --- | --- | --- | --- |
 | 1 | Inquiry desk -> `merge`: reporting vs coordination/integration | All lanes | Desk answers the user; only Merge integrates after verified handoff |
-| 2 | `c-backend`: downstream C design | #61; shared policy #47 | C52 exact16/task fe6f725e/Root native+legacy O2-full SAN55/prototype integrated; native observer and fresh recipe command qualified. C53 private constructor index ACTION, full refusal/product/SAN freeze pending; full Scope/general native/cost open |
+| 2 | `c-backend`: downstream C design | #61; shared policy #47 | C53 exact16/task 3b97c0fe/Root10/native-legacy O2-SAN61/prototype integrated; source LT constructor indices drive refinement. Constructor creation/manual storage/full Scope/general native/net remain |
 | 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Approved current frame deletion accepted; original363 plus adopted4 verified separately. Actual matched peakRSS/time pending safe all-owner window; peripheral MEM10/spine/empty arrays parked |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
 | 5 | `job-evidence`: typed ownership/deletion/resume | SE1-SE5, AP0 | R1 private/C52 consumer qualified. Trial15 owner focused O2-SAN0; Root671/129/86 pins and38 inert pairs exact/static review only. Current guards/link/header/broad/public/strict3/full SE/net pending |
@@ -26,6 +26,21 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | 8 | `issue-audit`: evidence-backed GitHub disposition | All open Issues/PRs | Bounded Goal complete; verified dispositions, task8bb5018/Mainb461ace; #61 retains C residuals |
 
 ### Current Delivery Status
+
+2026-10-05, [C53 constructor index review](../src/prototype/coordination/reviews/20261005-c53-current-constructor-index-review.json):
+exact16 task `3b97c0fe` follows C52. Frozen16/raw749/input354/content246/all21
+prior archives/member manifests match. Root10 serial terminal/reaped/uncensored
+commands reproduce fresh native/legacy combined images and four O2/full affected
+SAN61-row gates, each44zero/15unsupported4/compiler-link1/prior-output2. Three
+products994-line `b3cfdfe9`/header/provenance exact, all seven source algorithm
+sections/public gs_sort/complete C51 recipe prefix unchanged. Source-derived LT
+field/result recipes now select indices/projections and canonical refinement path;
+parent35/new16 runtime and three separately admitted shape refusals pass, prior
+outputs intact. Core341/pointers O2 reused; older/C52 I-O controls inherited.
+Constructor creation formulas remain manual and are the next bounded target step.
+Source equivalence/full Scope/general native61/adoption/R1-query current
+header-link/broad-public/strict3/full SE/net remain open; no accepted/Goal/cost or
+owner lifecycle change. Original owners continue, immutable evidence preserved.
 
 2026-10-05, [native query trial15 progress review](../src/prototype/coordination/reviews/20261005-native-query-trial15-progress-review.json):
 private frozen runtime129 `13fac73f`/input671 `9488d4e4`; Root hashes all671/129/86

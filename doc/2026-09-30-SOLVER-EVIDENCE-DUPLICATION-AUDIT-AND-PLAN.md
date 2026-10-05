@@ -1,7 +1,7 @@
 # Solver and Evidence Duplication Audit
 
 Date: 2026-09-30
-Status: R1 private; C52 native+legacy current55 correct downstream observer dependency. Query trial15 focused owner reports/pins/images reviewed; later guard/link/header/broad/public/net pending. Strict3/full SE remain open in this sole list.
+Status: R1/query private; C53 chosen native126+legacy120 consumer O2/full affected SAN61 each verified/prototype published. R1 header/query current guard-link/broad/public/strict3/full SE/net remain open in this sole list.
 Parent: [artifact plan, AP0](2026-09-28-ARTIFACT-SEMANTIC-PERSISTENCE-REFACTOR-PLAN.md#ap0-simplify-before-extending-persistence).
 This is the active prerequisite work list, not another artifact format proposal.
 
@@ -319,6 +319,14 @@ identical TSVs in O2 and ASan/UBSan builds, including repeated samples without
 additional fuel. No full acceptance suite was rerun for this audit-only change.
 
 ## Assessment
+
+2026-10-05, [C53 consumer qualification](../src/prototype/coordination/reviews/20261005-c53-current-constructor-index-review.json)
+records Root10/four native126-legacy120 O2/full affected SAN61 gates and fresh
+combined-image equality with owner results. Source constructor indices refine the
+fixed Acc candidate; constructor creation/manual representation/full source Scope
+remain open. This is separate from native R1 implementation publication and
+private query runtime129/current guard-link-header/broad/public qualification.
+Trial15 image/static progress remains recorded; strict3/full SE/net unwaived.
 
 2026-10-05, [typed-query trial15 progress](../src/prototype/coordination/reviews/20261005-native-query-trial15-progress-review.json)
 supersedes the current focused trial3 inert-byte failure on private frozen trial15
